@@ -1,0 +1,12 @@
+# Live acceptance — not executed without Supabase
+
+1. Apply both numbered migrations in order to a disposable Supabase project; configure Google and email callbacks.
+2. Sign in by each provider. Create a trip, sign out, sign back in; confirm persistence.
+3. Create two destinations in the setup wizard, two stays within one destination and a transport leg. Confirm day ranges and local time zones.
+4. Add flexible and timed activities, edit their dates to move days, reorder flexible items via order fields, delete with confirmation.
+5. Hide/reorder/resize/highlight hub cards; refresh and verify saved preferences. Verify hidden modules remain available in navigation.
+6. Sign in with a second account. Using both UI and the public Supabase REST client, attempt read/update/delete of first-account trip, segments, and preferences. Expect no accessible rows. Attempt inserting children under that trip; expect RLS rejection. Unauthenticated access must also fail.
+7. Try reversed dates, negative budget, unknown time zone, out-of-trip item dates and shrinking a trip around existing items. Expect validation/constraint errors.
+8. Test keyboard navigation and 375px/1440px widths. Test offline/network failures and expired magic links. Confirm errors never report successful saves.
+
+Automated local coverage additionally exercises transaction rollback on invalid destinations, same-trip destination links, multiple stays per destination, preserving stays on destination deletion, and form corrections. These tests do not substitute for Google/email delivery or production Supabase authorization checks.
