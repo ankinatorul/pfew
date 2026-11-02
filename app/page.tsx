@@ -68,6 +68,24 @@ export default async function Home() {
         </div>
         <Plane className="hero-mark" size={180} />
       </section>
+      {featured && (
+        <nav className="essentials-shortcuts" aria-label="Travel essentials">
+          {[
+            ["bookings", "Bookings"],
+            ["prep", "Prep"],
+            ["packing", "Packing"],
+            ["budget", "Budget"],
+          ].map(([view, label]) => (
+            <Link
+              key={view}
+              className="button secondary"
+              href={"/trips/" + featured.id + "?view=" + view}
+            >
+              {label} ↗
+            </Link>
+          ))}
+        </nav>
+      )}
       {featured && <HomeEssentials trip={featured} />}
       <div className="section-top">
         <h2>

@@ -2,6 +2,10 @@ import { test, expect } from "@playwright/test";
 test("configured app protects trips and renders both sign-in methods", async ({
   page,
 }) => {
+  const health = await page.request.get("/api/health");
+  expect(health.status()).toBe(200);
+  expect(health.headers()["cache-control"]).toContain("no-store");
+  expect((await health.json()).release).toBe("phase-2");
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await expect(

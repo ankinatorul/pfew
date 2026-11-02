@@ -467,3 +467,10 @@ summary {
 fieldset {
   min-width: 0;
 }
+
+.essentials-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
