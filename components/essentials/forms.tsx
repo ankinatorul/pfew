@@ -1,5 +1,7 @@
 "use client";
-import { TimeZoneSelect } from "../time-zone-select";
+import { LocationPicker } from "../location-picker";
+import { AutomaticTimezone } from "../automatic-timezone";
+import type { ResolvedLocation } from "../../lib/location-types";
 import { useOnline } from "./online";
 import { useState } from "react";
 import { Submit } from "../forms";
@@ -48,44 +50,43 @@ function Fields({
   };
   return (
     <>
-      {fields.map((f) => (
-        <label key={f.name}>
-          {f.label}
-          {["timezone", "end_timezone", "arrival_timezone"].includes(f.name) ? (
-            <TimeZoneSelect
-              name={f.name}
-              defaultValue={String(value(f.name))}
-              optional={f.name !== "timezone"}
-            />
-          ) : f.options ? (
-            <select name={f.name} defaultValue={value(f.name, f.options[0])}>
-              {f.options.map((o) => (
-                <option key={o} value={o}>
-                  {o || "Not specified"}
-                </option>
-              ))}
-            </select>
-          ) : f.type === "textarea" ? (
-            <textarea
-              name={f.name}
-              rows={3}
-              maxLength={f.max || 4000}
-              defaultValue={value(f.name)}
-            />
-          ) : (
-            <input
-              name={f.name}
-              type={f.type || "text"}
-              required={f.required}
-              maxLength={f.max || 200}
-              min={f.min}
-              max={f.type === "number" ? f.max : undefined}
-              step={f.step}
-              defaultValue={value(f.name)}
-            />
-          )}
-        </label>
-      ))}
+      {fields
+        .filter(
+          (f) =>
+            !["timezone", "end_timezone", "arrival_timezone"].includes(f.name),
+        )
+        .map((f) => (
+          <label key={f.name}>
+            {f.label}
+            {f.options ? (
+              <select name={f.name} defaultValue={value(f.name, f.options[0])}>
+                {f.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o || "Not specified"}
+                  </option>
+                ))}
+              </select>
+            ) : f.type === "textarea" ? (
+              <textarea
+                name={f.name}
+                rows={3}
+                maxLength={f.max || 4000}
+                defaultValue={value(f.name)}
+              />
+            ) : (
+              <input
+                name={f.name}
+                type={f.type || "text"}
+                required={f.required}
+                maxLength={f.max || 200}
+                min={f.min}
+                max={f.type === "number" ? f.max : undefined}
+                step={f.step}
+                defaultValue={value(f.name)}
+              />
+            )}
+          </label>
+        ))}
     </>
   );
 }
@@ -205,9 +206,33 @@ export function BookingForm({
   item?: Booking;
   segments: Segment[];
 }) {
+  const [location, setLocation] = useState<ResolvedLocation | null>(null);
+  const [arrival, setArrival] = useState<ResolvedLocation | null>(null);
   return (
     <Form table="bookings" trip={trip.id} id={item?.id}>
       <h2>{item ? "Edit booking" : "Save a reservation"}</h2>
+      <LocationPicker
+        label="Booking city / departure city · optional"
+        initialId={item?.location_id}
+        initialLabel={item?.location_label || ""}
+        onResolved={setLocation}
+      />
+      <AutomaticTimezone
+        value={location?.timezone || item?.timezone || trip.timezone}
+      />
+      <LocationPicker
+        label="Arrival city · optional"
+        name="end_location_id"
+        initialId={item?.end_location_id}
+        initialLabel={item?.end_location_label || ""}
+        onResolved={setArrival}
+      />
+      <input
+        type="hidden"
+        name="end_timezone"
+        value={arrival?.timezone || item?.end_timezone || ""}
+      />
+
       <p className="muted">
         Only enter details you know. A saved record does not create a
         reservation.

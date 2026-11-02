@@ -1,5 +1,7 @@
 "use client";
-import { TimeZoneSelect } from "./time-zone-select";
+import { AutomaticTimezone } from "./automatic-timezone";
+import { LocationPicker } from "./location-picker";
+import type { ResolvedLocation } from "../lib/location-types";
 import { useState, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "./button";
@@ -46,7 +48,13 @@ export function TripForm({ trip }: { trip?: Trip }) {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [destinations, setDestinations] = useState<
-    { key: number; start: string; end: string; timezone: string }[]
+    {
+      key: number;
+      start: string;
+      end: string;
+      timezone: string;
+      location?: ResolvedLocation | null;
+    }[]
   >([]);
   const nextDestination = useRef(0);
   const formRef = useRef<HTMLFormElement>(null);
@@ -121,14 +129,15 @@ export function TripForm({ trip }: { trip?: Trip }) {
             />
           </label>
         </div>
-        <label>
-          Trip time zone
-          <TimeZoneSelect
-            name="timezone"
-            defaultValue={trip?.timezone}
-            autoDetect={!trip}
-          />
-        </label>
+        <AutomaticTimezone
+          value={
+            trip?.timezone ||
+            destinations.find((d) => d.location)?.location?.timezone
+          }
+        />
+        <p className="muted">
+          Local times follow your destinations automatically.
+        </p>
       </fieldset>
       <fieldset hidden={step !== 1}>
         <legend>A stop or two along the way?</legend>
@@ -142,10 +151,24 @@ export function TripForm({ trip }: { trip?: Trip }) {
             {destinations.map((destination, index) => (
               <div className="destination-entry" key={destination.key}>
                 <h3>Destination {index + 1}</h3>
-                <label>
-                  Destination name
-                  <input name="destination_name" required maxLength={200} />
-                </label>
+                <LocationPicker
+                  label="Destination name"
+                  name="destination_location_id"
+                  titleName="destination_name"
+                  required
+                  onResolved={(location) =>
+                    setDestinations((current) =>
+                      current.map((d) =>
+                        d.key === destination.key ? { ...d, location } : d,
+                      ),
+                    )
+                  }
+                />
+                <input
+                  type="hidden"
+                  name="destination_timezone"
+                  value={destination.location?.timezone || "UTC"}
+                />
                 <div className="two">
                   <label>
                     Arrival date
@@ -166,13 +189,6 @@ export function TripForm({ trip }: { trip?: Trip }) {
                     />
                   </label>
                 </div>
-                <label>
-                  Destination time zone
-                  <TimeZoneSelect
-                    name="destination_timezone"
-                    defaultValue={destination.timezone}
-                  />
-                </label>
                 <Button
                   type="button"
                   variant="secondary"
@@ -328,13 +344,21 @@ export function SegmentForm({
   item,
   kind = "activity",
   destinations = [],
+  initialStatus = "planned",
 }: {
   trip: Trip;
   item?: Segment;
   kind?: string;
   destinations?: Segment[];
+  initialStatus?: string;
 }) {
   const [error, setError] = useState("");
+  const [currentKind, setCurrentKind] = useState(item?.kind || kind);
+  const [destinationId, setDestinationId] = useState(
+    item?.destination_id || "",
+  );
+  const [location, setLocation] = useState<ResolvedLocation | null>(null);
+  const [arrival, setArrival] = useState<ResolvedLocation | null>(null);
   return (
     <form
       action={saveSegment}
@@ -358,7 +382,11 @@ export function SegmentForm({
       {item && <input type="hidden" name="id" value={item.id} />}
       <label>
         Type
-        <select name="kind" defaultValue={item?.kind || kind}>
+        <select
+          name="kind"
+          value={currentKind}
+          onChange={(e) => setCurrentKind(e.target.value)}
+        >
           {["destination", "stay", "transport", "activity", "note"].map((k) => (
             <option key={k}>{k}</option>
           ))}
@@ -366,7 +394,11 @@ export function SegmentForm({
       </label>
       <label>
         Destination · optional
-        <select name="destination_id" defaultValue={item?.destination_id || ""}>
+        <select
+          name="destination_id"
+          value={destinationId}
+          onChange={(e) => setDestinationId(e.target.value)}
+        >
           <option value="">No destination link</option>
           {destinations
             .filter((d) => d.id !== item?.id)
@@ -377,6 +409,25 @@ export function SegmentForm({
             ))}
         </select>
       </label>
+      <LocationPicker
+        label={
+          currentKind === "destination"
+            ? "Destination location"
+            : "City · optional"
+        }
+        initialId={item?.location_id}
+        initialLabel={item?.location_label || ""}
+        required={currentKind === "destination"}
+        onResolved={setLocation}
+      />
+      <AutomaticTimezone
+        value={
+          location?.timezone ||
+          destinations.find((d) => d.id === destinationId)?.timezone ||
+          item?.timezone ||
+          trip.timezone
+        }
+      />
       <label>
         Name
         <input
@@ -420,17 +471,10 @@ export function SegmentForm({
             defaultValue={item?.local_time || ""}
           />
         </label>
-        <label>
-          Time zone
-          <TimeZoneSelect
-            name="timezone"
-            defaultValue={item?.timezone || trip.timezone}
-          />
-        </label>
       </div>
       <label>
         State
-        <select name="status" defaultValue={item?.status || "planned"}>
+        <select name="status" defaultValue={item?.status || initialStatus}>
           <option value="planned">Planned · no reservation implied</option>
           <option value="confirmed">Confirmed · by you</option>
           <option value="idea">Idea · unscheduled</option>
@@ -503,18 +547,22 @@ export function SegmentForm({
               defaultValue={item?.arrival_time}
             />
           </label>
-          <label>
-            Arrival time zone
-            <TimeZoneSelect
-              name="arrival_timezone"
-              defaultValue={item?.arrival_timezone}
-              optional
-            />
-          </label>
+          <LocationPicker
+            label="Arrival city · optional"
+            name="arrival_location_id"
+            initialId={item?.arrival_location_id}
+            initialLabel={item?.arrival_location_label || ""}
+            onResolved={setArrival}
+          />
+          <input
+            type="hidden"
+            name="arrival_timezone"
+            value={arrival?.timezone || item?.arrival_timezone || ""}
+          />
         </div>
         <p className="muted">
           Use the From date/time for departure and To date for arrival. Arrival
-          time zone may differ.
+          local time follows the arrival city.
         </p>
       </details>
       <label>
@@ -525,6 +573,16 @@ export function SegmentForm({
           rows={4}
           defaultValue={item?.notes}
           placeholder="Only details you know. Leave unknown information blank."
+        />
+      </label>
+      <label>
+        Duration · minutes, optional
+        <input
+          name="duration_minutes"
+          type="number"
+          min="1"
+          max="1440"
+          defaultValue={item?.duration_minutes ?? ""}
         />
       </label>
       <label>

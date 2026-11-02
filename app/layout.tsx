@@ -3,12 +3,14 @@ import "@fontsource/manrope/600.css";
 import "@fontsource/manrope/700.css";
 import "@fontsource/manrope/800.css";
 import "./globals.css";
+import { PWARegister } from "../components/pwa-register";
 import Link from "next/link";
 import { AccountMenu } from "../components/account-menu";
 import { currentGoogleUser } from "../lib/auth-session";
 import { accountProfile } from "../lib/account-profile";
 import { Compass, Plus } from "lucide-react";
 export const metadata = {
+  manifest: "/manifest.webmanifest",
   title: "Pfew. — A little less planning. A little more living.",
   description: "Your personal travel companion. Organize your trip, your way.",
 };
@@ -22,6 +24,7 @@ export default async function Layout({
   return (
     <html lang="en">
       <body>
+        <PWARegister />
         <header>
           <Link className="logo" href="/">
             pfew<span>.</span>

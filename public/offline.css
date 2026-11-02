@@ -1,0 +1,85 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #222225;
+  background: #f6f6f8;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 900px;
+  margin: auto;
+  padding: 28px 20px 70px;
+}
+.logo {
+  font-size: 38px;
+  font-weight: 800;
+  color: inherit;
+}
+h1 {
+  font-size: clamp(32px, 6vw, 52px);
+  line-height: 1.15;
+}
+p {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+section,
+article {
+  border-radius: 22px;
+  background: white;
+  padding: 24px;
+  margin: 20px 0;
+}
+label {
+  display: block;
+  margin: 12px 0;
+}
+input {
+  display: block;
+  padding: 12px;
+  border: 1px solid #777;
+  border-radius: 10px;
+  width: 100%;
+  font: inherit;
+}
+button,
+a.button {
+  display: inline-block;
+  padding: 12px 18px;
+  border: 1px solid #222225;
+  border-radius: 30px;
+  background: #d9f88c;
+  color: #222225;
+  font: inherit;
+  cursor: pointer;
+  margin: 6px 8px 6px 0;
+}
+button.danger {
+  background: #ffe1da;
+}
+h2 {
+  margin: 24px 0 12px;
+}
+small {
+  color: #555;
+}
+.notice {
+  padding: 12px;
+  background: #fff1d0;
+  border-radius: 12px;
+}
+article {
+  border: 1px solid #ddd;
+  padding: 18px;
+}
+ul {
+  padding-left: 20px;
+}
+li {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}

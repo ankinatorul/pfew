@@ -34,6 +34,14 @@ const zone = z.string().refine((v) => {
 export const bookingSchema = z
   .object({
     trip_id: z.uuid(),
+    location_id: z.string().max(150).nullable().optional(),
+    location_label: z.string().max(500).nullable().optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
+    end_location_id: z.string().max(150).nullable().optional(),
+    end_location_label: z.string().max(500).nullable().optional(),
+    end_latitude: z.number().min(-90).max(90).nullable().optional(),
+    end_longitude: z.number().min(-180).max(180).nullable().optional(),
     segment_id: z.preprocess(
       (v) => (v === "" || v === undefined ? null : v),
       z.uuid().nullable(),

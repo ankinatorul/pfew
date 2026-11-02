@@ -25,7 +25,7 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(health.status()).toBe(200);
   expect(health.headers()["cache-control"]).toContain("no-store");
   const release = await health.json();
-  expect(release.release).toBe("phase-2");
+  expect(release.release).toBe("phase-4");
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,
@@ -63,4 +63,105 @@ test("configured app protects trips and offers Google sign-in only", async ({
     "/api/attachments/11111111-1111-4111-8111-111111111111",
   );
   expect(response.status()).toBe(401);
+});
+
+test("city lookup supplies real time zones and private offline APIs require sign-in", async ({
+  page,
+}) => {
+  const response = await page.request.get("/api/locations?q=Tokyo");
+  expect(response.ok()).toBe(true);
+  const body = await response.json();
+  expect(body.results[0].timezone).toBe("Asia/Tokyo");
+  expect(
+    (
+      await page.request.get(
+        "/api/trips/11111111-1111-4111-8111-111111111111/offline",
+      )
+    ).status(),
+  ).toBe(401);
+});
+
+test("encrypted copies unlock offline without caching authenticated pages", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/offline.html");
+  await page.evaluate(async () => {
+    // @ts-expect-error Public browser-only ES module.
+    const store = await import(/* webpackIgnore: true */ "/offline-store.js");
+    await store.saveSnapshot(
+      "fixture-user",
+      "fixture-trip",
+      await store.encryptSnapshot(
+        {
+          version: 1,
+          userId: "fixture-user",
+          downloadedAt: new Date().toISOString(),
+          trip: {
+            name: "Fixture private trip",
+            start_date: "2027-05-01",
+            end_date: "2027-05-02",
+            timezone: "Asia/Tokyo",
+            currency: "EUR",
+            budget: null,
+          },
+          trip_segments: [],
+          bookings: [
+            {
+              title: "Fixture reservation",
+              reference: "PRIVATE-REF",
+              start_date: "2027-05-01",
+              end_date: "2027-05-01",
+              timezone: "Asia/Tokyo",
+            },
+          ],
+          documents: [],
+        },
+        "private test passphrase",
+      ),
+    );
+    await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+  });
+  await expect
+    .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
+    .toBe(true);
+  const cached = await page.evaluate(async () => {
+    const cache = await caches.open("pfew-reader-v1");
+    return (await cache.keys()).map((item) => new URL(item.url).pathname);
+  });
+  expect(cached.sort()).toEqual(
+    [
+      "/offline.html",
+      "/offline.js",
+      "/offline.css",
+      "/offline-store.js",
+      "/icon.svg",
+      "/icon-192.png",
+      "/icon-512.png",
+      "/manifest.webmanifest",
+    ].sort(),
+  );
+  await context.setOffline(true);
+  await page.goto("/trips/offline-fixture");
+  await expect(page.getByText("Saved trip 1", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Fixture private trip", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByLabel("Download passphrase").fill("private test passphrase");
+  await page.getByRole("button", { name: "Unlock read-only copy" }).click();
+  await expect(
+    page.getByText("Fixture private trip", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Reference: PRIVATE-REF", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Lock this copy" }).click();
+  await expect(
+    page.getByText("Fixture private trip", { exact: true }),
+  ).toHaveCount(0);
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Remove encrypted download" }).click();
+  await expect(page.getByText(/No offline trips yet/)).toBeVisible();
+  await context.setOffline(false);
 });

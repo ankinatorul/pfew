@@ -126,7 +126,7 @@ export async function EssentialsView({
                     <p>
                       {b.start_date} {b.local_time} {b.timezone} → {b.end_date}{" "}
                       {b.end_local_time}{" "}
-                      {b.end_timezone || "(end time zone not entered)"}
+                      {b.end_timezone || "(end location not specified)"}
                     </p>
                     <p>
                       {b.provider || "Provider not entered"} · Reference:{" "}
@@ -152,6 +152,7 @@ export async function EssentialsView({
                     <Attachments trip={trip.id} booking={b.id} />
                     <div className="actions">
                       <Link
+                        data-edit-action
                         className="button secondary"
                         href={base + "&edit=" + b.id}
                       >
@@ -169,7 +170,12 @@ export async function EssentialsView({
             No reservations saved yet. Add one you already have.
           </div>
         )}
-        <BookingForm trip={trip} item={selected} segments={segments} />
+        <BookingForm
+          key={selected?.id || "new"}
+          trip={trip}
+          item={selected}
+          segments={segments}
+        />
       </>
     );
   }
@@ -206,7 +212,9 @@ export async function EssentialsView({
                 )
                 .map((t) => (
                   <article className="card" key={t.id}>
-                    <span className="pill">{t.priority} priority</span>
+                    <span className="pill">
+                      {t.priority} priority · {t.done ? "Complete" : "Open"}
+                    </span>
                     <h3>{t.title}</h3>
                     <p>
                       {t.due_date ? "Due " + t.due_date : "No due date"}
@@ -221,7 +229,9 @@ export async function EssentialsView({
                       value={t.done}
                     />
                     <div className="actions">
-                      <Link href={base + "&edit=" + t.id}>Edit task</Link>
+                      <Link data-edit-action href={base + "&edit=" + t.id}>
+                        Edit task
+                      </Link>
                       <Remove table="prep_tasks" trip={trip.id} id={t.id} />
                     </div>
                   </article>
@@ -261,7 +271,9 @@ export async function EssentialsView({
                 .filter((i) => i.list_id === list.id)
                 .map((i) => (
                   <article className="card" key={i.id}>
-                    <span className="eyebrow">{i.category}</span>
+                    <span className="eyebrow">
+                      {i.category} · {i.packed ? "Packed" : "To pack"}
+                    </span>
                     <h3>
                       {i.quantity} × {i.title}
                     </h3>
@@ -272,7 +284,9 @@ export async function EssentialsView({
                       value={i.packed}
                     />
                     <div className="actions">
-                      <Link href={base + "&edit=" + i.id}>Edit</Link>
+                      <Link data-edit-action href={base + "&edit=" + i.id}>
+                        Edit
+                      </Link>
                       <Remove table="packing_items" trip={trip.id} id={i.id} />
                     </div>
                   </article>
@@ -455,7 +469,9 @@ export async function EssentialsView({
             </p>
             <p>{a.notes}</p>
             <div className="actions">
-              <Link href={base + "&edit=" + a.id}>Edit</Link>
+              <Link data-edit-action href={base + "&edit=" + a.id}>
+                Edit
+              </Link>
               <Remove table="budget_allocations" trip={trip.id} id={a.id} />
             </div>
           </article>
@@ -480,7 +496,9 @@ export async function EssentialsView({
               </p>
               <p>{e.notes}</p>
               <div className="actions">
-                <Link href={base + "&edit=" + e.id}>Edit</Link>
+                <Link data-edit-action href={base + "&edit=" + e.id}>
+                  Edit
+                </Link>
                 <Remove table="expenses" trip={trip.id} id={e.id} />
               </div>
             </article>

@@ -38,6 +38,7 @@ export function UploadForm({
 export function RemoveAttachment({ trip, id }: { trip: string; id: string }) {
   return (
     <form
+      data-viewer-allowed
       action={deleteAttachment}
       onSubmit={(e) => {
         if (!window.confirm("Permanently remove this document?"))

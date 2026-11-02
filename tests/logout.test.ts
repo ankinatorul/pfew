@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../lib/supabase", () => ({
   supabase: async () => ({ auth: { signOut: mocks.signOut } }),
 }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ delete: vi.fn() }) }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("../lib/access", () => ({ access: vi.fn() }));

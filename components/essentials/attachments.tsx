@@ -10,7 +10,7 @@ export async function Attachments({
   const { db } = await access();
   const { data, error } = await db
     .from("booking_attachments")
-    .select("id,filename,size")
+    .select("*")
     .eq("trip_id", trip)
     .eq("booking_id", booking);
   if (error?.code === "PGRST205" || error?.code === "42P01")
@@ -22,12 +22,16 @@ export async function Attachments({
   if (error) throw new Error("Could not load booking documents");
   return (
     <details>
-      <summary>Documents ({data?.length || 0})</summary>
+      <summary>Your private documents ({data?.length || 0})</summary>
       {data?.map((f) => (
         <div className="attachment-row" key={f.id}>
-          <a className="button secondary" href={"/api/attachments/" + f.id}>
-            Download {f.filename} · {Math.ceil(f.size / 1024)} KB
-          </a>
+          {f.state === "pending" ? (
+            <p>Incomplete upload: {f.filename}. Remove it and retry.</p>
+          ) : (
+            <a className="button secondary" href={"/api/attachments/" + f.id}>
+              Download {f.filename} · {Math.ceil(f.size / 1024)} KB
+            </a>
+          )}
           <RemoveAttachment trip={trip} id={f.id} />
         </div>
       ))}

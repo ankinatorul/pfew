@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { google } from "../app/actions";
 import type { AuthProviders } from "../lib/auth-providers";
-export function AuthOptions({ providers }: { providers: AuthProviders }) {
+export function AuthOptions({
+  providers,
+  returnTo,
+}: {
+  providers: AuthProviders;
+  returnTo?: string | null;
+}) {
   return (
     <div className="form">
       <form action={google}>
+        <input type="hidden" name="next" value={returnTo || ""} />
         <button className="button primary w-full" disabled={!providers.google}>
           Continue with Google
         </button>

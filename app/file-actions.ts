@@ -24,26 +24,9 @@ export async function uploadAttachment(form: FormData) {
     .eq("trip_id", trip)
     .single();
   if (!record) fail("Booking unavailable");
-  const { count, error: countError } = await db
-    .from("booking_attachments")
-    .select("id", { count: "exact", head: true })
-    .eq("booking_id", booking);
-  if (countError) fail("Apply the private booking files migration first.");
-  if ((count ?? 0) >= 10) fail("Keep up to 10 documents per booking.");
   const id = crypto.randomUUID();
   const path = [user.id, trip, booking, id].join("/");
-  const { error } = await db.storage
-    .from("booking-files")
-    .upload(path, bytes, {
-      contentType: file.type,
-      cacheControl: "0",
-      upsert: false,
-    });
-  if (error)
-    fail(
-      "Upload failed. Check the private storage migration and your connection.",
-    );
-  const { error: metaError } = await db
+  const { error: reservationError } = await db
     .from("booking_attachments")
     .insert({
       id,
@@ -54,12 +37,44 @@ export async function uploadAttachment(form: FormData) {
       filename: safeFilename(file.name),
       content_type: file.type,
       size: file.size,
+      state: "pending",
     });
-  if (metaError) {
-    await db.storage.from("booking-files").remove([path]);
-    fail("Document metadata could not be saved. Please try again.");
+  if (reservationError)
+    fail(
+      "Could not reserve this private upload. Apply migration 008, check editing access and the 10-document limit.",
+    );
+  const { error } = await db.storage.from("booking-files").upload(path, bytes, {
+    contentType: file.type,
+    cacheControl: "0",
+    upsert: false,
+  });
+  if (error) {
+    // A transport error can occur after Storage received the object. Keep the
+    // reservation until deletion is confirmed, so its owner can still remove it.
+    const cleanup = await db.storage.from("booking-files").remove([path]);
+    if (!cleanup.error)
+      await db.from("booking_attachments").delete().eq("id", id);
+    revalidatePath("/profile");
+    revalidatePath("/trips/" + trip);
+    fail(
+      "Upload could not be completed. Check Your account for an incomplete upload before retrying.",
+    );
+  }
+  const { error: readyError } = await db
+    .from("booking_attachments")
+    .update({ state: "ready" })
+    .eq("id", id)
+    .select("id")
+    .single();
+  revalidatePath("/profile");
+  if (readyError) {
+    revalidatePath("/trips/" + trip);
+    fail(
+      "The file was received but could not be marked complete. Remove the incomplete upload from Your account and retry.",
+    );
   }
   revalidatePath("/trips/" + trip);
+  revalidatePath("/profile");
 }
 export async function deleteAttachment(form: FormData) {
   const { db } = await access();
@@ -82,4 +97,5 @@ export async function deleteAttachment(form: FormData) {
   if (metaError)
     fail("Document removed, but metadata cleanup failed. Please retry.");
   revalidatePath("/trips/" + trip);
+  revalidatePath("/profile");
 }

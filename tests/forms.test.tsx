@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, it, expect, vi } from "vitest";
 import {
   render,
   screen,
@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { searchLocations } from "../lib/locations";
 import { TripForm, SegmentForm, Delete } from "../components/forms";
 import { saveTrip, saveSegment, deleteTrip } from "../app/actions";
 vi.mock("../app/actions", () => ({
@@ -16,7 +17,20 @@ vi.mock("../app/actions", () => ({
   deleteTrip: vi.fn(async () => {}),
   deleteSegment: vi.fn(async () => {}),
 }));
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      Response.json({
+        results: searchLocations(
+          new URL(url, "http://test").searchParams.get("q") || "",
+        ),
+      }),
+    ),
+  );
+});
 afterEach(() => {
+  vi.unstubAllGlobals();
   cleanup();
   vi.clearAllMocks();
   vi.restoreAllMocks();
@@ -28,9 +42,6 @@ function essentials() {
   fireEvent.change(screen.getByLabelText("Return"), {
     target: { value: "2027-05-10" },
   });
-  fireEvent.change(screen.getByLabelText("Trip time zone"), {
-    target: { value: "Asia/Tokyo" },
-  });
 }
 it("creates a trip with two destinations and preserves optional defaults", async () => {
   const user = userEvent.setup();
@@ -38,19 +49,24 @@ it("creates a trip with two destinations and preserves optional defaults", async
   essentials();
   await user.click(screen.getByRole("button", { name: "Continue" }));
   await user.click(screen.getByRole("button", { name: /Add destination/ }));
-  fireEvent.change(screen.getByLabelText("Destination name"), {
-    target: { value: "Tokyo" },
-  });
+  await user.type(
+    screen.getByRole("combobox", { name: "Destination name" }),
+    "Tokyo",
+  );
+  await user.click(await screen.findByRole("option", { name: "Tokyo, Japan" }));
   await user.click(screen.getByRole("button", { name: /Add destination/ }));
-  fireEvent.change(screen.getAllByLabelText("Destination name")[1], {
-    target: { value: "Kyoto" },
-  });
+  await user.type(
+    screen.getAllByRole("combobox", { name: "Destination name" })[1],
+    "Kyoto",
+  );
+  await user.click(await screen.findByRole("option", { name: "Kyoto, Japan" }));
   await user.click(screen.getByRole("button", { name: "Continue" }));
   await user.click(screen.getByRole("button", { name: "Continue" }));
   await user.click(screen.getByRole("button", { name: "Create my trip" }));
   await waitFor(() => expect(saveTrip).toHaveBeenCalledTimes(1));
   const payload = vi.mocked(saveTrip).mock.calls[0][0];
-  expect(payload.getAll("destination_name")).toEqual(["Tokyo", "Kyoto"]);
+  expect(payload.getAll("destination_name")[0]).toBe("Tokyo, Japan");
+  expect(payload.getAll("destination_name")[1]).toContain("Kyoto");
   expect(payload.getAll("destination_timezone")).toEqual([
     "Asia/Tokyo",
     "Asia/Tokyo",
@@ -84,7 +100,7 @@ it("allows skipping destinations without inventing reservations", async () => {
     vi.mocked(saveTrip).mock.calls[0][0].getAll("destination_name"),
   ).toEqual([]);
 });
-it("blocks an invalid time-zone selection without losing segment details", async () => {
+it("derives time zones without showing a time-zone input", async () => {
   const user = userEvent.setup();
   render(
     <SegmentForm
@@ -102,17 +118,11 @@ it("blocks an invalid time-zone selection without losing segment details", async
     />,
   );
   await user.type(screen.getByLabelText("Name"), "Lunch with friends");
-  fireEvent.change(screen.getByLabelText("Time zone"), {
-    target: { value: "Wrong/Zone" },
-  });
+  expect(screen.queryByRole("combobox", { name: "Time zone" })).toBeNull();
   await user.click(screen.getByRole("button", { name: "Add to trip" }));
-  expect(
-    (
-      screen.getByRole("combobox", { name: "Time zone" }) as HTMLSelectElement
-    ).checkValidity(),
-  ).toBe(false);
-  expect(saveSegment).not.toHaveBeenCalled();
-  expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
+  await waitFor(() => expect(saveSegment).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(saveSegment).mock.calls[0][0].get("timezone")).toBe("UTC");
+  expect(vi.mocked(saveSegment).mock.calls[0][0].get("title")).toBe(
     "Lunch with friends",
   );
 });

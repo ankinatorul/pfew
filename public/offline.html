@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="stylesheet" href="/offline.css" />
+    <title>Pfew. Offline reader</title>
+  </head>
+  <body>
+    <main>
+      <a class="logo" href="/">pfew.</a>
+      <h1>Your plans, along for the ride.</h1>
+      <p>
+        Read-only copies saved on this browser. Unlock with your download
+        passphrase. Maps, AI and editing require a connection.
+      </p>
+      <p id="message" role="status"></p>
+      <section id="downloads"></section>
+      <section id="content" hidden></section>
+      <noscript>JavaScript is needed to decrypt your downloads.</noscript>
+    </main>
+    <script type="module" src="/offline.js"></script>
+  </body>
+</html>

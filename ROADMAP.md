@@ -1,19 +1,17 @@
 # Roadmap
 
-## Phase 1 — implemented foundation, acceptance pending
+## Phases 1–2 — implemented
 
-Web shell and brand tokens, Google-only Supabase auth integration, private trip CRUD, guided setup with atomic multi-destination creation, same-trip destination links, dated segments, manual Quick Add, itinerary edit/move/remove, destinations/stays/transport views, and persisted modular hub preferences are implemented.
+Google-only authentication and account controls, real trip/segment persistence, guided multi-destination setup, flexible itinerary, independent stays/journeys, customized hub, booking wallet/private attachments, Prep, Packing/templates, budget projections and separate manual expenses. User reports production Google sign-in working. Full signed-in production acceptance remains unverified from this environment.
 
-Pending: live Supabase auth/persistence/RLS validation; authenticated browser integration coverage; production deployment verification. Phase 1 is not declared complete.
+## Phase 3 — implemented core, integrations require configuration
 
-## Phase 2 — implemented, live acceptance pending
+Automatic city-derived time zones, server AI abstraction, explicit sample/live modes, contextual budget/style-aware unverified ideas, review before saving, day/time/duration scheduling, Trip Check with evidence/uncertainty and persistent decisions, saved city/place notes, optional real Google Maps/Places with attribution and retrieval time, and serialized request-budget controls.
 
-Implemented booking wallet (timeline/categories), private booking attachments, categorized Prep tasks and in-app due reminders, per-traveler/shared Packing lists with reusable templates, Budget Planner with day/destination allocations and inclusion rules, separate manual multi-currency expenses, and during-trip Home essentials. User reports the Phase 1 Vercel deployment succeeded and requested Phase 2. Production sign-in, persistence, Storage upload/download and cross-account acceptance remain to be verified after applying migrations 003–004. No Phase 3 work has started.
+Remaining: configure/test paid provider keys in production; optional AI booking-document extraction with review; selective official-source travel-requirement research beyond fresh Google place data. No researched price, reservation, requirement or availability claims are made without a source.
 
-## Phase 3 — not started
+## Phase 4 — implemented, live acceptance pending
 
-Provider abstraction, Trip Check, Maps/Places and research, reviewed AI suggestions, usage controls and explicit Mock Mode.
+Verified-email invitations, Owner/Editor/Viewer database authorization, minimal audit trail, uploader-private document reservations and deletion guards, deliberate encrypted read-only offline downloads, optional browser PWA installation, response security headers, local cross-account PostgreSQL and browser offline tests.
 
-## Phase 4 — not started
-
-Collaboration, invitations, private-document controls, audit trail, deliberate read-only offline downloads, optional browser PWA installation and security hardening.
+Remaining: apply migrations 005–008 to the live project, run signed-in two-account Google/Supabase/Storage acceptance, verify provider configuration and the deployed Vercel commit. Network/admin access limitations prevent claiming these live checks passed. See `tests/PHASE34_ACCEPTANCE.md`.

@@ -1,3 +1,5 @@
+> Current user requirements override earlier alternatives below: build exclusively a responsive mobile-first web app deployed on Vercel; use Google-only sign-in; derive time zones automatically from selected destination locations with no time-zone input. Optional browser PWA installation is supported. See ROADMAP.md for implementation and live acceptance status.
+
 > Authentication requirement: Google Sign-In only. Email magic-link authentication in the original brief is superseded by the user’s Google-only requirement.
 
 > Platform requirement: exclusively a responsive, mobile-first web application deployed on Vercel. No React Native, Expo, Swift, Kotlin, or App Store workflow. Optional browser PWA installation only.
@@ -904,7 +906,7 @@ Each phase must be usable and tested before starting the next one.
 
 Phase 1 is complete only when a user can:
 
-1. Sign in using Google or an email magic link.
+1. Sign in using Google.
 2. Create a new trip through Guided Setup.
 3. Enter multiple destinations with dates.
 4. Add stays and transportation legs.

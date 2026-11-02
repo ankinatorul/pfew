@@ -1,4 +1,6 @@
 "use server";
+import { cookies } from "next/headers";
+import { safeReturnPath } from "../lib/auth-redirect";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { access } from "../lib/access";
@@ -10,6 +12,8 @@ import {
   validationMessage,
 } from "../lib/domain";
 import { z } from "zod";
+import { resolveLocation } from "../lib/locations";
+import { segmentLocationValues, locationFields } from "../lib/automatic-zones";
 import { authProviders } from "../lib/auth-providers";
 import { removeBookingFiles } from "../lib/storage-cleanup";
 async function client() {
@@ -18,9 +22,20 @@ async function client() {
 function fail(message: string): never {
   redirect("/error?message=" + encodeURIComponent(message));
 }
-export async function google() {
+export async function google(form: FormData) {
   const providers = await authProviders();
   if (!providers.google) redirect("/login");
+  const jar = await cookies();
+  const returnTo = safeReturnPath(form.get("next"));
+  if (returnTo)
+    jar.set("pfew_return_to", returnTo, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 600,
+    });
+  else jar.delete("pfew_return_to");
   const db = await supabase();
   const { data, error } = await db.auth.signInWithOAuth({
     provider: "google",
@@ -38,12 +53,22 @@ export async function logout() {
   const db = await supabase();
   const { error } = await db.auth.signOut({ scope: "local" });
   if (error) fail("We couldn’t sign you out. Please try again.");
+  (await cookies()).delete("pfew_return_to");
   revalidatePath("/", "layout");
   redirect("/login");
 }
 export async function saveTrip(form: FormData) {
   const { db, user } = await client();
-  const parsed = tripSchema.safeParse(Object.fromEntries(form));
+  let input = Object.fromEntries(form);
+  if (form.get("id")) {
+    const { data: old } = await db
+      .from("trips")
+      .select("timezone")
+      .eq("id", form.get("id"))
+      .single();
+    if (old) input = { ...input, timezone: old.timezone };
+  }
+  const parsed = tripSchema.safeParse(input);
   if (!parsed.success)
     fail(parsed.error.issues.map((i) => i.message).join(". "));
   const id = form.get("id");
@@ -64,7 +89,21 @@ export async function saveTrip(form: FormData) {
         form,
         parsed.data.start_date,
         parsed.data.end_date,
-      );
+      ).map((d) => {
+        const location = resolveLocation(d.location_id);
+        if (!location)
+          throw new Error("Choose each destination from the city results.");
+        return {
+          ...d,
+          title: location.label,
+          timezone: location.timezone,
+          ...locationFields(location),
+        };
+      });
+      if (destinations.length)
+        parsed.data.timezone = [...destinations].sort((a, b) =>
+          a.start_date.localeCompare(b.start_date),
+        )[0].timezone;
     } catch (error) {
       fail(validationMessage(error));
     }
@@ -74,7 +113,7 @@ export async function saveTrip(form: FormData) {
     });
     if (error)
       fail(
-        "Trip could not be created. Check that both database migrations are applied.",
+        "Trip could not be created. Apply the automatic locations upgrade and check your connection.",
       );
     revalidatePath("/");
     redirect("/trips/" + data);
@@ -85,6 +124,23 @@ export async function saveTrip(form: FormData) {
 export async function deleteTrip(form: FormData) {
   const { db, user } = await client();
   const id = z.uuid().parse(form.get("id"));
+  const { data: owned } = await db
+    .from("trips")
+    .select("id")
+    .eq("id", id)
+    .eq("owner_id", user.id)
+    .single();
+  if (!owned) fail("Only the trip owner can delete this trip.");
+  const { data: hasOther, error: privateError } = await db.rpc(
+    "has_other_private_files",
+    { target: id },
+  );
+  if (hasOther)
+    fail(
+      "Other travelers have private documents attached. They need to remove those files from their own account before this trip can be deleted.",
+    );
+  if (privateError && privateError.code !== "PGRST202")
+    fail("Could not check private document ownership.");
   const fileError = await removeBookingFiles(db, id);
   if (fileError) fail(fileError);
   const { error } = await db
@@ -98,7 +154,13 @@ export async function deleteTrip(form: FormData) {
 }
 export async function saveSegment(form: FormData) {
   const { db } = await client();
-  const parsed = segmentSchema.safeParse(Object.fromEntries(form));
+  let input;
+  try {
+    input = await segmentLocationValues(db, form);
+  } catch (error) {
+    fail(validationMessage(error));
+  }
+  const parsed = segmentSchema.safeParse(input);
   if (!parsed.success)
     fail(parsed.error.issues.map((i) => i.message).join(". "));
   const { data: trip } = await db
@@ -156,6 +218,9 @@ export async function saveLayout(form: FormData) {
     "prep",
     "packing",
     "budget",
+    "map",
+    "ideas",
+    "check",
   ];
   const layout = modules.map((key) => ({
     key,

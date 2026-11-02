@@ -1,3 +1,7 @@
+import { OfflineView } from "../../../components/offline-view";
+import { CollaborationView } from "../../../components/collaboration-view";
+import { tripRole } from "../../../lib/trip-role";
+import { Intelligence } from "../../../components/intelligence";
 import { DayBookings } from "../../../components/essentials/day-bookings";
 import { EssentialsView } from "../../../components/essentials/view";
 import Link from "next/link";
@@ -26,7 +30,7 @@ export default async function Hub({
 }) {
   const { id } = await params;
   const q = await searchParams;
-  const { db } = await access();
+  const { db, user } = await access();
   const { data, error } = await db
     .from("trips")
     .select("*")
@@ -34,6 +38,8 @@ export default async function Hub({
     .maybeSingle();
   if (error || !data) notFound();
   const trip = data as Trip;
+  const role = await tripRole(db, trip, user.id);
+  const canEdit = role !== "viewer";
   const [{ data: items, error: itemError }, { data: prefs, error: prefError }] =
     await Promise.all([
       db
@@ -64,6 +70,9 @@ export default async function Hub({
     { key: "prep", label: "Ready, set, nearly there", kind: "prep" },
     { key: "packing", label: "Bring the little essentials", kind: "packing" },
     { key: "budget", label: "Room for the good stuff", kind: "budget" },
+    { key: "map", label: "Your places, connected", kind: "map" },
+    { key: "ideas", label: "Save a little possibility", kind: "ideas" },
+    { key: "check", label: "A second look at your plans", kind: "check" },
   ];
   type Pref = {
     key: string;
@@ -95,7 +104,12 @@ export default async function Hub({
     (Date.parse(trip.start_date) - Date.parse(today)) / 86400000,
   );
   return (
-    <>
+    <div className={role === "viewer" ? "trip-viewer" : undefined}>
+      {role === "viewer" && (
+        <p className="card" role="status">
+          You have view-only access to this shared trip.
+        </p>
+      )}
       <Link href="/" className="muted">
         ← All your trips
       </Link>
@@ -111,7 +125,11 @@ export default async function Hub({
             {trip.style} · {trip.timezone}
           </p>
         </div>
-        <Link className="button primary" href={base + "?view=add"}>
+        <Link
+          data-edit-action
+          className="button primary"
+          href={base + "?view=add"}
+        >
           ＋ Smart Add
         </Link>
       </div>
@@ -126,14 +144,23 @@ export default async function Hub({
           "prep",
           "packing",
           "budget",
-          "settings",
+          "map",
+          "ideas",
+          "check",
+          "people",
+          "offline",
+          ...(role === "owner" ? ["settings"] : []),
         ].map((v) => (
           <Link
             key={v}
             className={view === v ? "selected" : ""}
             href={base + "?view=" + v}
           >
-            {v === "hub" ? "Trip Hub" : v.charAt(0).toUpperCase() + v.slice(1)}
+            {v === "hub"
+              ? "Trip Hub"
+              : v === "check"
+                ? "Trip Check"
+                : v.charAt(0).toUpperCase() + v.slice(1)}
           </Link>
         ))}
       </div>
@@ -141,7 +168,11 @@ export default async function Hub({
         <>
           <div className="row">
             <h2>A little home for your adventure.</h2>
-            <Link className="muted" href={base + "?view=customize"}>
+            <Link
+              data-edit-action
+              className="muted"
+              href={base + "?view=customize"}
+            >
               Customize hub ↗
             </Link>
           </div>
@@ -165,7 +196,15 @@ export default async function Hub({
                     <span className="eyebrow">{p.key}</span>
                     <h2 style={{ marginTop: 30 }}>{m.label}</h2>
                     <p>
-                      {["bookings", "prep", "packing", "budget"].includes(p.key)
+                      {[
+                        "bookings",
+                        "prep",
+                        "packing",
+                        "budget",
+                        "map",
+                        "ideas",
+                        "check",
+                      ].includes(p.key)
                         ? "Keep the essentials close."
                         : `${segments.filter((s) => p.key === "itinerary" || s.kind === m.kind).length} saved items`}
                     </p>
@@ -195,13 +234,23 @@ export default async function Hub({
           group={q.group}
         />
       )}
-      {view === "settings" && (
+      {["map", "ideas", "check"].includes(view) && (
+        <Intelligence
+          trip={trip}
+          segments={segments}
+          view={view}
+          canEdit={canEdit}
+        />
+      )}
+      {view === "offline" && <OfflineView tripId={id} />}
+      {view === "people" && <CollaborationView trip={trip} role={role} />}
+      {view === "settings" && role === "owner" && (
         <>
           <TripForm trip={trip} />
           <Delete id={id} />
         </>
       )}
-      {view === "customize" && (
+      {view === "customize" && canEdit && (
         <form action={saveLayout} className="form">
           <h2>Make room for what matters.</h2>
           <p className="muted">
@@ -257,16 +306,16 @@ export default async function Hub({
           <Submit>Save my hub</Submit>
         </form>
       )}
-      {view === "add" && (
+      {view === "add" && canEdit && (
         <>
           <h2>
             {selected ? "Edit your plan" : "A place, a plan, a possibility."}
           </h2>
           <p className="muted">
-            Manual Quick Add and structured trip segments. Place search and
-            document extraction arrive in a later phase.
+            Add a plan manually, or find a place in Map and save it to Ideas.
           </p>
           <SegmentForm
+            key={selected?.id || q.kind || "new"}
             trip={trip}
             item={selected}
             kind={q.kind}
@@ -301,6 +350,7 @@ export default async function Hub({
                 : view.charAt(0).toUpperCase() + view.slice(1)}
             </h2>
             <Link
+              data-edit-action
               className="button secondary"
               href={
                 base +
@@ -357,6 +407,7 @@ export default async function Hub({
                   {s.notes && <p className="notes">{s.notes}</p>}
                   <div className="actions">
                     <Link
+                      data-edit-action
                       className="button secondary"
                       href={base + "?view=add&edit=" + s.id}
                     >
@@ -394,6 +445,6 @@ export default async function Hub({
             )}
         </>
       )}
-    </>
+    </div>
   );
 }

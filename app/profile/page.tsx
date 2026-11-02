@@ -1,9 +1,15 @@
 export const dynamic = "force-dynamic";
+import { RemoveAttachment } from "../../components/essentials/attachment-form";
 import { access } from "../../lib/access";
 import { accountProfile } from "../../lib/account-profile";
 import { AccountAvatar, SignOutForm } from "../../components/account-menu";
 export default async function Profile() {
-  const { user } = await access();
+  const { user, db } = await access();
+  const { data: files } = await db
+    .from("booking_attachments")
+    .select("*")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: false });
   const profile = accountProfile(user);
   return (
     <>
@@ -19,10 +25,37 @@ export default async function Profile() {
           </div>
         </div>
         <p className="muted">
-          Trips are private to your account. Signing out of Pfew keeps your
-          saved trips and leaves your Google account signed in.
+          Trips stay private until you invite someone. Signing out of Pfew keeps
+          your saved trips and leaves your Google account signed in.
         </p>
         <SignOutForm />
+      </section>
+      <section className="card">
+        <h2>Your private documents</h2>
+        <p className="muted">
+          Only you can download these files, including after you leave a shared
+          trip. Remove them here when you no longer need them. Previously
+          downloaded copies must be removed separately.
+        </p>
+        {!files?.length && <p>No private uploads.</p>}
+        {files?.map((file) => (
+          <div className="attachment-row" key={file.id}>
+            {file.state === "pending" ? (
+              <p>Incomplete upload: {file.filename}</p>
+            ) : (
+              <a
+                className="button secondary"
+                href={"/api/attachments/" + file.id}
+              >
+                Download {file.filename}
+              </a>
+            )}
+            <RemoveAttachment trip={file.trip_id} id={file.id} />
+          </div>
+        ))}
+        <a className="button secondary" href="/offline.html">
+          Manage offline downloads
+        </a>
       </section>
     </>
   );

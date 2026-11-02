@@ -5,3 +5,8 @@ export function rootOAuthCallback(code: unknown) {
     ? "/auth/callback?" + new URLSearchParams({ code: parsed.data }).toString()
     : null;
 }
+export function safeReturnPath(value: unknown) {
+  return typeof value === "string" && /^\/invites\/[a-f0-9]{64}$/.test(value)
+    ? value
+    : null;
+}

@@ -636,3 +636,72 @@ fieldset {
     gap: 16px;
   }
 }
+.location-picker {
+  position: relative;
+  margin: 18px 0;
+}
+.location-picker label {
+  margin: 0 0 8px;
+}
+.location-results {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow: auto;
+  margin: 4px 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 6px 22px #20202312;
+}
+.location-results li {
+  padding: 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.location-results li[aria-selected="true"],
+.location-results li:hover {
+  background: var(--lime);
+}
+.location-hint {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-top: 7px;
+}
+.map-canvas {
+  height: 400px;
+  width: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--paper);
+  margin: 24px 0;
+}
+.finding-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.finding-actions .button {
+  font-size: 12px;
+  padding: 10px 14px;
+}
+@media (max-width: 700px) {
+  .map-canvas {
+    height: 320px;
+  }
+}
+.trip-viewer form:not([data-viewer-allowed]),
+.trip-viewer [data-edit-action] {
+  display: none;
+}
+.invite-result {
+  padding-top: 20px;
+  overflow-wrap: anywhere;
+}

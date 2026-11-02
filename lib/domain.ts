@@ -36,6 +36,20 @@ export const segmentSchema = z
       z.uuid().nullable(),
     ),
     kind: z.enum(["destination", "stay", "transport", "activity", "note"]),
+    duration_minutes: z
+      .preprocess(
+        (v) => (v === "" || v === undefined ? null : v),
+        z.coerce.number().int().min(1).max(1440).nullable(),
+      )
+      .optional(),
+    location_id: z.string().max(150).nullable().optional(),
+    location_label: z.string().max(500).nullable().optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
+    arrival_location_id: z.string().max(150).nullable().optional(),
+    arrival_location_label: z.string().max(500).nullable().optional(),
+    arrival_latitude: z.number().min(-90).max(90).nullable().optional(),
+    arrival_longitude: z.number().min(-180).max(180).nullable().optional(),
     title: z.string().trim().min(1).max(200),
     start_date: z.iso.date(),
     end_date: z.iso.date(),
@@ -116,6 +130,7 @@ export function lifecycle(
 export type Trip = {
   id: string;
   name: string;
+  owner_id?: string;
   start_date: string;
   end_date: string;
   timezone: string;
@@ -145,11 +160,20 @@ export type Segment = {
   transport_mode: string;
   position: number;
   destination_id: string | null;
+  duration_minutes?: number | null;
+  google_place_id?: string | null;
+  location_id?: string | null;
+  location_label?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  arrival_location_id?: string | null;
+  arrival_location_label?: string | null;
 };
 
 export const destinationSchema = z
   .object({
-    title: z.string().trim().min(1, "Give each destination a name").max(200),
+    title: z.string().trim().min(1, "Choose a destination city").max(200),
+    location_id: z.string().max(150).default(""),
     start_date: z.iso.date(),
     end_date: z.iso.date(),
     timezone: z.string().refine((v) => {
@@ -175,6 +199,7 @@ export function parseDestinations(form: FormData, start: string, end: string) {
         start_date: form.getAll("destination_start")[i],
         end_date: form.getAll("destination_end")[i],
         timezone: form.getAll("destination_timezone")[i],
+        location_id: form.getAll("destination_location_id")[i] || "",
       })),
     );
   if (result.some((d) => d.start_date < start || d.end_date > end))

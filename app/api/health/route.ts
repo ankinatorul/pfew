@@ -3,9 +3,20 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json(
     {
-      release: "phase-2",
+      release: "phase-4",
       commit: process.env.VERCEL_GIT_COMMIT_SHA || null,
-      modules: ["bookings", "prep", "packing", "budget"],
+      modules: [
+        "bookings",
+        "prep",
+        "packing",
+        "budget",
+        "automatic-locations",
+        "trip-check",
+        "ideas",
+        "places",
+        "collaboration",
+        "encrypted-offline",
+      ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
         publishableKeyPresent: Boolean(

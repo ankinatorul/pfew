@@ -18,10 +18,11 @@ export async function GET(
     return new NextResponse("Sign in required", { status: 401 });
   const { data: record } = await db
     .from("booking_attachments")
-    .select("path,filename")
+    .select("*")
     .eq("id", id)
     .single();
-  if (!record) return new NextResponse("Document unavailable", { status: 404 });
+  if (!record || record.state === "pending")
+    return new NextResponse("Document unavailable", { status: 404 });
   const { data, error } = await db.storage
     .from("booking-files")
     .createSignedUrl(record.path, 60, {

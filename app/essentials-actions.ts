@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { bookingLocationValues } from "../lib/automatic-zones";
 import { removeBookingFiles } from "../lib/storage-cleanup";
 import { access } from "../lib/access";
 import { validationMessage } from "../lib/domain";
@@ -44,7 +45,15 @@ export async function saveEssential(form: FormData) {
       "expenses",
     ])
     .parse(form.get("table"));
-  const result = tables[table].safeParse(Object.fromEntries(form));
+  let input: Record<string, unknown> = Object.fromEntries(form);
+  if (table === "bookings") {
+    try {
+      input = await bookingLocationValues(db, form);
+    } catch (error) {
+      fail(validationMessage(error));
+    }
+  }
+  const result = tables[table].safeParse(input);
   if (!result.success) fail(validationMessage(result.error));
   const id = form.get("id");
   if (id && !z.uuid().safeParse(id).success) fail("Invalid record");
@@ -80,6 +89,17 @@ export async function deleteEssential(form: FormData) {
   const trip = z.uuid().parse(form.get("trip_id"));
   const id = z.uuid().parse(form.get("id"));
   if (table === "bookings") {
+    const { data: canEdit } = await db.rpc("can_edit_trip", { target: trip });
+    if (!canEdit) fail("Editing permission required.");
+    const { data: otherFiles, error: privateError } = await db.rpc(
+      "has_other_private_files",
+      { target: trip, booking: id },
+    );
+    if (otherFiles)
+      fail(
+        "Other travelers have private documents attached. They can remove those files from their own account before the booking is deleted.",
+      );
+    if (privateError) fail("Could not check private documents.");
     const fileError = await removeBookingFiles(db, trip, id);
     if (fileError) fail(fileError);
   }
@@ -176,12 +196,11 @@ export async function saveBudgetTarget(form: FormData) {
     })
     .safeParse(Object.fromEntries(form));
   if (!parsed.success) fail(validationMessage(parsed.error));
-  const { error } = await db
-    .from("trips")
-    .update(parsed.data)
-    .eq("id", trip)
-    .select("id")
-    .single();
+  const { error } = await db.rpc("set_trip_budget", {
+    target: trip,
+    total: parsed.data.budget,
+    tier: parsed.data.style,
+  });
   if (error) fail("Could not save budget target");
   revalidatePath("/");
   revalidatePath("/trips/" + trip);

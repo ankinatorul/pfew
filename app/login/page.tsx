@@ -1,12 +1,19 @@
 export const dynamic = "force-dynamic";
+import { safeReturnPath } from "../../lib/auth-redirect";
 import { redirect } from "next/navigation";
 import { currentGoogleUser } from "../../lib/auth-session";
 import { configured } from "../../lib/supabase";
 import Link from "next/link";
 import { authProviders } from "../../lib/auth-providers";
 import { AuthOptions } from "../../components/auth-options";
-export default async function Login() {
-  if (await currentGoogleUser()) redirect("/");
+export default async function Login({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const returnTo = safeReturnPath(next);
+  if (await currentGoogleUser()) redirect(returnTo || "/");
   if (!configured())
     return (
       <section className="hero">
@@ -29,7 +36,7 @@ export default async function Login() {
         are going places.
       </h1>
       <p>Your plans, together. Sign in to your private travel space.</p>
-      <AuthOptions providers={providers} />
+      <AuthOptions providers={providers} returnTo={returnTo} />
     </section>
   );
 }

@@ -1,20 +1,16 @@
 # Decisions
 
-- Exclusively a mobile-first web application deployed with Next.js on Vercel. No native clients or App Store workflow.
-- Keep all external writes in server actions with Zod validation and user-scoped RLS. Missing credentials produce an honest setup state.
-- Owner-only access for Phase 1. Collaboration must add policies deliberately in Phase 4.
-- Use independent dated segments to avoid equating destinations with hotels. Explicit idea/planned/confirmed states avoid inventing reservations.
-- Start with accessible native form controls and a Radix Slot/cva button primitive compatible with shadcn patterns. Custom brand styling is shared across screens.
-- Segment columns capture known address, provider, reference, route and local arrival details separately. Unknown values remain blank. Richer booking-specific details will use dedicated child records.
-- No external place data, AI claims, offline cache, or demo reservations. These require later explicit integrations.
-
-- Create guided trips and destinations atomically with an invoker-rights PostgreSQL function, so a rejected destination cannot leave a partially created trip. Link many independent stays to one destination with an optional foreign key.
-
-- Phase 2 keeps reservations separate from itinerary segments, with optional same-trip links. Saving a reservation record never confirms an unrelated plan automatically.
-- Budget projections and manual actuals are independent totals; prepaid inclusion is explicit. No exchange rates are invented, and allocation currency is immutable with respect to later trip currency changes.
-- Booking documents use a private bucket, user-scoped storage access, 3 MB uploads and short-lived download URLs. Documents are downloaded rather than embedded. No service-role key is required.
-- Packing templates are explicit user-approved additions. Prep consists of custom tasks with in-app due reminders; entry requirements and health claims are not generated.
-
-- Public deployment settings are checked in for this Pfew instance and injected by Next.js when environment values are missing or blank. Only the Supabase browser-publishable key, project URL and canonical site URL belong in this configuration; explicit environment overrides take precedence. Privileged tokens remain outside version control.
-
-- Authentication is Google-only at the user’s request. Email UI and the magic-link server action are removed. The app checks Google provider availability and requires a Google-linked user for protected requests. The Supabase project owner must also disable Email and enable Google in Auth settings to enforce the provider choice outside the app.
+- Build only a responsive mobile-first Next.js web app on Vercel. Browser PWA installation is optional; no native clients or store deployment.
+- Google-only sign-in follows the user's updated requirement. Email/password UI is absent; the Supabase administrator must disable unwanted providers at project level too.
+- City/country selection determines local time automatically. Keep IANA zones as internal persisted data; never ask users to type or select them. Preserve unknown arrival information instead of guessing.
+- All writes use validated user-scoped Supabase clients; RLS remains the final boundary. No privileged service key in application code.
+- Independent destinations/stays/journeys and atomic guided creation prevent hotel assumptions and partial trip creation. Explicit idea/planned/confirmed states never invent reservations.
+- Budget targets, planned remaining costs, prepaid inclusion and actual manual expenses are separate; retain each record's currency and invent no exchange rates.
+- Use owner/editor/viewer roles. Only owners manage access and trip settings; a narrow RPC permits editor budget changes. Invitations require the intended verified email and are shared manually.
+- Documents stay private to uploaders regardless of shared roles. Reserve metadata before Storage upload, retain incomplete state on uncertain failure, require storage removal before metadata and block parent deletion while files remain.
+- Trip Check reports saved observations plus uncertainty. User decisions persist through stable fingerprints. Suggestions require review and remain unscheduled until deliberately planned.
+- Sample Mode is visibly labeled and makes no paid calls. Live AI output is unverified and bounded; source-free official guidance, fake venues/prices/citations and automatic reservations are excluded.
+- Persist Google place IDs and personal labels/notes, not provider response contents. Load current details explicitly, show attribution/retrieval time and use honest no-key states.
+- Serialize estimated service-budget reservations and daily request limits in SQL. Estimates do not replace provider billing/quota controls; browser map loads need separate controls.
+- Offline downloads are optional, explicit, encrypted and read-only. Keep passphrases out of storage/server requests and avoid caching authenticated pages. No edit queue or offline Maps. Revocation cannot erase a prior download.
+- Public deployment defaults contain only browser-publishable configuration. Secrets and tokens remain outside version control. Health endpoints report release/configuration presence, never pretend to verify SQL/auth/provider readiness.
