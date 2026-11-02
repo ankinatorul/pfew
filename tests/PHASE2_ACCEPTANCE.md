@@ -1,6 +1,6 @@
 # Phase 2 live acceptance — pending
 
-Run migrations 003 then 004 on a disposable or backed-up Supabase project with Phase 1 installed. Enable Google/email sign-in and allow the exact production callback. The local automated database tests use embedded PostgreSQL and a minimal Storage schema fixture; they test policies but do not replace checks against the real Supabase Storage service.
+Run migrations 003 then 004 on a disposable or backed-up Supabase project with Phase 1 installed. Enable Google-only sign-in and allow the exact production callback. The local automated database tests use embedded PostgreSQL and a minimal Storage schema fixture; they test policies but do not replace checks against the real Supabase Storage service.
 
 1. Sign in, open an existing trip, and confirm all old itinerary data and Hub preferences are intact. Hide/reorder a new module, refresh, and verify saved preferences.
 2. Save a booking with unknown price/reference, edit it, mark it user confirmed and switch timeline/category views. Link a booking to an itinerary segment and verify it appears on relevant itinerary days. It must not change the segment's confirmation state.

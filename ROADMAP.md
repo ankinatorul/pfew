@@ -2,7 +2,7 @@
 
 ## Phase 1 — implemented foundation, acceptance pending
 
-Web shell and brand tokens, Supabase auth integration, private trip CRUD, guided setup with atomic multi-destination creation, same-trip destination links, dated segments, manual Quick Add, itinerary edit/move/remove, destinations/stays/transport views, and persisted modular hub preferences are implemented.
+Web shell and brand tokens, Google-only Supabase auth integration, private trip CRUD, guided setup with atomic multi-destination creation, same-trip destination links, dated segments, manual Quick Add, itinerary edit/move/remove, destinations/stays/transport views, and persisted modular hub preferences are implemented.
 
 Pending: live Supabase auth/persistence/RLS validation; authenticated browser integration coverage; production deployment verification. Phase 1 is not declared complete.
 

@@ -1,3 +1,5 @@
+> Authentication requirement: Google Sign-In only. Email magic-link authentication in the original brief is superseded by the user’s Google-only requirement.
+
 > Platform requirement: exclusively a responsive, mobile-first web application deployed on Vercel. No React Native, Expo, Swift, Kotlin, or App Store workflow. Optional browser PWA installation only.
 
 # PFEW. — MASTER PRODUCT & ENGINEERING PROMPT FOR CODEX

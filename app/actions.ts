@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { access } from "../lib/access";
 import { supabase } from "../lib/supabase";
 import {
   tripSchema,
@@ -9,36 +10,17 @@ import {
   validationMessage,
 } from "../lib/domain";
 import { z } from "zod";
+import { authProviders } from "../lib/auth-providers";
 import { removeBookingFiles } from "../lib/storage-cleanup";
 async function client() {
-  const db = await supabase();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  if (!user) redirect("/login");
-  return { db, user };
+  return access();
 }
 function fail(message: string): never {
   redirect("/error?message=" + encodeURIComponent(message));
 }
-export async function login(form: FormData) {
-  const email = z.email().safeParse(form.get("email"));
-  if (!email.success) fail("Enter a valid email address.");
-  const db = await supabase();
-  const { error } = await db.auth.signInWithOtp({
-    email: email.data,
-    options: {
-      emailRedirectTo: new URL(
-        "/auth/callback",
-        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-      ).href,
-    },
-  });
-  if (error)
-    fail("Could not send sign-in link. Check authentication configuration.");
-  redirect("/login?sent=1");
-}
 export async function google() {
+  const providers = await authProviders();
+  if (!providers.google) redirect("/login");
   const db = await supabase();
   const { data, error } = await db.auth.signInWithOAuth({
     provider: "google",

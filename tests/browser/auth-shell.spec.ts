@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("configured app protects trips and renders both sign-in methods", async ({
+test("configured app protects trips and offers Google sign-in only", async ({
   page,
 }) => {
   const health = await page.request.get("/api/health");
@@ -17,20 +17,15 @@ test("configured app protects trips and renders both sign-in methods", async ({
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Email me a sign-in link" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Email address")).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.getByLabel("Email address").fill("invalid");
-  expect(
-    await page
-      .getByLabel("Email address")
-      .evaluate((e: HTMLInputElement) => e.checkValidity()),
-  ).toBe(false);
+  const google = page.getByRole("button", { name: "Continue with Google" });
+  if (await google.isDisabled())
+    await expect(page.getByRole("status")).toBeVisible();
   for (const route of [
     "/trips/new",
     "/profile",

@@ -1,3 +1,4 @@
+import { isGoogleUser } from "../../../../lib/auth-user";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabase, configured } from "../../../../lib/supabase";
@@ -13,7 +14,8 @@ export async function GET(
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user) return new NextResponse("Sign in required", { status: 401 });
+  if (!user || !isGoogleUser(user))
+    return new NextResponse("Sign in required", { status: 401 });
   const { data: record } = await db
     .from("booking_attachments")
     .select("path,filename")

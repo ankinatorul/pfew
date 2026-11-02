@@ -1,3 +1,4 @@
+import { isGoogleUser } from "./auth-user";
 import { redirect } from "next/navigation";
 import { supabase, configured } from "./supabase";
 export async function access() {
@@ -6,6 +7,6 @@ export async function access() {
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user || !isGoogleUser(user)) redirect("/login");
   return { db, user };
 }

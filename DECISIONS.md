@@ -16,3 +16,5 @@
 - Packing templates are explicit user-approved additions. Prep consists of custom tasks with in-app due reminders; entry requirements and health claims are not generated.
 
 - Public deployment settings are checked in for this Pfew instance and injected by Next.js when environment values are missing or blank. Only the Supabase browser-publishable key, project URL and canonical site URL belong in this configuration; explicit environment overrides take precedence. Privileged tokens remain outside version control.
+
+- Authentication is Google-only at the user’s request. Email UI and the magic-link server action are removed. The app checks Google provider availability and requires a Google-linked user for protected requests. The Supabase project owner must also disable Email and enable Google in Auth settings to enforce the provider choice outside the app.
