@@ -4,7 +4,7 @@ Mobile-first responsive travel web application. Next.js App Router, strict TypeS
 
 ## Local development
 
-Requires Node.js 22+ and npm. Run `npm ci`, copy `.env.example` to `.env.local`, then `npm run dev`. Open the local server in your browser. Without configuration, an explicit setup screen is displayed; it is not a simulated authenticated app.
+Requires Node.js 22+ and npm. Run `npm ci`, then `npm run dev`. This checkout includes public deployment defaults for Pfew’s Supabase project. To use another project or a local authentication callback, copy `.env.example` to ignored `.env.local` and enter overrides. No authenticated sessions or trip data are simulated.
 
 ## Supabase setup
 
@@ -14,11 +14,11 @@ Enable email magic links in Authentication providers. Configure Google OAuth cre
 
 ## Checks
 
-`npm run lint`, `npm run typecheck`, `npm test`, `npm run build`. `npm run test:e2e` runs the unconfigured setup flow at mobile and desktop widths against a production build; run it without Supabase environment variables or `.env.local`. It uses system Chromium when available; otherwise run `npx playwright install chromium` first. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select an installed browser. Domain and embedded PostgreSQL migration/RLS tests are self-contained. Live authentication, persistence, and cross-account RLS acceptance checks require a configured Supabase project; see `tests/ACCEPTANCE.md`.
+`npm run lint`, `npm run typecheck`, `npm test`, `npm run build`. `npm run test:e2e` checks the configured authentication shell and release endpoint at mobile and desktop widths against a production build. It uses system Chromium when available; otherwise run `npx playwright install chromium` first. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can select an installed browser. Domain and embedded PostgreSQL migration/RLS tests are self-contained. Live authentication, persistence, and cross-account RLS acceptance checks require a configured Supabase project; see `tests/ACCEPTANCE.md`.
 
 ## Vercel
 
-Import this Git repository into Vercel, select Next.js, use the repository root, and add the three variables in `.env.example`. Use `npm run build`. Set the production site URL and Supabase callback allowlist to the Vercel/custom domain before testing login. No deployment has been performed by this implementation. Avoid broad OAuth redirect wildcards for arbitrary previews.
+Import this Git repository into Vercel, select Next.js, use the repository root and `npm run build`. The public defaults target `https://pfew.vercel.app`; use the three variables in `.env.example` to override them for another deployment. Set the Supabase callback allowlist to the exact deployed domain before testing login. Avoid broad OAuth redirect wildcards for arbitrary previews.
 
 Phases 1–2 do not call paid AI/Maps services, use email inboxes, or implement offline caching. Browser PWA installation is a later optional enhancement. See ROADMAP.md for remaining scope.
 
@@ -36,6 +36,12 @@ Budget allocations describe remaining costs; keep prepaid amounts out of them. T
 
 ## Deployment troubleshooting
 
-The repository's `vercel.json` explicitly selects Next.js and the tested npm install/build commands. Leave Vercel's Output Directory override disabled. After a successful production deployment, `/api/health` reports `release: "phase-2"`, Vercel's Git commit SHA when provided, and configuration-presence booleans. This endpoint exposes no credential values or user data and disables caching. It does not verify authentication, migrations or Storage. If the endpoint is missing or reports an older release, the production domain is not serving this version. Confirm the Vercel project is connected to `ankinatorul/pfew` with production branch `main`, and inspect its latest deployment logs.
+The repository's `vercel.json` explicitly selects Next.js and the tested npm install/build commands. Leave Vercel's Output Directory override disabled. After a successful production deployment, `/api/health` reports `release: "phase-2"`, Vercel's Git commit SHA when provided, and effective public configuration-presence booleans. This endpoint exposes no credential values or user data and disables caching. It does not verify authentication, migrations or Storage. If the endpoint is missing or reports an older release, the production domain is not serving this version. Confirm the Vercel project is connected to `ankinatorul/pfew` with production branch `main`, and inspect its latest deployment logs.
 
 Bookings, Prep, Packing and Budget are available inside each trip and through Home shortcuts when a current/upcoming trip exists. The sign-in screen remains shared across releases.
+
+## Public deployment defaults
+
+`config/public-deployment.json` contains this Pfew deployment's Supabase project URL, browser-publishable key and canonical site URL. These values are public browser configuration, not privileged credentials. Next.js supplies them at build time when Vercel variables are missing or blank; existing `NEXT_PUBLIC_*` environment values take precedence. This avoids requiring dashboard access to configure this deployment. Never add service-role keys, Vercel tokens, AI keys or other private credentials to this file or Next.js `env` configuration.
+
+A build using the defaults serves sign-in rather than the setup screen. `npm run test:e2e` and `npm run test:e2e:auth` now both test the configured authentication shell. `tests/browser/setup.spec.ts` is retained for deployments that intentionally remove these defaults; it is not selected by the default browser test configuration. The health endpoint reports effective build configuration, including these defaults, rather than proving the variables were entered in Vercel's dashboard. Real sign-in, redirects, database and Storage still require functional verification.

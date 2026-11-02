@@ -5,7 +5,13 @@ test("configured app protects trips and renders both sign-in methods", async ({
   const health = await page.request.get("/api/health");
   expect(health.status()).toBe(200);
   expect(health.headers()["cache-control"]).toContain("no-store");
-  expect((await health.json()).release).toBe("phase-2");
+  const release = await health.json();
+  expect(release.release).toBe("phase-2");
+  expect(release.configuration).toEqual({
+    supabaseUrlPresent: true,
+    publishableKeyPresent: true,
+    siteUrlPresent: true,
+  });
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
   await expect(

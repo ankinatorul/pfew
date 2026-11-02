@@ -14,3 +14,5 @@
 - Budget projections and manual actuals are independent totals; prepaid inclusion is explicit. No exchange rates are invented, and allocation currency is immutable with respect to later trip currency changes.
 - Booking documents use a private bucket, user-scoped storage access, 3 MB uploads and short-lived download URLs. Documents are downloaded rather than embedded. No service-role key is required.
 - Packing templates are explicit user-approved additions. Prep consists of custom tasks with in-app due reminders; entry requirements and health claims are not generated.
+
+- Public deployment settings are checked in for this Pfew instance and injected by Next.js when environment values are missing or blank. Only the Supabase browser-publishable key, project URL and canonical site URL belong in this configuration; explicit environment overrides take precedence. Privileged tokens remain outside version control.

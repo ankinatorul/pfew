@@ -14,7 +14,7 @@ export async function GET() {
         siteUrlPresent: Boolean(process.env.NEXT_PUBLIC_SITE_URL),
       },
       scope:
-        "Release and variable presence only; database and authentication are not checked.",
+        "Release and effective public configuration presence only; database and authentication are not checked.",
     },
     { headers: { "Cache-Control": "no-store" } },
   );
