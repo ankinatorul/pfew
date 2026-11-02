@@ -1,9 +1,12 @@
 export const dynamic = "force-dynamic";
+import { redirect } from "next/navigation";
+import { currentGoogleUser } from "../../lib/auth-session";
 import { configured } from "../../lib/supabase";
 import Link from "next/link";
 import { authProviders } from "../../lib/auth-providers";
 import { AuthOptions } from "../../components/auth-options";
 export default async function Login() {
+  if (await currentGoogleUser()) redirect("/");
   if (!configured())
     return (
       <section className="hero">

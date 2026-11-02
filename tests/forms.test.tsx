@@ -84,7 +84,7 @@ it("allows skipping destinations without inventing reservations", async () => {
     vi.mocked(saveTrip).mock.calls[0][0].getAll("destination_name"),
   ).toEqual([]);
 });
-it("preserves a segment while rejecting an invalid time zone", async () => {
+it("blocks an invalid time-zone selection without losing segment details", async () => {
   const user = userEvent.setup();
   render(
     <SegmentForm
@@ -106,7 +106,11 @@ it("preserves a segment while rejecting an invalid time zone", async () => {
     target: { value: "Wrong/Zone" },
   });
   await user.click(screen.getByRole("button", { name: "Add to trip" }));
-  expect(screen.getByRole("alert")).toBeTruthy();
+  expect(
+    (
+      screen.getByRole("combobox", { name: "Time zone" }) as HTMLSelectElement
+    ).checkValidity(),
+  ).toBe(false);
   expect(saveSegment).not.toHaveBeenCalled();
   expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
     "Lunch with friends",

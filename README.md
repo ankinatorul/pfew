@@ -57,3 +57,11 @@ For Google login diagnostics, `/api/auth/status` makes a fresh read-only request
 ## OAuth redirect to localhost
 
 In Supabase Authentication → URL Configuration, production Site URL must be `https://pfew.vercel.app` and allowed Redirect URLs must include `https://pfew.vercel.app/auth/callback`. Supabase falls back to its Site URL when the requested redirect is not allowed. On Vercel, the build rejects localhost, invalid and non-HTTPS site overrides in favor of the production default. Local development can still use localhost. If Supabase returns a valid authorization code to the application's root Site URL, the request proxy routes it to the same-origin callback before rendering for PKCE exchange; it never follows a user-provided destination. Start a fresh sign-in after correcting settings rather than replaying an old authorization code.
+
+## Account menu and Google profile
+
+The header verifies the current Supabase Google user and displays their Google photo/name when signed in, or a Sign in link otherwise. Open the photo to see the signed-in email, account page and Sign out. The account page shows the same identity. The server sends only display fields to this client component, never session/access tokens. Profile photos use HTTPS Google image URLs and fall back to initials on missing or failed images.
+
+Sign out ends this device's Pfew session, handles errors explicitly, invalidates authenticated layout caches and redirects to login. It does not delete trip data or sign the browser out of Google. A signed-in visit to `/login` redirects to My trips. The header and protected page share request-scoped user verification; no user session is cached across requests.
+
+Time zones are selected from grouped city/IANA dropdowns in trip setup, destination entries, itinerary items, transport arrivals and booking start/end fields. New trips detect the browser zone when available; existing valid saved aliases are preserved, and optional arrival zones remain unspecified until chosen. The bundled list is generated from Node’s IANA-backed `Intl.supportedValuesOf("timeZone")` catalog; server and PostgreSQL validation remain in place.

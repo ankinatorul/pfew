@@ -10,3 +10,5 @@
 8. Test keyboard navigation and 375px/1440px widths. Test offline/network failures and cancelled OAuth flows. Confirm errors never report successful saves.
 
 Automated local coverage additionally exercises transaction rollback on invalid destinations, same-trip destination links, multiple stays per destination, preserving stays on destination deletion, and form corrections. These tests do not substitute for Google OAuth or production Supabase authorization checks.
+
+9. After Google sign-in, verify the header photo/name and menu email match the account. Open Your account and check the same identity. Use keyboard navigation and Escape with the menu. Sign out from the header: the photo must change to Sign in, protected pages must redirect to login, and signing back in must restore saved trip data. Check the initials fallback if the photo cannot load.

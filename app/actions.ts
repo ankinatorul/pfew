@@ -35,8 +35,10 @@ export async function google() {
   redirect(data.url);
 }
 export async function logout() {
-  const { db } = await client();
-  await db.auth.signOut();
+  const db = await supabase();
+  const { error } = await db.auth.signOut({ scope: "local" });
+  if (error) fail("We couldn’t sign you out. Please try again.");
+  revalidatePath("/", "layout");
   redirect("/login");
 }
 export async function saveTrip(form: FormData) {

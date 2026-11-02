@@ -37,6 +37,12 @@ test("configured app protects trips and offers Google sign-in only", async ({
     page.getByRole("button", { name: "Continue with Google" }),
   ).toBeVisible({ timeout: 10000 }); // Provider fetch may take its bounded five-second timeout before streaming completes.
   await expect(page.getByLabel("Email address")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Open account menu/ }),
+  ).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

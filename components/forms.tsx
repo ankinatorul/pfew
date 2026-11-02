@@ -1,4 +1,5 @@
 "use client";
+import { TimeZoneSelect } from "./time-zone-select";
 import { useState, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "./button";
@@ -122,13 +123,10 @@ export function TripForm({ trip }: { trip?: Trip }) {
         </div>
         <label>
           Trip time zone
-          <input
+          <TimeZoneSelect
             name="timezone"
-            required
-            defaultValue={
-              trip?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
-            }
-            placeholder="Europe/Bucharest"
+            defaultValue={trip?.timezone}
+            autoDetect={!trip}
           />
         </label>
       </fieldset>
@@ -170,9 +168,8 @@ export function TripForm({ trip }: { trip?: Trip }) {
                 </div>
                 <label>
                   Destination time zone
-                  <input
+                  <TimeZoneSelect
                     name="destination_timezone"
-                    required
                     defaultValue={destination.timezone}
                   />
                 </label>
@@ -425,9 +422,8 @@ export function SegmentForm({
         </label>
         <label>
           Time zone
-          <input
+          <TimeZoneSelect
             name="timezone"
-            required
             defaultValue={item?.timezone || trip.timezone}
           />
         </label>
@@ -509,10 +505,10 @@ export function SegmentForm({
           </label>
           <label>
             Arrival time zone
-            <input
+            <TimeZoneSelect
               name="arrival_timezone"
               defaultValue={item?.arrival_timezone}
-              placeholder="Europe/Paris"
+              optional
             />
           </label>
         </div>

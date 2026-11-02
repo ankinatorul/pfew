@@ -1,4 +1,5 @@
 "use client";
+import { TimeZoneSelect } from "../time-zone-select";
 import { useOnline } from "./online";
 import { useState } from "react";
 import { Submit } from "../forms";
@@ -50,7 +51,13 @@ function Fields({
       {fields.map((f) => (
         <label key={f.name}>
           {f.label}
-          {f.options ? (
+          {["timezone", "end_timezone", "arrival_timezone"].includes(f.name) ? (
+            <TimeZoneSelect
+              name={f.name}
+              defaultValue={String(value(f.name))}
+              optional={f.name !== "timezone"}
+            />
+          ) : f.options ? (
             <select name={f.name} defaultValue={value(f.name, f.options[0])}>
               {f.options.map((o) => (
                 <option key={o} value={o}>
