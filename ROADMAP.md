@@ -6,9 +6,9 @@ Web shell and brand tokens, Supabase auth integration, private trip CRUD, guided
 
 Pending: live Supabase auth/persistence/RLS validation; authenticated browser integration coverage; production deployment verification. Phase 1 is not declared complete.
 
-## Phase 2 — not started
+## Phase 2 — implemented, live acceptance pending
 
-Travel wallet and secure attachments, Prep, Packing, Budget Planner, manual expenses, adaptive during-trip home and in-app reminders. Complete Phase 1 acceptance first.
+Implemented booking wallet (timeline/categories), private booking attachments, categorized Prep tasks and in-app due reminders, per-traveler/shared Packing lists with reusable templates, Budget Planner with day/destination allocations and inclusion rules, separate manual multi-currency expenses, and during-trip Home essentials. User reports the Phase 1 Vercel deployment succeeded and requested Phase 2. Production sign-in, persistence, Storage upload/download and cross-account acceptance remain to be verified after applying migrations 003–004. No Phase 3 work has started.
 
 ## Phase 3 — not started
 

@@ -436,3 +436,34 @@ footer a {
   border-radius: 18px;
   margin: 20px 0;
 }
+progress {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--blue);
+}
+.packing-section {
+  padding: 24px 0;
+  margin: 24px 0;
+  border-bottom: 1px solid #ddd;
+}
+.attachment-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 16px 0;
+  overflow-wrap: anywhere;
+}
+.attachment-form {
+  max-width: 600px;
+  padding: 18px 0;
+}
+summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 12px 0;
+  font-weight: 700;
+}
+fieldset {
+  min-width: 0;
+}

@@ -9,3 +9,8 @@
 - No external place data, AI claims, offline cache, or demo reservations. These require later explicit integrations.
 
 - Create guided trips and destinations atomically with an invoker-rights PostgreSQL function, so a rejected destination cannot leave a partially created trip. Link many independent stays to one destination with an optional foreign key.
+
+- Phase 2 keeps reservations separate from itinerary segments, with optional same-trip links. Saving a reservation record never confirms an unrelated plan automatically.
+- Budget projections and manual actuals are independent totals; prepaid inclusion is explicit. No exchange rates are invented, and allocation currency is immutable with respect to later trip currency changes.
+- Booking documents use a private bucket, user-scoped storage access, 3 MB uploads and short-lived download URLs. Documents are downloaded rather than embedded. No service-role key is required.
+- Packing templates are explicit user-approved additions. Prep consists of custom tasks with in-app due reminders; entry requirements and health claims are not generated.

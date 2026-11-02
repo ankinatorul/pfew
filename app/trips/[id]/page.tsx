@@ -1,3 +1,5 @@
+import { DayBookings } from "../../../components/essentials/day-bookings";
+import { EssentialsView } from "../../../components/essentials/view";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { access } from "../../../lib/access";
@@ -19,6 +21,7 @@ export default async function Hub({
     day?: string;
     edit?: string;
     kind?: string;
+    group?: string;
   }>;
 }) {
   const { id } = await params;
@@ -57,6 +60,10 @@ export default async function Hub({
     { key: "destinations", label: "Places to call yours", kind: "destination" },
     { key: "stays", label: "Somewhere to slow down", kind: "stay" },
     { key: "transport", label: "Getting from A to happy", kind: "transport" },
+    { key: "bookings", label: "Your travel wallet", kind: "wallet" },
+    { key: "prep", label: "Ready, set, nearly there", kind: "prep" },
+    { key: "packing", label: "Bring the little essentials", kind: "packing" },
+    { key: "budget", label: "Room for the good stuff", kind: "budget" },
   ];
   type Pref = {
     key: string;
@@ -65,14 +72,17 @@ export default async function Hub({
     highlight: boolean;
     order: number;
   };
-  const layout = (prefs?.layout ||
-    modules.map((m, i) => ({
-      key: m.key,
-      visible: true,
-      size: "normal",
-      highlight: i === 0,
-      order: i,
-    }))) as Pref[];
+  const saved = (prefs?.layout || []) as Pref[];
+  const layout: Pref[] = modules.map(
+    (m, i) =>
+      saved.find((p) => p.key === m.key) || {
+        key: m.key,
+        visible: true,
+        size: "normal",
+        highlight: i === 0,
+        order: i,
+      },
+  );
   const base = "/trips/" + id;
   const selected = segments.find((s) => s.id === q.edit);
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -112,6 +122,10 @@ export default async function Hub({
           "destinations",
           "stays",
           "transport",
+          "bookings",
+          "prep",
+          "packing",
+          "budget",
           "settings",
         ].map((v) => (
           <Link
@@ -151,12 +165,9 @@ export default async function Hub({
                     <span className="eyebrow">{p.key}</span>
                     <h2 style={{ marginTop: 30 }}>{m.label}</h2>
                     <p>
-                      {
-                        segments.filter(
-                          (s) => p.key === "itinerary" || s.kind === m.kind,
-                        ).length
-                      }{" "}
-                      saved items
+                      {["bookings", "prep", "packing", "budget"].includes(p.key)
+                        ? "Keep the essentials close."
+                        : `${segments.filter((s) => p.key === "itinerary" || s.kind === m.kind).length} saved items`}
                     </p>
                     <span>Open module ↗</span>
                   </Link>
@@ -168,9 +179,21 @@ export default async function Hub({
             {trip.budget === null
               ? "No total set"
               : trip.currency + " " + trip.budget}
-            . Actual spending: Not tracked.
+            .{" "}
+            <Link href={base + "?view=budget"}>
+              Open Budget for planned and recorded spending →
+            </Link>
           </p>
         </>
+      )}
+      {["bookings", "prep", "packing", "budget"].includes(view) && (
+        <EssentialsView
+          trip={trip}
+          segments={segments}
+          view={view}
+          edit={q.edit}
+          group={q.group}
+        />
       )}
       {view === "settings" && (
         <>
@@ -295,6 +318,7 @@ export default async function Hub({
                     : "destination"}
             </Link>
           </div>
+          {view === "itinerary" && <DayBookings trip={trip.id} day={day} />}
           <div className="timeline">
             {segments
               .filter((s) =>

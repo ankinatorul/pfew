@@ -15,7 +15,8 @@
     "test": "vitest run",
     "lint": "eslint .",
     "test:e2e": "playwright test",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test:e2e:auth": "TEST_AUTH_CONFIGURED=1 playwright test"
   },
   "repository": {
     "type": "git",

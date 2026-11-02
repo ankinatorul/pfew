@@ -1,0 +1,14 @@
+# Phase 2 live acceptance — pending
+
+Run migrations 003 then 004 on a disposable or backed-up Supabase project with Phase 1 installed. Enable Google/email sign-in and allow the exact production callback. The local automated database tests use embedded PostgreSQL and a minimal Storage schema fixture; they test policies but do not replace checks against the real Supabase Storage service.
+
+1. Sign in, open an existing trip, and confirm all old itinerary data and Hub preferences are intact. Hide/reorder a new module, refresh, and verify saved preferences.
+2. Save a booking with unknown price/reference, edit it, mark it user confirmed and switch timeline/category views. Link a booking to an itinerary segment and verify it appears on relevant itinerary days. It must not change the segment's confirmation state.
+3. Upload a small PDF/JPEG/PNG, reload and download it. Reject an oversized or mismatched file. Sign out and verify the application's download route denies access. Test a second account against both metadata REST endpoints and object paths; all first-account records must be inaccessible. Verify a copied signed link expires after its short validity period.
+4. Remove a document, then remove a booking with documents and a trip with documents. Verify objects are removed from Storage as well as metadata. Do not delete database rows directly when testing application cleanup.
+5. Add custom Prep tasks in multiple categories with due dates and priorities. Complete/reopen a task and verify progress and Home reminders update. No document requirement should be asserted automatically.
+6. Make Shared and individual traveler Packing lists, add categorized quantities, mark packed/unpacked, edit/delete items, save a template, and explicitly apply it to another list. The added copies must start unpacked. A second account must not see or apply the template.
+7. Set a trip target, add remaining-cost allocations by date/destination, add known prepaid booking amounts, and toggle prepaid inclusion. Confirm prepaid amounts count once. Enter estimated ranges with assumptions; reject incomplete/reversed ranges.
+8. Record cash/card expenses in two currencies. Confirm actuals stay separate from projections and no currency conversion occurs. With no expenses, verify “Actual spending: Not tracked.” Change the trip currency and confirm older allocations retain their original currency and are excluded from the new currency total.
+9. For a trip active in its own time zone, verify Home shows today's itinerary, saved booking context, due in-app tasks, budget access and quick expense access. No email/push reminders should be sent.
+10. On mobile/desktop, check keyboard interaction, validation, destructive confirmation and network failures. Phase 2 forms must disable saving when offline; no offline changes should be queued.

@@ -9,6 +9,7 @@ import {
   validationMessage,
 } from "../lib/domain";
 import { z } from "zod";
+import { removeBookingFiles } from "../lib/storage-cleanup";
 async function client() {
   const db = await supabase();
   const {
@@ -100,6 +101,8 @@ export async function saveTrip(form: FormData) {
 export async function deleteTrip(form: FormData) {
   const { db, user } = await client();
   const id = z.uuid().parse(form.get("id"));
+  const fileError = await removeBookingFiles(db, id);
+  if (fileError) fail(fileError);
   const { error } = await db
     .from("trips")
     .delete()
@@ -160,7 +163,16 @@ export async function deleteSegment(form: FormData) {
 export async function saveLayout(form: FormData) {
   const { db } = await client();
   const trip_id = z.uuid().parse(form.get("trip_id"));
-  const modules = ["itinerary", "destinations", "stays", "transport"];
+  const modules = [
+    "itinerary",
+    "destinations",
+    "stays",
+    "transport",
+    "bookings",
+    "prep",
+    "packing",
+    "budget",
+  ];
   const layout = modules.map((key) => ({
     key,
     visible: form.get(key) === "on",

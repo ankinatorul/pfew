@@ -1,3 +1,4 @@
+import { HomeEssentials } from "../components/essentials/home";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { access } from "../lib/access";
@@ -67,6 +68,7 @@ export default async function Home() {
         </div>
         <Plane className="hero-mark" size={180} />
       </section>
+      {featured && <HomeEssentials trip={featured} />}
       <div className="section-top">
         <h2>
           Your next chapters <span className="muted">({trips.length})</span>
