@@ -27,3 +27,26 @@ it("preserves explicit environment overrides, including local callback origins",
   };
   expect(publicDeploymentEnvironment(custom)).toEqual(custom);
 });
+
+it("prevents localhost or invalid callback origins on Vercel", () => {
+  for (const value of [
+    "http://localhost:3000",
+    "https://localhost:3000",
+    "https://127.0.0.1",
+    "https://[::1]",
+    "not a URL",
+    "http://pfew.vercel.app",
+  ])
+    expect(
+      publicDeploymentEnvironment({ NEXT_PUBLIC_SITE_URL: value }, true)
+        .NEXT_PUBLIC_SITE_URL,
+    ).toBe("https://pfew.vercel.app");
+});
+it("preserves valid production domains and normalizes their origin", () => {
+  expect(
+    publicDeploymentEnvironment(
+      { NEXT_PUBLIC_SITE_URL: "https://travel.example.com/path" },
+      true,
+    ).NEXT_PUBLIC_SITE_URL,
+  ).toBe("https://travel.example.com");
+});
