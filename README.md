@@ -133,3 +133,5 @@ Open a trip → **Journey** (`?view=destinations`) for the first increment of th
 ## New-trip onboarding
 
 The supplied UI image now guides the five-step `/trips/new` flow: basics, multiple booking sources/manual destinations, explicit review, preferences and the real workspace handoff. Flight-only and empty trips are valid. Extraction review and reservation confirmation are separate, while incomplete imports remain owner-private drafts. **Existing projects need migration 010**; live AI additionally needs the existing server AI configuration. See [onboarding design/setup](ONBOARDING.md) and [acceptance checks](tests/ONBOARDING_ACCEPTANCE.md). Existing trip settings and unrelated modules retain their flows.
+
+Onboarding adapts across phone, tablet and desktop widths. Desktop uses a step rail and live trip summary alongside a wide form, with parallel upload/manual options; phones retain the compact reference flow. The responsive refinement requires no SQL beyond the already applied migration 010.

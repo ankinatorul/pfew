@@ -329,6 +329,79 @@ export function TripOnboarding({
   }
   return (
     <div className="pfew-onboarding">
+      <aside className="onboarding-rail" aria-label="Trip setup overview">
+        <Link href="/" className="onboarding-logo" aria-label="Pfew home">
+          pfew.
+        </Link>
+        <div className="onboarding-rail-intro">
+          <span>YOUR NEXT CHAPTER</span>
+          <h2>
+            A little less planning.
+            <br />A little more living.
+          </h2>
+          <p>Start with what you know. Leave a little room for possibility.</p>
+        </div>
+        <nav aria-label="Trip setup steps">
+          <ol>
+            {[
+              "Trip basics",
+              "Your bookings",
+              "Review details",
+              "Personalize",
+              "Your workspace",
+            ].map((title, index) => (
+              <li
+                key={title}
+                className={
+                  index === step ? "current" : index < step ? "complete" : ""
+                }
+              >
+                <button
+                  type="button"
+                  aria-current={index === step ? "step" : undefined}
+                  aria-label={title}
+                  disabled={index >= step || busy || submitted || step === 4}
+                  onClick={() => go(index)}
+                >
+                  <span>
+                    {index < step ? (
+                      <Check size={14} aria-hidden="true" />
+                    ) : (
+                      String(index + 1).padStart(2, "0")
+                    )}
+                  </span>
+                  {title}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <div className="onboarding-rail-summary">
+          <span>YOUR TRIP, TAKING SHAPE</span>
+          <h3>{result?.trip.name || name.trim() || "Your next adventure"}</h3>
+          <p>
+            {start && end
+              ? friendlyDateRange(start, end)
+              : "Choose your travel dates"}
+          </p>
+          <div>
+            <span>
+              {destinations.length}{" "}
+              {destinations.length === 1 ? "destination" : "destinations"}
+            </span>
+            <span>
+              {step === 4
+                ? `${included.length - pending.length} saved ${included.length - pending.length === 1 ? "booking" : "bookings"}`
+                : `${included.length} booking ${included.length === 1 ? "preview" : "previews"}`}
+            </span>
+          </div>
+          <small>
+            {step === 4
+              ? "Your setup has been saved."
+              : "Accommodation and transfers can be added later."}
+          </small>
+        </div>
+      </aside>
       <section className="onboarding-panel" aria-label="New trip setup">
         <div className="onboarding-top">
           <Link href="/" className="onboarding-logo" aria-label="Pfew home">
@@ -359,7 +432,7 @@ export function TripOnboarding({
           {titles[step]}
         </h1>
         <p className="onboarding-description">{descriptions[step]}</p>
-        <div className="onboarding-content">
+        <div className="onboarding-content" data-step={step}>
           {step === 0 && (
             <div className="onboarding-basics">
               <label>
@@ -389,234 +462,249 @@ export function TripOnboarding({
           )}
           {step === 1 && (
             <>
-              <div
-                className="onboarding-dropzone"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event: DragEvent) => {
-                  event.preventDefault();
-                  addFiles(event.dataTransfer.files);
-                }}
-              >
-                <div>
-                  <ArrowUp size={30} aria-hidden="true" />
-                  <h2>Drop your bookings here</h2>
-                  <p>Flights, stays, transfers · PDFs or screenshots</p>
-                  <button
-                    type="button"
-                    onClick={() => fileInput.current?.click()}
-                    disabled={busy}
-                  >
-                    or browse files
-                  </button>
-                  <input
-                    ref={fileInput}
-                    className="sr-only"
-                    aria-label="Booking PDFs or screenshots"
-                    type="file"
-                    multiple
-                    accept="application/pdf,image/jpeg,image/png"
-                    disabled={busy}
-                    onChange={(event) => {
-                      if (event.target.files) addFiles(event.target.files);
-                      event.target.value = "";
+              <div className="onboarding-booking-paths">
+                <div className="onboarding-upload-path">
+                  <div
+                    className="onboarding-dropzone"
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event: DragEvent) => {
+                      event.preventDefault();
+                      addFiles(event.dataTransfer.files);
                     }}
-                  />
-                </div>
-              </div>
-              {files.map((source) => (
-                <div className="onboarding-source" key={source.id}>
-                  <span>
-                    {source.file.name}
-                    <small>
-                      {source.status === "done"
-                        ? "Read · review required"
-                        : source.status === "reading"
-                          ? "Reading…"
-                          : source.status === "skipped"
-                            ? "Skipped · original not stored"
-                            : source.status === "failed"
-                              ? source.error
-                              : "Ready to read"}
-                    </small>
-                  </span>
-                  {!["done", "reading", "skipped"].includes(source.status) && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        setFiles((current) =>
-                          current.map((f) =>
-                            f.id === source.id
-                              ? { ...f, status: "skipped" }
-                              : f,
-                          ),
-                        )
-                      }
-                    >
-                      Skip
-                    </button>
-                  )}
-                  {source.status !== "reading" && (
-                    <button
-                      type="button"
-                      aria-label={"Remove " + source.file.name}
-                      disabled={busy}
-                      onClick={() => {
-                        setFiles((current) =>
-                          current.filter((f) => f.id !== source.id),
-                        );
-                        if (source.candidateId)
-                          setBookings((current) =>
-                            current.filter((b) => b.id !== source.candidateId),
-                          );
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {files.some((f) => ["waiting", "failed"].includes(f.status)) && (
-                <div className="onboarding-source-options">
-                  <p>
-                    Up to 8 files, 3 MB each. PDFs: up to 5 pages. Add each
-                    reservation separately. Originals are used for extraction
-                    only; attach private copies in Bookings later.
-                  </p>
-                  {live ? (
-                    <>
-                      <label className="onboarding-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={consent}
-                          onChange={(e) => setConsent(e.target.checked)}
-                        />
-                        Send these documents to the AI provider to read booking
-                        details.
-                      </label>
+                  >
+                    <div>
+                      <ArrowUp size={30} aria-hidden="true" />
+                      <h2>Drop your bookings here</h2>
+                      <p>Flights, stays, transfers · PDFs or screenshots</p>
                       <button
                         type="button"
-                        className="onboarding-secondary"
-                        disabled={busy || !online || !consent}
-                        onClick={readFiles}
+                        onClick={() => fileInput.current?.click()}
+                        disabled={busy}
                       >
-                        {busy ? "Reading documents…" : "Read selected bookings"}
+                        or browse files
                       </button>
-                    </>
-                  ) : (
-                    <p role="status">
-                      AI reading isn’t configured yet. Add details manually, or
-                      skip these files and continue.
-                    </p>
+                      <input
+                        ref={fileInput}
+                        className="sr-only"
+                        aria-label="Booking PDFs or screenshots"
+                        type="file"
+                        multiple
+                        accept="application/pdf,image/jpeg,image/png"
+                        disabled={busy}
+                        onChange={(event) => {
+                          if (event.target.files) addFiles(event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {files.map((source) => (
+                    <div className="onboarding-source" key={source.id}>
+                      <span>
+                        {source.file.name}
+                        <small>
+                          {source.status === "done"
+                            ? "Read · review required"
+                            : source.status === "reading"
+                              ? "Reading…"
+                              : source.status === "skipped"
+                                ? "Skipped · original not stored"
+                                : source.status === "failed"
+                                  ? source.error
+                                  : "Ready to read"}
+                        </small>
+                      </span>
+                      {!["done", "reading", "skipped"].includes(
+                        source.status,
+                      ) && (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            setFiles((current) =>
+                              current.map((f) =>
+                                f.id === source.id
+                                  ? { ...f, status: "skipped" }
+                                  : f,
+                              ),
+                            )
+                          }
+                        >
+                          Skip
+                        </button>
+                      )}
+                      {source.status !== "reading" && (
+                        <button
+                          type="button"
+                          aria-label={"Remove " + source.file.name}
+                          disabled={busy}
+                          onClick={() => {
+                            setFiles((current) =>
+                              current.filter((f) => f.id !== source.id),
+                            );
+                            if (source.candidateId)
+                              setBookings((current) =>
+                                current.filter(
+                                  (b) => b.id !== source.candidateId,
+                                ),
+                              );
+                          }}
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {files.some((f) =>
+                    ["waiting", "failed"].includes(f.status),
+                  ) && (
+                    <div className="onboarding-source-options">
+                      <p>
+                        Up to 8 files, 3 MB each. PDFs: up to 5 pages. Add each
+                        reservation separately. Originals are used for
+                        extraction only; attach private copies in Bookings
+                        later.
+                      </p>
+                      {live ? (
+                        <>
+                          <label className="onboarding-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={consent}
+                              onChange={(e) => setConsent(e.target.checked)}
+                            />
+                            Send these documents to the AI provider to read
+                            booking details.
+                          </label>
+                          <button
+                            type="button"
+                            className="onboarding-secondary"
+                            disabled={busy || !online || !consent}
+                            onClick={readFiles}
+                          >
+                            {busy
+                              ? "Reading documents…"
+                              : "Read selected bookings"}
+                          </button>
+                        </>
+                      ) : (
+                        <p role="status">
+                          AI reading isn’t configured yet. Add details manually,
+                          or skip these files and continue.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-              <p className="onboarding-or">Or</p>
-              <button
-                type="button"
-                className="onboarding-manual"
-                disabled={busy || destinations.length >= 32}
-                onClick={() =>
-                  setDestinations((current) => [
-                    ...current,
-                    {
-                      id: crypto.randomUUID(),
-                      locationId: "",
-                      label: "",
-                      start,
-                      end,
-                    },
-                  ])
-                }
-              >
-                <strong>
-                  <Plus size={18} />
-                  Add a destination manually
-                </strong>
-                <span>Add a stop without a reservation</span>
-              </button>
-              {destinations.map((d, index) => (
-                <div className="onboarding-destination" key={d.id}>
-                  <LocationPicker
-                    label={`Destination ${index + 1}`}
-                    initialId={d.locationId}
-                    initialLabel={d.label}
-                    onResolved={(city) =>
-                      setDestinations((current) =>
-                        current.map((item) =>
-                          item.id === d.id
-                            ? {
-                                ...item,
-                                locationId: city?.id || "",
-                                label: city?.label || "",
-                              }
-                            : item,
-                        ),
-                      )
+                <div className="onboarding-manual-path">
+                  <p className="onboarding-or">Or</p>
+                  <button
+                    type="button"
+                    className="onboarding-manual"
+                    disabled={busy || destinations.length >= 32}
+                    onClick={() =>
+                      setDestinations((current) => [
+                        ...current,
+                        {
+                          id: crypto.randomUUID(),
+                          locationId: "",
+                          label: "",
+                          start,
+                          end,
+                        },
+                      ])
                     }
-                  />
-                  <div className="onboarding-two">
-                    <label>
-                      Arrival
-                      <input
-                        type="date"
-                        value={d.start}
-                        min={start}
-                        max={end}
-                        onChange={(e) =>
+                  >
+                    <strong>
+                      <Plus size={18} />
+                      Add a destination manually
+                    </strong>
+                    <span>Add a stop without a reservation</span>
+                  </button>
+                  {destinations.map((d, index) => (
+                    <div className="onboarding-destination" key={d.id}>
+                      <LocationPicker
+                        label={`Destination ${index + 1}`}
+                        initialId={d.locationId}
+                        initialLabel={d.label}
+                        onResolved={(city) =>
                           setDestinations((current) =>
                             current.map((item) =>
                               item.id === d.id
-                                ? { ...item, start: e.target.value }
+                                ? {
+                                    ...item,
+                                    locationId: city?.id || "",
+                                    label: city?.label || "",
+                                  }
                                 : item,
                             ),
                           )
                         }
                       />
-                    </label>
-                    <label>
-                      Departure
-                      <input
-                        type="date"
-                        value={d.end}
-                        min={d.start}
-                        max={end}
-                        onChange={(e) =>
+                      <div className="onboarding-two">
+                        <label>
+                          Arrival
+                          <input
+                            type="date"
+                            value={d.start}
+                            min={start}
+                            max={end}
+                            onChange={(e) =>
+                              setDestinations((current) =>
+                                current.map((item) =>
+                                  item.id === d.id
+                                    ? { ...item, start: e.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          Departure
+                          <input
+                            type="date"
+                            value={d.end}
+                            min={d.start}
+                            max={end}
+                            onChange={(e) =>
+                              setDestinations((current) =>
+                                current.map((item) =>
+                                  item.id === d.id
+                                    ? { ...item, end: e.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        className="onboarding-text-button"
+                        onClick={() =>
                           setDestinations((current) =>
-                            current.map((item) =>
-                              item.id === d.id
-                                ? { ...item, end: e.target.value }
-                                : item,
-                            ),
+                            current.filter((item) => item.id !== d.id),
                           )
                         }
-                      />
-                    </label>
-                  </div>
+                      >
+                        Remove destination
+                      </button>
+                    </div>
+                  ))}
                   <button
                     type="button"
                     className="onboarding-text-button"
+                    disabled={bookings.length >= 20 || busy}
                     onClick={() =>
-                      setDestinations((current) =>
-                        current.filter((item) => item.id !== d.id),
-                      )
+                      setBookings((current) => [...current, emptyCandidate()])
                     }
                   >
-                    Remove destination
+                    <Plus size={15} />
+                    Add booking details manually
                   </button>
                 </div>
-              ))}
-              <button
-                type="button"
-                className="onboarding-text-button"
-                disabled={bookings.length >= 20 || busy}
-                onClick={() =>
-                  setBookings((current) => [...current, emptyCandidate()])
-                }
-              >
-                <Plus size={15} />
-                Add booking details manually
-              </button>
+              </div>
               <p className="onboarding-note">
                 Only booked your flight? That’s enough to get started.
               </p>

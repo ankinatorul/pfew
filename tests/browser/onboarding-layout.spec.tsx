@@ -47,6 +47,27 @@ async function capture(page: Page, name: string, project: string) {
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  const viewport = page.viewportSize()!;
+  const panel = await page.locator(".onboarding-panel").boundingBox();
+  if (viewport.width >= 1024) {
+    await expect(
+      page.getByRole("complementary", { name: "Trip setup overview" }),
+    ).toBeVisible();
+    expect(panel!.width).toBeGreaterThan(700);
+    if (name === "01-basics") {
+      const action = await page
+        .getByRole("button", { name: "Continue", exact: true })
+        .boundingBox();
+      expect(action!.y + action!.height).toBeLessThanOrEqual(viewport.height);
+    }
+    const rail = await page.locator(".onboarding-rail").boundingBox();
+    expect(panel!.x).toBeGreaterThanOrEqual(rail!.x + rail!.width - 1);
+  } else {
+    await expect(page.locator(".onboarding-rail")).toBeHidden();
+    expect(panel!.width).toBeGreaterThan(
+      viewport.width <= 480 ? viewport.width - 40 : 650,
+    );
+  }
   await page.screenshot({
     path: `test-results/onboarding-${name}-${project}.png`,
     fullPage: true,
@@ -121,6 +142,22 @@ test("new trip matches the reference flow and allows a flight-only result", asyn
   await page.getByRole("button", { name: "Confirm details" }).click();
   await capture(page, "04-personalize", info.project.name);
   await expect(page.getByRole("radio", { name: "Balanced" })).toBeChecked();
+  const originalViewport = page.viewportSize()!;
+  await page.setViewportSize({
+    width: originalViewport.width >= 1024 ? 375 : 1440,
+    height: 900,
+  });
+  await expect(
+    page.getByRole("heading", { name: "Make it your kind of trip." }),
+  ).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Balanced" })).toBeChecked();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.setViewportSize(originalViewport);
+
   await page.getByRole("button", { name: "Create my trip" }).click();
   await page.getByRole("heading", { name: "A great start." }).waitFor();
   await capture(page, "03a-flight-only", info.project.name);
