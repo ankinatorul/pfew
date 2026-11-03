@@ -1,11 +1,6 @@
 @import "tailwindcss";
-:root {
-  --ink: #202023;
-  --paper: #f6f6f8;
-  --lime: #e0f57b;
-  --purple: #d9b4ef;
-  --blue: #435bc9;
-}
+@import "./design-tokens.css";
+@import "./journey.css";
 * {
   box-sizing: border-box;
 }
@@ -13,7 +8,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: Manrope, Arial, sans-serif;
+  font-family: var(--pfew-font);
   font-size: 16px;
 }
 a {

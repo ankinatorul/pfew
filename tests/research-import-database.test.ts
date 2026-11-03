@@ -3,6 +3,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { schemaProbes } from "../lib/setup-checks";
 import { mapBookingColumns } from "../lib/trip-map";
+import { journeyBookingColumns } from "../lib/journey";
 it("keeps approved imports idempotent and enforces research roles, links and budgets", async () => {
   const db = new PGlite();
   try {
@@ -31,6 +32,13 @@ it("keeps approved imports idempotent and enforces research roles, links and bud
         `reset role;set role authenticated;set request.jwt.claim.sub='${id}'`,
       );
     await act(owner);
+    expect(
+      (
+        await db.query(
+          `select ${journeyBookingColumns} from public.bookings limit 0`,
+        )
+      ).rows,
+    ).toEqual([]);
     expect(
       (
         await db.query(

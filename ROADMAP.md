@@ -1,5 +1,7 @@
 # Roadmap
 
+**Current priority:** Journey Overview visual reset implemented for review. Stop here for the user’s visual approval before redesigning additional modules, as requested in the design-reset brief. The first pass follows the written direction; its referenced screenshots were not attached. See `DESIGN_SYSTEM.md`.
+
 ## Completion status and finish line
 
 The original brief contains **four phases**. Their core modules have code in place, but that is not a claim that every requirement and live acceptance case is complete. Treat the remaining work as **two finishing milestones**, rather than continually adding numbered phases. Each milestone may take several updates; testing can reveal further fixes.

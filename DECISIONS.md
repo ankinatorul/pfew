@@ -35,3 +35,6 @@
 
 - Keep the original four-phase plan and describe remaining delivery as two finishing milestones: feature completion/usability, then live integration/acceptance. Core implementation and passing read probes do not establish the full brief is complete; source-backed cost intelligence remains an explicit feature gap.
 - Derive Map cards and markers from the same filtered collection. Keep booking and itinerary records separate, departures/arrivals on their own local dates, ideas undated, city centers approximate, and unknown locations visible without guessed pins. Fresh provider details remain explicit and transient; no new schema or privileged client is needed.
+
+- Follow the user's visual reset in increments, starting and stopping at Journey Overview for approval. Establish shared tokens/primitives without redesigning every module. Missing reference screenshots mean this first pass follows the written direction, with visual fidelity pending comparison.
+- Present destinations as travel-story chapters and transport as connections, with human dates/calendar nights and contextual menus. Keep daily destination periods out of activity entries. Derive summaries from real scoped records, avoid guessing ambiguous associations, retain existing actions/RLS and invent no booking/route data.

@@ -5,7 +5,7 @@ export const primaryTripSections = [
   { key: "map", label: "Map", short: "Map" },
 ];
 export const secondaryTripSections = [
-  { key: "destinations", label: "Destinations" },
+  { key: "destinations", label: "Journey" },
   { key: "stays", label: "Stays" },
   { key: "transport", label: "Transport" },
   { key: "prep", label: "Prep" },
