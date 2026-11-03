@@ -29,3 +29,7 @@ Quick Add accepts personal names, addresses, notes and supported Google Maps lin
 ## Readiness and budget release — implemented
 
 Reviewed Packing/Prep checklist starters, editable quantities and optional due dates, duplicate avoidance that preserves packed/completed states, optional consent-based live AI packing with minimal context, and a budget distribution preview using chosen amounts, editable category shares and day weights. Integer-cent allocation preserves totals; new batches append idempotently and keep estimates/prepaid/actuals distinct. Planned-category breakdown, offline editing restrictions and existing role enforcement are retained. Uses schema 9 with no additional SQL. Paid AI configuration and independent signed-in production acceptance remain pending.
+
+## Adaptive Home and navigation release — implemented
+
+Home snapshots now cover before/during/past trip contexts, scoped checklist progress, dated reminders, saved Trip Check decisions, accurate separate budget figures, saved destination local-day context and chronological next/underway events across zones. Unknown/DST-ambiguous start times are explicit. Trip collection filters/order and URL-based Home selection support owned/shared and archived trips. Responsive trip navigation prioritizes common mobile sections while keeping every module reachable and preserving day context; desktop retains full links. Contextual Explore search is user-triggered. Uses schema 9 and existing keys; independent authenticated production verification remains pending.

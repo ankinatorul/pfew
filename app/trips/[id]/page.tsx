@@ -1,3 +1,4 @@
+import { TripNavigation } from "../../../components/trip-navigation";
 import { QuickAdd } from "../../../components/quick-add";
 import { DayPlanControls } from "../../../components/day-plan-controls";
 import { DayOverview } from "../../../components/day-overview";
@@ -32,6 +33,7 @@ export default async function Hub({
     edit?: string;
     kind?: string;
     group?: string;
+    search?: string;
   }>;
 }) {
   const { id } = await params;
@@ -139,38 +141,12 @@ export default async function Hub({
           ＋ Smart Add
         </Link>
       </div>
-      <div className="tabs">
-        {[
-          "hub",
-          "itinerary",
-          "destinations",
-          "stays",
-          "transport",
-          "bookings",
-          "prep",
-          "packing",
-          "budget",
-          "map",
-          "ideas",
-          "check",
-          "research",
-          "people",
-          "offline",
-          ...(role === "owner" ? ["settings"] : []),
-        ].map((v) => (
-          <Link
-            key={v}
-            className={view === v ? "selected" : ""}
-            href={base + "?view=" + v}
-          >
-            {v === "hub"
-              ? "Trip Hub"
-              : v === "check"
-                ? "Trip Check"
-                : v.charAt(0).toUpperCase() + v.slice(1)}
-          </Link>
-        ))}
-      </div>
+      <TripNavigation
+        tripId={id}
+        view={view}
+        day={day}
+        owner={role === "owner"}
+      />
       {view === "hub" && (
         <>
           <div className="row">
@@ -247,6 +223,9 @@ export default async function Hub({
           segments={segments}
           view={view}
           canEdit={canEdit}
+          searchQuery={
+            typeof q.search === "string" ? q.search.slice(0, 200) : undefined
+          }
         />
       )}
       {view === "research" && (

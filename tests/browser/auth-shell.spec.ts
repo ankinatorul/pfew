@@ -35,6 +35,8 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(release.modules).toContain("packing-suggestions");
   expect(release.modules).toContain("prep-suggestions");
   expect(release.modules).toContain("budget-distribution");
+  expect(release.modules).toContain("adaptive-home");
+  expect(release.modules).toContain("responsive-trip-navigation");
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,

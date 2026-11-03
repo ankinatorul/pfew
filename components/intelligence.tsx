@@ -19,11 +19,13 @@ export async function Intelligence({
   segments,
   view,
   canEdit = true,
+  searchQuery,
 }: {
   trip: Trip;
   segments: Segment[];
   view: string;
   canEdit?: boolean;
+  searchQuery?: string;
 }) {
   const { db } = await access();
   const base = "/trips/" + trip.id;
@@ -62,6 +64,7 @@ export async function Intelligence({
         segments={segments}
         places={rows.saved_places as SavedPlace[]}
         canEdit={canEdit}
+        searchQuery={searchQuery}
       />
     );
   if (view === "check") {

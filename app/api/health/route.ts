@@ -25,6 +25,9 @@ export async function GET() {
         "packing-suggestions",
         "prep-suggestions",
         "budget-distribution",
+        "adaptive-home",
+        "trip-filters",
+        "responsive-trip-navigation",
       ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

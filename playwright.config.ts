@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/browser",
-  testMatch: "**/auth-shell.spec.ts",
+  testMatch: ["**/auth-shell.spec.ts", "**/navigation-layout.spec.tsx"],
   use: {
     baseURL: "http://127.0.0.1:3000",
     launchOptions: {

@@ -26,3 +26,6 @@
 - Offer real checklist starters without paid services, with optional minimal-context AI packing. Require review before every addition; preserve existing packed/completed states and leave suggested deadlines unknown until chosen.
 - Use stable IDs and conflict-ignore bulk inserts for repeat-safe additions under existing RLS, rather than creating another schema migration.
 - Treat budget distribution as explicit arithmetic over the user's amount and preferences. Use integer cents, keep estimates unknown and append allocations while preserving existing prepaid/actual accounting. Context checks detect stale previews but are not a global budget lock.
+
+- Treat Home as a timestamped saved-plan dashboard. Rank known events using real saved instants, retain unknown times honestly, and derive destination context from saved periods without collecting live location.
+- Keep Home trip selection and collection filters as view state. Use a compact mobile section menu and full desktop links while preserving itinerary day context and existing ownership checks. No schema migration is needed.

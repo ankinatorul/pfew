@@ -1,3 +1,4 @@
+import { TripCollection } from "../components/trip-collection";
 import { HomeEssentials } from "../components/essentials/home";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
@@ -9,8 +10,14 @@ import {
   type Trip,
 } from "../lib/domain";
 import { ArrowUpRight, Plane } from "lucide-react";
-export default async function Home() {
-  const { db } = await access();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ trip?: string }>;
+}) {
+  const { db, user } = await access();
+  const query = await searchParams;
+  const now = new Date();
   const { data, error } = await db
     .from("trips")
     .select("*")
@@ -18,7 +25,8 @@ export default async function Home() {
   if (error)
     throw new Error("Trips could not be loaded. Check database configuration.");
   const trips = (data || []) as Trip[];
-  const featured = nextTrip(trips);
+  const featured =
+    trips.find((trip) => trip.id === query.trip) || nextTrip(trips, now);
   return (
     <>
       <section className="hero">
@@ -30,7 +38,14 @@ export default async function Home() {
                 featured.timezone,
               ) === "traveling"
               ? "Your current chapter"
-              : `${departureCountdown(featured)} days until your next chapter`
+              : lifecycle(
+                    featured.start_date,
+                    featured.end_date,
+                    featured.timezone,
+                    now,
+                  ) === "past"
+                ? "A chapter worth keeping"
+                : `${departureCountdown(featured, now)} days until your next chapter`
             : "Your world, a little more organized"}
         </span>
         <h1>
@@ -68,6 +83,22 @@ export default async function Home() {
         </div>
         <Plane className="hero-mark" size={180} />
       </section>
+      {trips.length > 1 && (
+        <form action="/" method="get" className="home-trip-selector">
+          <label>
+            Show a trip on Home
+            <select name="trip" defaultValue={featured?.id || ""}>
+              <option value="">Choose a trip</option>
+              {trips.map((trip) => (
+                <option key={trip.id} value={trip.id}>
+                  {trip.name} · {trip.start_date}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="button secondary">Show trip</button>
+        </form>
+      )}
       {featured && (
         <nav className="essentials-shortcuts" aria-label="Travel essentials">
           {[
@@ -87,46 +118,24 @@ export default async function Home() {
         </nav>
       )}
       {featured && <HomeEssentials trip={featured} />}
-      <div className="section-top">
-        <h2>
-          Your next chapters <span className="muted">({trips.length})</span>
-        </h2>
-        <span className="eyebrow">Made for your kind of travel</span>
-      </div>
-      {!trips.length ? (
-        <div className="empty">
-          <h2>A blank page. Endless possibility.</h2>
-          <p>Start with dates and a name. The rest can come later.</p>
-          <Link className="button primary" href="/trips/new">
-            Create your first trip
-          </Link>
-        </div>
-      ) : (
-        <div className="grid">
-          {trips.map((t, i) => (
-            <Link
-              key={t.id}
-              className={"card " + ["lime", "pink", ""][i % 3]}
-              href={"/trips/" + t.id}
-            >
-              <span className="pill">
-                {lifecycle(t.start_date, t.end_date, t.timezone)}
-              </span>
-              <h2 style={{ marginTop: 35 }}>{t.name}</h2>
-              <p>
-                {t.start_date} → {t.end_date}
-              </p>
-              <div className="row">
-                <small>
-                  {t.travelers} traveler{t.travelers !== 1 ? "s" : ""} ·{" "}
-                  {t.style}
-                </small>
-                <ArrowUpRight />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <TripCollection
+        trips={trips.map((trip) => ({
+          id: trip.id,
+          name: trip.name,
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          timezone: trip.timezone,
+          travelers: trip.travelers,
+          style: trip.style,
+          shared: trip.owner_id !== user.id,
+          lifecycle: lifecycle(
+            trip.start_date,
+            trip.end_date,
+            trip.timezone,
+            now,
+          ),
+        }))}
+      />
     </>
   );
 }

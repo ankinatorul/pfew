@@ -62,11 +62,13 @@ export function Discovery({
   segments,
   places,
   canEdit = true,
+  searchQuery,
 }: {
   trip: Trip;
   segments: Segment[];
   places: SavedPlace[];
   canEdit?: boolean;
+  searchQuery?: string;
 }) {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState("");
@@ -319,6 +321,7 @@ export function Discovery({
             <label>
               Search query
               <input
+                defaultValue={searchQuery || ""}
                 name="query"
                 required
                 minLength={2}
