@@ -115,13 +115,14 @@ it("keeps reviewed incomplete sources private and does not turn review into rese
     },
   };
   const response = await create(
-    request({ ...input(), bookings: [pending, full] }),
+    request({ ...input(), pace: "Relaxed", bookings: [pending, full] }),
   );
   expect(response.status).toBe(200);
   const params = rpc.mock.calls[0][1];
   expect(params.approved_bookings).toHaveLength(1);
   expect(params.approved_bookings[0].verification).toBe("unverified");
   expect(params.preferences.pending_bookings).toHaveLength(1);
+  expect(params.preferences.pace).toBe("Relaxed");
   expect(response.headers.get("cache-control")).toContain("no-store");
 });
 it("rejects unreviewed included imports before database writes", async () => {
@@ -140,4 +141,12 @@ it("keeps an interrupted database save retryable and excludes raw exception deta
   const response = await create(request(input()));
   expect(response.status).toBe(503);
   expect(await response.text()).not.toContain("private transport diagnostic");
+});
+
+it("rejects an unsupported travel pace before writes", async () => {
+  mocks.user.mockResolvedValue({ id: "user" });
+  expect(
+    (await create(request({ ...input(), pace: "Impossible" }))).status,
+  ).toBe(400);
+  expect(mocks.db).not.toHaveBeenCalled();
 });

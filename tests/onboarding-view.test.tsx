@@ -51,6 +51,7 @@ it("allows a trip with no bookings or destinations, persists preferences and mak
   await user.click(screen.getByRole("button", { name: "Confirm details" }));
   await user.click(screen.getByRole("radio", { name: "Budget-friendly" }));
   await user.click(screen.getByRole("button", { name: "Nature" }));
+  await user.click(screen.getByRole("radio", { name: "Relaxed" }));
   await user.click(screen.getByRole("button", { name: "Create my trip" }));
   await screen.findByRole("link", { name: "Continue with my trip" });
   expect(fetcher).toHaveBeenCalledOnce();
@@ -60,6 +61,7 @@ it("allows a trip with no bookings or destinations, persists preferences and mak
     destinations: [],
     style: "Budget",
     interests: ["Nature"],
+    pace: "Relaxed",
   });
 });
 it("processes multiple sources individually, retains successes on failure and retries only the failed file", async () => {

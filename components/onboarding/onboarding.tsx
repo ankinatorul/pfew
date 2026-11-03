@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState, type DragEvent } from "react";
-// Native navigation keeps setup self-contained and supports isolated browser review.
+// Use the existing website routes throughout setup.
 const Link = "a";
 import {
   ArrowLeft,
@@ -90,7 +90,8 @@ export function TripOnboarding({
     >([]),
     [travelers, setTravelers] = useState(1),
     [budget, setBudget] = useState(""),
-    [currency, setCurrency] = useState("EUR");
+    [currency, setCurrency] = useState("EUR"),
+    [pace, setPace] = useState<OnboardingInput["pace"]>("Flexible");
   const [result, setResult] = useState<{
     trip: { id: string; name: string; start_date: string; end_date: string };
     href: string;
@@ -272,6 +273,7 @@ export function TripOnboarding({
         destinations,
         bookings,
         interests: selectedInterests,
+        pace,
       });
     }
     setSubmitted(true);
@@ -404,9 +406,6 @@ export function TripOnboarding({
       </aside>
       <section className="onboarding-panel" aria-label="New trip setup">
         <div className="onboarding-top">
-          <Link href="/" className="onboarding-logo" aria-label="Pfew home">
-            pfew.
-          </Link>
           {step < 4 && (
             <Link
               href="/"
@@ -417,7 +416,18 @@ export function TripOnboarding({
             </Link>
           )}
         </div>
-        <p className="onboarding-step">Trip setup / {step + 1}</p>
+        <p className="onboarding-step">
+          Trip setup / {step + 1} of 5 ·{" "}
+          {
+            [
+              "Trip basics",
+              "Your bookings",
+              "Review details",
+              "Personalize",
+              "Your workspace",
+            ][step]
+          }
+        </p>
         <div
           className="onboarding-progress"
           role="progressbar"
@@ -986,6 +996,22 @@ export function TripOnboarding({
                   </button>
                 ))}
               </div>
+              <fieldset className="onboarding-pace">
+                <legend className="onboarding-label">
+                  Preferred travel pace
+                </legend>
+                {(["Relaxed", "Flexible", "Active"] as const).map((value) => (
+                  <label key={value}>
+                    <input
+                      type="radio"
+                      name="travel-pace"
+                      checked={pace === value}
+                      onChange={() => setPace(value)}
+                    />
+                    {value}
+                  </label>
+                ))}
+              </fieldset>
               <details className="onboarding-extra-preferences">
                 <summary>Travelers, currency & optional total budget</summary>
                 <label>
@@ -1076,43 +1102,56 @@ export function TripOnboarding({
                   </Link>
                 </div>
               )}
-              {!flightOnly && (
-                <>
-                  <p className="onboarding-label">Up next</p>
-                  <div className="onboarding-next-links">
-                    {[
-                      ["bookings", "Flights & stays", "Your saved details"],
-                      [
-                        "itinerary",
-                        "Plan your days",
-                        "Build a flexible itinerary",
-                      ],
-                      ["map", "Where to eat", "Discover local favorites"],
-                      ["packing", "Packing list", "Get ready to go"],
-                    ].map(([view, title, copy]) => (
-                      <Link
-                        key={view}
-                        href={`/trips/${result.trip.id}?view=${view}`}
-                      >
-                        <span>
-                          {view === "bookings" &&
-                          included.some(
-                            (b) => b.confirmed && candidateComplete(b),
-                          ) ? (
-                            <Check size={18} />
-                          ) : (
-                            <Plus size={18} />
-                          )}
-                        </span>
-                        <span>
-                          <strong>{title}</strong>
-                          <small>{copy}</small>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                </>
-              )}
+              <p className="onboarding-label">Your workspace</p>
+              <div className="onboarding-next-links">
+                {[
+                  [
+                    "destinations",
+                    "Journey",
+                    "Your destinations and connections",
+                  ],
+                  ["bookings", "Flights & stays", "Your saved details"],
+                  ["itinerary", "Plan your days", "Build a flexible itinerary"],
+                  [
+                    "map",
+                    "Map & nearby places",
+                    "Find your saved places and local ideas",
+                  ],
+                  [
+                    "check",
+                    "Smart Trip Check",
+                    "Review possible gaps in recorded plans",
+                  ],
+                  ["prep", "Preparation", "Get ready for departure"],
+                  ["packing", "Packing list", "Bring the essentials"],
+                  ["budget", "Budget", "Plan and track your spending"],
+                  [
+                    "ideas",
+                    "Ideas & recommendations",
+                    "Explore at your own pace",
+                  ],
+                ].map(([view, title, copy]) => (
+                  <Link
+                    key={view}
+                    href={`/trips/${result.trip.id}?view=${view}`}
+                  >
+                    <span>
+                      {view === "bookings" &&
+                      included.some(
+                        (b) => b.confirmed && candidateComplete(b),
+                      ) ? (
+                        <Check size={18} />
+                      ) : (
+                        <Plus size={18} />
+                      )}
+                    </span>
+                    <span>
+                      <strong>{title}</strong>
+                      <small>{copy}</small>
+                    </span>
+                  </Link>
+                ))}
+              </div>
               {pending.length > 0 && (
                 <div className="onboarding-missing-card">
                   <h2>Details to finish later</h2>

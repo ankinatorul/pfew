@@ -22,6 +22,12 @@ test.beforeAll(async () => {
 });
 async function mount(page: Page) {
   await page.goto("/login");
+  const header = await page
+    .locator("body > header")
+    .evaluate((node) => node.outerHTML);
+  const footer = await page
+    .locator("body > footer")
+    .evaluate((node) => node.outerHTML);
   const styles = await page
     .locator('link[rel="stylesheet"]')
     .evaluateAll((links) =>
@@ -32,7 +38,11 @@ async function mount(page: Page) {
       styles
         .map((href) => '<link rel="stylesheet" href="' + href + '">')
         .join("") +
-      '</head><body><p style="text-align:center;font:10px Arial;color:#666">Design review · isolated components with illustrative data</p><main><div id="fixture"></div></main></body></html>',
+      "</head><body>" +
+      header +
+      '<main><p style="font:10px Arial;color:#666;margin:0 0 12px">Browser test · illustrative data</p><div id="fixture"></div></main>' +
+      footer +
+      "</body></html>",
   );
   await page.addScriptTag({ content: script });
   await page
@@ -47,6 +57,22 @@ async function capture(page: Page, name: string, project: string) {
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await expect(page.locator("body > header")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "My trips", exact: true }),
+  ).toBeVisible();
+  const surface = await page.locator(".pfew-onboarding").evaluate((node) => {
+    const styles = getComputedStyle(node);
+    return {
+      border: styles.borderTopWidth,
+      radius: styles.borderTopLeftRadius,
+    };
+  });
+  expect(surface).toEqual({ border: "0px", radius: "0px" });
+  await expect(page.locator(".onboarding-panel")).toHaveCSS(
+    "border-radius",
+    "0px",
+  );
   const viewport = page.viewportSize()!;
   const panel = await page.locator(".onboarding-panel").boundingBox();
   if (viewport.width >= 1024) {
@@ -65,7 +91,7 @@ async function capture(page: Page, name: string, project: string) {
   } else {
     await expect(page.locator(".onboarding-rail")).toBeHidden();
     expect(panel!.width).toBeGreaterThan(
-      viewport.width <= 480 ? viewport.width - 40 : 650,
+      viewport.width <= 480 ? viewport.width - 45 : 650,
     );
   }
   await page.screenshot({
@@ -73,7 +99,7 @@ async function capture(page: Page, name: string, project: string) {
     fullPage: true,
   });
 }
-test("new trip matches the reference flow and allows a flight-only result", async ({
+test("website onboarding preserves its shell and allows a flight-only result", async ({
   page,
 }, info) => {
   test.setTimeout(60000);
@@ -162,6 +188,10 @@ test("new trip matches the reference flow and allows a flight-only result", asyn
   await page.getByRole("heading", { name: "A great start." }).waitFor();
   await capture(page, "03a-flight-only", info.project.name);
   expect(saved?.bookings[0].confirmed).toBe(false);
+  expect(saved?.pace).toBe("Flexible");
+  await expect(
+    page.getByRole("link", { name: /Smart Trip Check/ }),
+  ).toHaveAttribute("href", "/trips/fixture-trip?view=check");
   await expect(
     page.getByText("Not added yet — that’s completely fine."),
   ).toBeVisible();

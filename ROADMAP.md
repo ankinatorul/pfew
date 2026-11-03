@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current priority:** The user’s newer request authorizes new-trip onboarding, using the supplied five-step/flight-only UI image as reference. The onboarding implementation is ready for review and requires migration 010 plus separate live provider configuration; existing trip settings remain unchanged. See `ONBOARDING.md`.
+**Current priority:** Apply the website UI correction to onboarding: preserve the existing website/design tokens and lavender sidebar, remove literal mockup framing, retain all five stages and partial-booking support, and connect the real workspace modules. No new migration beyond 010 is needed. See `ONBOARDING.md` and `DESIGN_SYSTEM.md`.
 
 ## Completion status and finish line
 

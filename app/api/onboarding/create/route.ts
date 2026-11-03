@@ -114,7 +114,11 @@ export async function POST(request: Request) {
       trip_data: trip,
       destinations,
       approved_bookings: bookings,
-      preferences: { interests: input.interests, pending_bookings: pending },
+      preferences: {
+        interests: input.interests,
+        pace: input.pace,
+        pending_bookings: pending,
+      },
     });
     if (error || !id)
       return reply(

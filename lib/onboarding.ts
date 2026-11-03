@@ -38,6 +38,7 @@ export const onboardingSchema = z
       .max(32),
     bookings: z.array(candidateSchema).max(20),
     interests: z.array(z.enum(interests)).max(4),
+    pace: z.enum(["Relaxed", "Flexible", "Active"]).default("Flexible"),
   })
   .refine((v) => v.end >= v.start, {
     message: "Return must be on or after departure.",
