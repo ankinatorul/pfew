@@ -889,3 +889,21 @@ blockquote {
 .check-state-optional {
   background: #eeeef1;
 }
+
+.location-manual {
+  margin: 12px 0;
+}
+.location-manual summary {
+  font-size: 13px;
+}
+.location-manual .muted {
+  font-size: 13px;
+}
+.location-attribution {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+}
+.location-attribution a {
+  text-decoration: underline;
+}

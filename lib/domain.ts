@@ -42,11 +42,11 @@ export const segmentSchema = z
         z.coerce.number().int().min(1).max(1440).nullable(),
       )
       .optional(),
-    location_id: z.string().max(150).nullable().optional(),
+    location_id: z.string().max(2048).nullable().optional(),
     location_label: z.string().max(500).nullable().optional(),
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
-    arrival_location_id: z.string().max(150).nullable().optional(),
+    arrival_location_id: z.string().max(2048).nullable().optional(),
     arrival_location_label: z.string().max(500).nullable().optional(),
     arrival_latitude: z.number().min(-90).max(90).nullable().optional(),
     arrival_longitude: z.number().min(-180).max(180).nullable().optional(),
@@ -173,8 +173,8 @@ export type Segment = {
 
 export const destinationSchema = z
   .object({
-    title: z.string().trim().min(1, "Choose a destination city").max(200),
-    location_id: z.string().max(150).default(""),
+    title: z.string().trim().min(1, "Choose a destination location").max(200),
+    location_id: z.string().max(2048).default(""),
     start_date: z.iso.date(),
     end_date: z.iso.date(),
     timezone: z.string().refine((v) => {

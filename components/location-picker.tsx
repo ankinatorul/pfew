@@ -28,6 +28,11 @@ export function LocationPicker({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [active, setActive] = useState(-1);
+  const [worldwideAvailable, setWorldwideAvailable] = useState(true);
+  const [manualName, setManualName] = useState("");
+  const [position, setPosition] = useState("");
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualError, setManualError] = useState("");
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
   const callback = useRef(onResolved);
@@ -37,12 +42,12 @@ export function LocationPicker({
   useEffect(() => {
     input.current?.setCustomValidity(
       (required || query.trim().length > 0) && !selected
-        ? "Choose a city from the results."
+        ? "Choose a place from the results, or add its map position."
         : "",
     );
   }, [required, selected, query]);
   useEffect(() => {
-    if (selected || query.trim().length < 2) return;
+    if (selected || query.trim().length < 2 || query.length > 100) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -60,6 +65,8 @@ export function LocationPicker({
           .safeParse(data.results);
         if (!parsed.success)
           throw new Error("Location search returned an unexpected response.");
+        if (controller.signal.aborted) return;
+        setWorldwideAvailable(data.worldwideAvailable !== false);
         setResults(parsed.data);
         setOpen(true);
         setActive(-1);
@@ -69,7 +76,7 @@ export function LocationPicker({
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 250);
+    }, 500);
     return () => {
       clearTimeout(timer);
       controller.abort();
@@ -85,6 +92,29 @@ export function LocationPicker({
     setActive(-1);
     callback.current?.(location);
   };
+  async function useManualLocation() {
+    setManualBusy(true);
+    setManualError("");
+    try {
+      const response = await fetch("/api/locations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: manualName, position }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Check this location.");
+      choose(resolvedLocationSchema.parse(data.location));
+    } catch (reason) {
+      setManualError(
+        reason instanceof Error
+          ? reason.message
+          : "This location could not be added.",
+      );
+    } finally {
+      setManualBusy(false);
+    }
+  }
   return (
     <div className="location-picker">
       <label htmlFor={id}>{label}</label>
@@ -92,7 +122,7 @@ export function LocationPicker({
         ref={input}
         id={id}
         type="text"
-        maxLength={100}
+        maxLength={500}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={open && results.length > 0}
@@ -101,7 +131,7 @@ export function LocationPicker({
         autoComplete="off"
         value={query}
         required={required}
-        placeholder="Search a city, region or country"
+        placeholder="Search any island, town, region or place"
         onChange={(e) => {
           setLoading(false);
           setActive(-1);
@@ -152,15 +182,79 @@ export function LocationPicker({
       )}
       <span className="location-hint" role="status">
         {loading
-          ? "Finding cities…"
+          ? "Finding places…"
           : error ||
             (!selected && query.length >= 2
               ? results.length
-                ? "Choose the matching city below."
-                : "Choose a matching city; try adding a country if needed."
+                ? "Choose the matching place below."
+                : "Try adding a country, or add a place using its map position below."
               : "")}
-        {selected ? "Local time is set automatically from this city." : ""}
+        {selected ? "Local time is set automatically from this location." : ""}
       </span>
+      {!selected && !worldwideAvailable && (
+        <p className="location-hint">
+          Worldwide search is temporarily unavailable. City results may still
+          appear; you can add any named place using its map position below.
+        </p>
+      )}
+      {!selected && (
+        <details
+          className="location-manual"
+          onToggle={(event) => {
+            if (event.currentTarget.open && !manualName)
+              setManualName(query.trim().slice(0, 200));
+          }}
+        >
+          <summary>Can’t find it? Add a place from its map position</summary>
+          <p className="muted">
+            Use any island, beach, village or other place. Copy its coordinates
+            from your map; its time zone will be set automatically.
+          </p>
+          <label htmlFor={id + "-manual-name"}>Place name</label>
+          <input
+            id={id + "-manual-name"}
+            value={manualName}
+            maxLength={200}
+            onChange={(event) => setManualName(event.target.value)}
+            placeholder="Koh Phangan"
+          />
+          <label htmlFor={id + "-position"}>Coordinates or map link</label>
+          <input
+            id={id + "-position"}
+            value={position}
+            maxLength={1500}
+            onChange={(event) => setPosition(event.target.value)}
+            placeholder="9.73, 100.01"
+          />
+          <p className="muted">
+            Paste latitude, longitude or a full Google Maps/OpenStreetMap pin
+            link. Short share links need to be opened in your map first.
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={manualBusy || !manualName.trim() || !position.trim()}
+            onClick={useManualLocation}
+          >
+            {manualBusy ? "Setting location…" : "Use this location"}
+          </button>
+          {manualError && <p role="alert">{manualError}</p>}
+        </details>
+      )}
+      <small className="location-attribution">
+        Worldwide search:{" "}
+        <a href="https://photon.komoot.io" target="_blank" rel="noreferrer">
+          Photon
+        </a>{" "}
+        ·{" "}
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noreferrer"
+        >
+          © OpenStreetMap contributors
+        </a>
+      </small>
     </div>
   );
 }

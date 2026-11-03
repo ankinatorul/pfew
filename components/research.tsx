@@ -291,7 +291,7 @@ export function Research({
                 </>
               ) : (
                 <p className="muted">
-                  Choose a city for this destination. The source catalog
+                  Choose a location for this destination. The source catalog
                   currently covers selected countries; no source or entry rule
                   is invented for unsupported destinations.
                 </p>

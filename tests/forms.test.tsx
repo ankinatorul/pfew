@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { searchLocations } from "../lib/locations";
+import { geographicLocation } from "../lib/geographic-location";
 import { TripForm, SegmentForm, Delete } from "../components/forms";
 import { TripCollection } from "../components/trip-collection";
 import { saveTrip, saveSegment, deleteTrip } from "../app/actions";
@@ -170,4 +171,52 @@ it("offers saved-trip deletion only to owners and submits the selected trip afte
   await user.click(button);
   await waitFor(() => expect(deleteTrip).toHaveBeenCalledOnce());
   expect(vi.mocked(deleteTrip).mock.calls[0][0].get("id")).toBe(owned);
+});
+
+it("creates an island-only trip using worldwide results and the manual-place fallback", async () => {
+  const user = userEvent.setup();
+  const phangan = geographicLocation("Koh Phangan", "Thailand", 9.73, 100.01);
+  const tao = geographicLocation("Koh Tao", "", 10.1, 99.84);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return Response.json({ location: tao });
+      return Response.json({ results: [phangan], worldwideAvailable: true });
+    }),
+  );
+  render(<TripForm />);
+  essentials();
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  await user.click(screen.getByRole("button", { name: /Add destination/ }));
+  await user.type(
+    screen.getByRole("combobox", { name: "Destination name" }),
+    "Koh Phangan",
+  );
+  await user.click(await screen.findByRole("option", { name: phangan.label }));
+  await user.click(screen.getByRole("button", { name: /Add destination/ }));
+  const manual = screen.getAllByText(
+    "Can’t find it? Add a place from its map position",
+  );
+  await user.click(manual[0]);
+  await user.type(screen.getByLabelText("Place name"), "Koh Tao");
+  await user.type(
+    screen.getByLabelText("Coordinates or map link"),
+    "10.1,99.84",
+  );
+  await user.click(screen.getByRole("button", { name: "Use this location" }));
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole("combobox", { name: "Destination name" })[1],
+    ).toHaveProperty("value", "Koh Tao"),
+  );
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+  await user.click(screen.getByRole("button", { name: "Create my trip" }));
+  await waitFor(() => expect(saveTrip).toHaveBeenCalledOnce());
+  const body = vi.mocked(saveTrip).mock.calls[0][0];
+  expect(body.getAll("destination_location_id")).toEqual([phangan.id, tao.id]);
+  expect(body.getAll("destination_timezone")).toEqual([
+    "Asia/Bangkok",
+    "Asia/Bangkok",
+  ]);
 });

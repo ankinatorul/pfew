@@ -235,14 +235,14 @@ export function BookingForm({
           <input type="hidden" name="import_key" value={review.importKey} />
           <input type="hidden" name="import_method" value={review.method} />
           <p className="muted">
-            Unknown fields are blank. Select the relevant city if needed; local
+            Unknown fields are blank. Select the relevant place if needed; local
             time is set automatically. Check dates, amounts and references
             against your confirmation.
           </p>
         </>
       )}
       <LocationPicker
-        label="Booking city / departure city · optional"
+        label="Booking location / departure location · optional"
         initialId={item?.location_id}
         initialLabel={item?.location_label || ""}
         onResolved={setLocation}
@@ -251,7 +251,7 @@ export function BookingForm({
         value={location?.timezone || item?.timezone || trip.timezone}
       />
       <LocationPicker
-        label="Arrival city · optional"
+        label="Arrival location · optional"
         name="end_location_id"
         initialId={item?.end_location_id}
         initialLabel={item?.end_location_label || ""}

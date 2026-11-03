@@ -24,7 +24,7 @@ export function dayPlanValues(
   const location = item.location_id ? resolveLocation(item.location_id) : null;
   if (item.location_id && !location)
     throw new Error(
-      "This item’s city is unavailable. Choose its city again in the detailed form.",
+      "This item’s location is unavailable. Choose its location again in the detailed form.",
     );
   return {
     start_date: input.day,

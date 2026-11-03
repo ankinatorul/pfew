@@ -1,5 +1,6 @@
 import { cityMapping } from "city-timezones";
 import tzLookup from "tz-lookup";
+import { resolveGeographicLocation } from "./geographic-location";
 import type { ResolvedLocation } from "./location-types";
 function normalized(value: string) {
   return value
@@ -26,6 +27,7 @@ const records = cityMapping.map((city) => ({
 }));
 const byId = new Map(records.map((r) => [r.id, r.city]));
 export function resolveLocation(id: string): ResolvedLocation | null {
+  if (id.startsWith("geo:")) return resolveGeographicLocation(id);
   const c = byId.get(id);
   if (!c) return null;
   let timezone = c.timezone;
@@ -65,15 +67,4 @@ export function searchLocations(query: string) {
     .slice(0, 8)
     .map((r) => resolveLocation(r.id)!);
 }
-export function coordinateTimezone(latitude: number, longitude: number) {
-  if (
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
-  )
-    throw new Error("Invalid location coordinates");
-  return tzLookup(latitude, longitude);
-}
+export { coordinateTimezone } from "./coordinate-timezone";

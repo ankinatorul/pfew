@@ -98,7 +98,7 @@ export async function savePlace(form: FormData) {
   let payload: Record<string, unknown>;
   if (base.source === "city") {
     const location = resolveLocation(location_id || "");
-    if (!location) fail("Choose a city from the results.");
+    if (!location) fail("Choose a place from the results.");
     payload = {
       ...base,
       location_id: location.id,

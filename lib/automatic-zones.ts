@@ -4,7 +4,7 @@ import type { ResolvedLocation } from "./location-types";
 function city(value: FormDataEntryValue | null) {
   if (!value) return null;
   const result = resolveLocation(String(value));
-  if (!result) throw new Error("Choose a city from the location results.");
+  if (!result) throw new Error("Choose a place from the location results.");
   return result;
 }
 export function locationFields(location: ResolvedLocation | null, prefix = "") {
@@ -60,7 +60,7 @@ export async function segmentLocationValues(
   }
   if (form.get("kind") === "destination" && !start)
     throw new Error(
-      "Choose the destination city so its local time can be set automatically.",
+      "Choose the destination location so its local time can be set automatically.",
     );
   return {
     ...Object.fromEntries(form),

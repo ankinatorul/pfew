@@ -413,7 +413,7 @@ export function SegmentForm({
         label={
           currentKind === "destination"
             ? "Destination location"
-            : "City · optional"
+            : "Location · optional"
         }
         initialId={item?.location_id}
         initialLabel={item?.location_label || ""}
@@ -548,7 +548,7 @@ export function SegmentForm({
             />
           </label>
           <LocationPicker
-            label="Arrival city · optional"
+            label="Arrival location · optional"
             name="arrival_location_id"
             initialId={item?.arrival_location_id}
             initialLabel={item?.arrival_location_label || ""}
@@ -562,7 +562,7 @@ export function SegmentForm({
         </div>
         <p className="muted">
           Use the From date/time for departure and To date for arrival. Arrival
-          local time follows the arrival city.
+          local time follows the arrival location.
         </p>
       </details>
       <label>

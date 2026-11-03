@@ -90,7 +90,7 @@ export function Discovery({
         )
         .map((s) => ({
           id: s.id,
-          label: s.title + " (city center)",
+          label: s.title + " (approximate location)",
           latitude: s.latitude!,
           longitude: s.longitude!,
         })),
@@ -101,7 +101,7 @@ export function Discovery({
             ? [
                 {
                   id: p.id,
-                  label: p.title + " (city center)",
+                  label: p.title + " (approximate location)",
                   latitude: p.latitude,
                   longitude: p.longitude,
                 },
@@ -171,7 +171,7 @@ export function Discovery({
       <span className="eyebrow">Smart Map</span>
       <h2>A little closer to your next discovery.</h2>
       <p className="muted">
-        City points mark approximate city centers. Venue points appear only from
+        Place points mark approximate locations. Venue points appear only from
         fresh Google place data. No offline maps are provided.
       </p>
       <GoogleMap pins={pins} selected={selected} onSelect={setSelected} />
@@ -185,7 +185,7 @@ export function Discovery({
               key={s.id}
               className={"card " + (selected === s.id ? "lime" : "")}
             >
-              <span className="pill">{s.kind} · city center</span>
+              <span className="pill">{s.kind} · approximate location</span>
               <h3>{s.title}</h3>
               <p>
                 {s.start_date} → {s.end_date}
@@ -237,7 +237,7 @@ export function Discovery({
             >
               <span className="pill">
                 {p.source === "city"
-                  ? "Saved city · approximate center"
+                  ? "Saved place · approximate location"
                   : "Saved Google place"}
               </span>
               <h3>{p.title}</h3>
@@ -290,14 +290,14 @@ export function Discovery({
       {canEdit && (
         <>
           <form action={savePlace} className="form">
-            <h3>Save a city or your own place notes</h3>
+            <h3>Save a place or your own place notes</h3>
             <input type="hidden" name="trip_id" value={trip.id} />
             <input type="hidden" name="source" value="city" />
             <label>
               Your label
               <input name="title" required maxLength={200} />
             </label>
-            <LocationPicker label="City" required />
+            <LocationPicker label="Place" required />
             <label>
               Category
               <select name="category">
@@ -310,7 +310,7 @@ export function Discovery({
               Your notes / address
               <textarea name="notes" maxLength={2000} />
             </label>
-            <Submit>Save city & notes</Submit>
+            <Submit>Save place & notes</Submit>
           </form>
           <form action={search} className="form" data-viewer-allowed>
             <h3>Discover with Google Places</h3>

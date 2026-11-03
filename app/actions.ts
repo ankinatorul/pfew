@@ -92,7 +92,7 @@ export async function saveTrip(form: FormData) {
       ).map((d) => {
         const location = resolveLocation(d.location_id);
         if (!location)
-          throw new Error("Choose each destination from the city results.");
+          throw new Error("Choose each destination from the location results.");
         return {
           ...d,
           title: location.label,

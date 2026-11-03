@@ -81,13 +81,28 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(checks.headers()["cache-control"]).toBe("private, no-store");
 });
 
-test("city lookup supplies real time zones and private offline APIs require sign-in", async ({
+test("locations support island map points and private offline APIs require sign-in", async ({
   page,
 }) => {
   const response = await page.request.get("/api/locations?q=Tokyo");
   expect(response.ok()).toBe(true);
   const body = await response.json();
   expect(body.results[0].timezone).toBe("Asia/Tokyo");
+  const island = await page.request.post("/api/locations", {
+    data: { name: "Koh Phangan", position: "9.73,100.01", timezone: "UTC" },
+  });
+  expect(island.ok()).toBe(true);
+  expect((await island.json()).location).toMatchObject({
+    label: "Koh Phangan",
+    timezone: "Asia/Bangkok",
+    latitude: 9.73,
+    longitude: 100.01,
+  });
+  const invalid = await page.request.post("/api/locations", {
+    data: { name: "Unknown island", position: "Unknown" },
+  });
+  expect(invalid.status()).toBe(400);
+
   expect(
     (
       await page.request.get(

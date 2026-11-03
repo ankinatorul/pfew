@@ -1,7 +1,8 @@
 import { it, expect } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
-import { searchLocations } from "../lib/locations";
+import { searchLocations, resolveLocation } from "../lib/locations";
+import { geographicLocation } from "../lib/geographic-location";
 import { locationFields } from "../lib/automatic-zones";
 it("saves resolved destinations atomically and keeps trip reference time synchronized", async () => {
   const db = new PGlite();
@@ -116,6 +117,33 @@ it("saves resolved destinations atomically and keeps trip reference time synchro
     expect((await db.query("select * from trip_segments")).rows).toHaveLength(
       0,
     );
+    const islands = [
+      geographicLocation("Koh Phangan", "Thailand", 9.73, 100.01),
+      geographicLocation("Koh Tao", "Thailand", 10.1, 99.84),
+    ];
+    await db.query(
+      "select create_trip_with_destinations($1::jsonb,$2::jsonb)",
+      [
+        JSON.stringify({ ...trip, name: "Thai islands" }),
+        JSON.stringify([
+          d(islands[0], "2027-05-01", "2027-05-05"),
+          d(islands[1], "2027-05-05", "2027-05-10"),
+        ]),
+      ],
+    );
+    const saved = (
+      await db.query<{ location_id: string; timezone: string }>(
+        "select location_id,timezone from trip_segments order by start_date",
+      )
+    ).rows;
+    expect(saved.map((row) => resolveLocation(row.location_id)?.city)).toEqual([
+      "Koh Phangan",
+      "Koh Tao",
+    ]);
+    expect(saved.map((row) => row.timezone)).toEqual([
+      "Asia/Bangkok",
+      "Asia/Bangkok",
+    ]);
   } finally {
     await db.close();
   }

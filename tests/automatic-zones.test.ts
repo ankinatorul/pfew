@@ -5,6 +5,7 @@ import {
   bookingLocationValues,
 } from "../lib/automatic-zones";
 import { searchLocations } from "../lib/locations";
+import { geographicLocation } from "../lib/geographic-location";
 function db() {
   const data: Record<string, Record<string, unknown>[]> = {
     trips: [{ id: "trip", timezone: "Europe/Bucharest" }],
@@ -89,4 +90,19 @@ it("rejects unresolved destination locations instead of guessing a country timez
   await expect(
     segmentLocationValues(db(), form({ location_id: "fake" })),
   ).rejects.toThrow("Choose");
+});
+
+it("saves an island destination with its own point and server-derived local time", async () => {
+  const island = geographicLocation("Koh Phangan", "Thailand", 9.73, 100.01);
+  const values = await segmentLocationValues(
+    db(),
+    form({
+      kind: "destination",
+      location_id: island.id,
+      timezone: "America/New_York",
+    }),
+  );
+  expect(values.timezone).toBe("Asia/Bangkok");
+  expect(values.location_label).toBe("Koh Phangan, Thailand");
+  expect(values.latitude).toBe(9.73);
 });
