@@ -1,11 +1,14 @@
 # Upgrade existing Phase 2 projects
 
-Keep the existing tables and data. After migrations 001–004, run **005, 006, 007, 008 in that order**, using Supabase SQL Editor. The combined `upgrade_phase2_to_phase4.sql` contains these exact migrations, so it is one paste/run. Do not rerun 001. The upgrade files can be rerun together in the same order.
+Keep the existing tables and data. After migrations 001–004, run **005, 006, 007, 008, 009 in that order**, using Supabase SQL Editor. The combined `upgrade_phase2_to_phase4.sql` contains these exact migrations, so it is one paste/run. Do not rerun 001. The upgrade files can be rerun together in the same order.
 
 - 005: resolved city IDs, coordinates and automatic destination/linked-plan time zones.
 - 006: saved places, Trip Check decisions, reviewed suggestions and request budgets.
 - 007: verified-email invitations, owner/editor/viewer RLS and minimal audit events.
 - 008: uploader-private documents, upload reservations and guarded deletion.
+- 009: reviewed booking import keys/RPC, source notes, linked Prep tasks and zero-cost research request accounting.
+
+If 005–008 are already applied, run only `migrations/009_research_and_booking_imports.sql`.
 
 No auth settings, Google credentials or API keys are changed by SQL. The existing `booking-files` bucket remains private. Existing documents are marked ready; new uploads reserve pending metadata first, then upload, then mark ready. Supabase SQL Editor runs with administrator privileges; the app never uses them.
 

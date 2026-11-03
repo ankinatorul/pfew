@@ -8,10 +8,16 @@ Google-only authentication and account controls, real trip/segment persistence, 
 
 Automatic city-derived time zones, server AI abstraction, explicit sample/live modes, contextual budget/style-aware unverified ideas, review before saving, day/time/duration scheduling, Trip Check with evidence/uncertainty and persistent decisions, saved city/place notes, optional real Google Maps/Places with attribution and retrieval time, and serialized request-budget controls.
 
-Remaining: configure/test paid provider keys in production; optional AI booking-document extraction with review; selective official-source travel-requirement research beyond fresh Google place data. No researched price, reservation, requirement or availability claims are made without a source.
+The follow-up release implements reviewed booking text/PDF/image imports and official-source research with human-reviewed excerpts and linked Prep tasks. Paid provider configuration and live acceptance remain pending. No researched price, reservation, requirement or availability claims are made without a source.
 
 ## Phase 4 — implemented, live acceptance pending
 
 Verified-email invitations, Owner/Editor/Viewer database authorization, minimal audit trail, uploader-private document reservations and deletion guards, deliberate encrypted read-only offline downloads, optional browser PWA installation, response security headers, local cross-account PostgreSQL and browser offline tests.
 
-Remaining: apply migrations 005–008 to the live project, run signed-in two-account Google/Supabase/Storage acceptance, verify provider configuration and the deployed Vercel commit. Network/admin access limitations prevent claiming these live checks passed. See `tests/PHASE34_ACCEPTANCE.md`.
+Remaining: apply migrations 005–009 to the live project, run signed-in two-account Google/Supabase/Storage acceptance, verify provider configuration and the deployed Vercel commit. Network/admin access limitations prevent claiming these live checks passed. See `tests/PHASE34_ACCEPTANCE.md`.
+
+## Follow-up release — reviewed imports and source research
+
+Implemented: private temporary import previews; grounded labeled-text extraction without AI; optional consent-based AI PDF/image/text reading; explicit approval before shared booking creation; idempotent saves; finite official-source catalog; nationality/document/purpose/date context; bounded on-demand source fetches; exact excerpt recheck before saving; source freshness/context warnings; one linked Prep task per approved note; viewer/read and editor/write policies.
+
+Pending: production application of migration 009, real provider/file and official-site acceptance, signed-in browser tests and deployment verification. AI recommendations stay unverified; no automatic visa/entry eligibility decisions are implemented. Missing provider keys and blocked source sites remain explicit unavailable states.

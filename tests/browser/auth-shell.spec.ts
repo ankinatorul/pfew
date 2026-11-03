@@ -26,6 +26,9 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(health.headers()["cache-control"]).toContain("no-store");
   const release = await health.json();
   expect(release.release).toBe("phase-4");
+  expect(release.modules).toContain("booking-import");
+  expect(release.modules).toContain("official-research");
+  expect(release.schemaVersionRequired).toBe(9);
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,
@@ -164,4 +167,14 @@ test("encrypted copies unlock offline without caching authenticated pages", asyn
   await page.getByRole("button", { name: "Remove encrypted download" }).click();
   await expect(page.getByText(/No offline trips yet/)).toBeVisible();
   await context.setOffline(false);
+});
+
+test("booking imports and official research reject signed-out requests", async ({
+  page,
+}) => {
+  for (const route of ["/api/booking-import", "/api/research"]) {
+    const response = await page.request.post(route, { data: {} });
+    expect(response.status()).toBe(401);
+    expect(response.headers()["cache-control"]).toContain("no-store");
+  }
 });

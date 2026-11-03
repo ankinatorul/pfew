@@ -1,4 +1,5 @@
 "use client";
+import { saveReviewedBooking } from "../../app/booking-import-actions";
 import { LocationPicker } from "../location-picker";
 import { AutomaticTimezone } from "../automatic-timezone";
 import type { ResolvedLocation } from "../../lib/location-types";
@@ -103,7 +104,9 @@ function Form({
   trip,
   id,
   children,
+  reviewed = false,
 }: {
+  reviewed?: boolean;
   table: keyof typeof schemas;
   trip: string;
   id?: string;
@@ -113,7 +116,7 @@ function Form({
   const online = useOnline();
   return (
     <form
-      action={saveEssential}
+      action={reviewed ? saveReviewedBooking : saveEssential}
       className="form"
       onSubmit={(e) => {
         const result = schemas[table].safeParse(
@@ -141,7 +144,13 @@ function Form({
           </p>
         )}
         {children}
-        <Submit>{id ? "Save changes" : "Add item"}</Submit>
+        <Submit>
+          {reviewed
+            ? "Approve and save booking"
+            : id
+              ? "Save changes"
+              : "Add item"}
+        </Submit>
       </fieldset>
     </form>
   );
@@ -201,16 +210,37 @@ export function BookingForm({
   trip,
   item,
   segments,
+  draft,
+  review,
 }: {
   trip: Trip;
   item?: Booking;
+  draft?: Partial<Booking>;
+  review?: { importKey: string; method: "text" | "ai" };
   segments: Segment[];
 }) {
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [arrival, setArrival] = useState<ResolvedLocation | null>(null);
   return (
-    <Form table="bookings" trip={trip.id} id={item?.id}>
-      <h2>{item ? "Edit booking" : "Save a reservation"}</h2>
+    <Form table="bookings" trip={trip.id} id={item?.id} reviewed={!!review}>
+      <h2>
+        {review
+          ? "Review the booking details"
+          : item
+            ? "Edit booking"
+            : "Save a reservation"}
+      </h2>
+      {review && (
+        <>
+          <input type="hidden" name="import_key" value={review.importKey} />
+          <input type="hidden" name="import_method" value={review.method} />
+          <p className="muted">
+            Unknown fields are blank. Select the relevant city if needed; local
+            time is set automatically. Check dates, amounts and references
+            against your confirmation.
+          </p>
+        </>
+      )}
       <LocationPicker
         label="Booking city / departure city · optional"
         initialId={item?.location_id}
@@ -252,7 +282,7 @@ export function BookingForm({
         values={
           item
             ? { ...item }
-            : {
+            : draft || {
                 start_date: trip.start_date,
                 end_date: trip.start_date,
                 timezone: trip.timezone,
@@ -316,8 +346,24 @@ export function BookingForm({
             options: ["unverified", "user confirmed"],
           },
           { name: "notes", label: "Notes", type: "textarea" },
-        ]}
+        ].filter((field) => !review || field.name !== "verification")}
       />
+      {review && (
+        <>
+          <input type="hidden" name="verification" value="user confirmed" />
+          <label>
+            <input
+              type="checkbox"
+              name="review_confirmed"
+              value="yes"
+              required
+            />
+            I reviewed these fields and approve sharing this booking with this
+            trip’s members. The original source document is not saved by this
+            import.
+          </label>
+        </>
+      )}
     </Form>
   );
 }

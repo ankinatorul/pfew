@@ -123,6 +123,14 @@ export async function EssentialsView({
                       <span className="pill">{b.verification}</span>
                     </div>
                     <h3>{b.title}</h3>
+                    {b.import_method && b.import_method !== "manual" && (
+                      <p className="muted">
+                        {b.import_method === "ai"
+                          ? "AI-extracted"
+                          : "Text-imported"}{" "}
+                        · reviewed before saving
+                      </p>
+                    )}
                     <p>
                       {b.start_date} {b.local_time} {b.timezone} → {b.end_date}{" "}
                       {b.end_local_time}{" "}
@@ -170,6 +178,15 @@ export async function EssentialsView({
             No reservations saved yet. Add one you already have.
           </div>
         )}
+        <p>
+          <Link
+            data-edit-action
+            className="button secondary"
+            href={"/trips/" + trip.id + "?view=import"}
+          >
+            Import a booking confirmation ↗
+          </Link>
+        </p>
         <BookingForm
           key={selected?.id || "new"}
           trip={trip}
@@ -197,8 +214,11 @@ export async function EssentialsView({
             max={tasks.length || 1}
           />
           <p className="muted">
-            Custom reminders only. Entry requirements are not researched or
-            verified here.
+            Custom reminders and tasks you approved from source notes. No entry
+            requirement is determined automatically.{" "}
+            <Link href={"/trips/" + trip.id + "?view=research"}>
+              Open official-source research ↗
+            </Link>
           </p>
         </section>
         {[...new Set(tasks.map((t) => t.category))].map((category) => (

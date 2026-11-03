@@ -14,3 +14,7 @@
 - Serialize estimated service-budget reservations and daily request limits in SQL. Estimates do not replace provider billing/quota controls; browser map loads need separate controls.
 - Offline downloads are optional, explicit, encrypted and read-only. Keep passphrases out of storage/server requests and avoid caching authenticated pages. No edit queue or offline Maps. Revocation cannot erase a prior download.
 - Public deployment defaults contain only browser-publishable configuration. Secrets and tokens remain outside version control. Health endpoints report release/configuration presence, never pretend to verify SQL/auth/provider readiness.
+
+- Keep booking source text/files temporary until review, and save only explicitly approved shared fields. No automatic raw-file upload, inbox integration or inferred confirmation/payment data. AI file processing requires separate consent and bounded document inspection; quoted model output alone is not verification.
+- Use explicit labeled-text extraction without a key rather than showing fabricated mock bookings. Unknown dates and currencies must be supplied during review. Idempotent import keys prevent repeat-save duplicates.
+- Official research uses a finite trusted source catalog and exact excerpt matching, with nationality/document/purpose/date context and retrieval/review times. Do not turn source retrieval into a visa decision. Free research still consumes the shared daily request allowance.

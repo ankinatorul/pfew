@@ -1,3 +1,5 @@
+import { ResearchView } from "../../../components/research-view";
+import { BookingImport } from "../../../components/booking-import";
 import { OfflineView } from "../../../components/offline-view";
 import { CollaborationView } from "../../../components/collaboration-view";
 import { tripRole } from "../../../lib/trip-role";
@@ -147,6 +149,7 @@ export default async function Hub({
           "map",
           "ideas",
           "check",
+          "research",
           "people",
           "offline",
           ...(role === "owner" ? ["settings"] : []),
@@ -242,6 +245,18 @@ export default async function Hub({
           canEdit={canEdit}
         />
       )}
+      {view === "research" && (
+        <ResearchView trip={trip} segments={segments} canEdit={canEdit} />
+      )}
+      {view === "import" && canEdit && (
+        <BookingImport
+          trip={trip}
+          segments={segments}
+          live={
+            process.env.AI_MODE === "live" && Boolean(process.env.AI_API_KEY)
+          }
+        />
+      )}
       {view === "offline" && <OfflineView tripId={id} />}
       {view === "people" && <CollaborationView trip={trip} role={role} />}
       {view === "settings" && role === "owner" && (
@@ -314,6 +329,16 @@ export default async function Hub({
           <p className="muted">
             Add a plan manually, or find a place in Map and save it to Ideas.
           </p>
+          {!selected && (
+            <div className="actions">
+              <Link className="button secondary" href={base + "?view=import"}>
+                Import a booking confirmation
+              </Link>
+              <Link className="button secondary" href={base + "?view=map"}>
+                Find and save a place
+              </Link>
+            </div>
+          )}
           <SegmentForm
             key={selected?.id || q.kind || "new"}
             trip={trip}

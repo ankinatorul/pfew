@@ -126,7 +126,10 @@ export const expenseSchema = z.object({
   payment_method: z.enum(["cash", "card", "other"]),
   notes: text(1000),
 });
-export type Booking = z.infer<typeof bookingSchema> & { id: string };
+export type Booking = z.infer<typeof bookingSchema> & {
+  id: string;
+  import_method?: "manual" | "text" | "ai";
+};
 export type Task = z.infer<typeof taskSchema> & { id: string; done: boolean };
 export type PackingList = z.infer<typeof packingListSchema> & { id: string };
 export type PackingItem = z.infer<typeof packingItemSchema> & {

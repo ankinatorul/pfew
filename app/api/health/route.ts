@@ -4,6 +4,7 @@ export async function GET() {
   return NextResponse.json(
     {
       release: "phase-4",
+      schemaVersionRequired: 9,
       commit: process.env.VERCEL_GIT_COMMIT_SHA || null,
       modules: [
         "bookings",
@@ -16,6 +17,8 @@ export async function GET() {
         "places",
         "collaboration",
         "encrypted-offline",
+        "booking-import",
+        "official-research",
       ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
