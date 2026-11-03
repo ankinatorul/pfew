@@ -22,6 +22,9 @@ export async function GET() {
         "quick-add",
         "day-planning",
         "schedule-check",
+        "packing-suggestions",
+        "prep-suggestions",
+        "budget-distribution",
       ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

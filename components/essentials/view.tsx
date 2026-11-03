@@ -1,3 +1,7 @@
+import { PackingSuggestions, PrepSuggestions } from "../readiness-suggestions";
+import { BudgetDistribution } from "../budget-distribution";
+import { BudgetBreakdown } from "../budget-breakdown";
+import { budgetContextKey } from "../../lib/budget-context";
 import Link from "next/link";
 import { access } from "../../lib/access";
 import type { Trip, Segment } from "../../lib/domain";
@@ -54,14 +58,32 @@ export async function EssentialsView({
   group?: string;
 }) {
   const { db } = await access();
+  const context = {
+    days:
+      Math.round(
+        (Date.parse(trip.end_date) - Date.parse(trip.start_date)) / 86400000,
+      ) + 1,
+    destinations: segments
+      .filter((item) => item.kind === "destination" && item.status !== "idea")
+      .map((item) => item.title),
+    transportModes: [
+      ...new Set(
+        segments
+          .filter((item) => item.kind === "transport" && item.status !== "idea")
+          .map((item) => item.transport_mode)
+          .filter(Boolean),
+      ),
+    ],
+    hasBookings: false,
+  };
   const base = "/trips/" + trip.id + "?view=" + view;
   const tables =
     view === "bookings"
       ? ["bookings"]
       : view === "prep"
-        ? ["prep_tasks"]
+        ? ["prep_tasks", "bookings"]
         : view === "packing"
-          ? ["packing_lists", "packing_items", "packing_templates"]
+          ? ["packing_lists", "packing_items", "packing_templates", "bookings"]
           : ["bookings", "budget_allocations", "expenses", "budget_settings"];
   const result = await Promise.all(
     tables.map((table) => {
@@ -81,6 +103,18 @@ export async function EssentialsView({
   const rows = Object.fromEntries(
     tables.map((t, i) => [t, result[i].data || []]),
   );
+  const readinessContext = {
+    ...context,
+    hasBookings: !!rows.bookings?.length,
+    transportModes: [
+      ...new Set([
+        ...context.transportModes,
+        ...(rows.bookings || [])
+          .filter((item) => item.category === "flight")
+          .map(() => "flight"),
+      ]),
+    ],
+  };
   if (view === "bookings") {
     const bookings = (rows.bookings as Booking[]).sort(
       (a, b) =>
@@ -264,6 +298,11 @@ export async function EssentialsView({
             A fresh checklist. Add what matters for your trip.
           </div>
         )}
+        <PrepSuggestions
+          tripId={trip.id}
+          existing={tasks}
+          context={readinessContext}
+        />
         <TaskForm trip={trip} item={tasks.find((t) => t.id === edit)} />
       </>
     );
@@ -312,6 +351,16 @@ export async function EssentialsView({
                   </article>
                 ))}
             </div>
+            <PackingSuggestions
+              tripId={trip.id}
+              listId={list.id}
+              existing={items.filter((item) => item.list_id === list.id)}
+              context={readinessContext}
+              live={
+                process.env.AI_MODE === "live" &&
+                Boolean(process.env.AI_API_KEY)
+              }
+            />
             <PackingItemForm
               trip={trip}
               list={list.id}
@@ -468,6 +517,13 @@ export async function EssentialsView({
           <Submit>Save inclusion rule</Submit>
         </form>
       </div>
+      <BudgetBreakdown currency={trip.currency} allocations={allocations} />
+      <BudgetDistribution
+        key={trip.currency}
+        trip={trip}
+        available={summary.unallocated}
+        contextKey={budgetContextKey(trip, include, allocations, bookings)}
+      />
       <h2>Day & destination allocations</h2>
       <div className="grid">
         {allocations.map((a) => (

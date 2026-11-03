@@ -22,3 +22,7 @@
 - Reuse schema 9 for Quick Add and daily planning. Keep unexpanded Maps links as user-provided links, require deliberate review before saving, and make provider lookup optional and budgeted.
 - Treat an itinerary move as a plan change; keep actual booking records independent and demote changed confirmed items. Protect concurrent day edits with the saved row version and open the target day on success.
 - Compare known schedule instants across IANA zones with Temporal. Reject ambiguous DST conversion, avoid invented durations/travel time, and describe overlaps or linked-date differences as observations for review.
+
+- Offer real checklist starters without paid services, with optional minimal-context AI packing. Require review before every addition; preserve existing packed/completed states and leave suggested deadlines unknown until chosen.
+- Use stable IDs and conflict-ignore bulk inserts for repeat-safe additions under existing RLS, rather than creating another schema migration.
+- Treat budget distribution as explicit arithmetic over the user's amount and preferences. Use integer cents, keep estimates unknown and append allocations while preserving existing prepaid/actual accounting. Context checks detect stale previews but are not a global budget lock.

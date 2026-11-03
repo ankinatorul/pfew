@@ -32,6 +32,9 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(release.modules).toContain("quick-add");
   expect(release.modules).toContain("day-planning");
   expect(release.modules).toContain("schedule-check");
+  expect(release.modules).toContain("packing-suggestions");
+  expect(release.modules).toContain("prep-suggestions");
+  expect(release.modules).toContain("budget-distribution");
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,
@@ -179,6 +182,7 @@ test("booking imports and official research reject signed-out requests", async (
     "/api/booking-import",
     "/api/research",
     "/api/quick-place",
+    "/api/packing-suggestions",
   ]) {
     const response = await page.request.post(route, { data: {} });
     expect(response.status()).toBe(401);
