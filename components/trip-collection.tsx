@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { Delete } from "./forms";
 import { organizeTrips, type TripCard } from "../lib/trip-collection";
 export function TripCollection({ trips }: { trips: TripCard[] }) {
   const [query, setQuery] = useState(""),
@@ -101,6 +102,7 @@ export function TripCollection({ trips }: { trips: TripCard[] }) {
                   Open trip ↗
                 </Link>
                 <Link href={"/?trip=" + trip.id}>Show on Home</Link>
+                {!trip.shared && <Delete id={trip.id} />}
               </div>
             </article>
           ))}

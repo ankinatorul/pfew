@@ -10,6 +10,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { searchLocations } from "../lib/locations";
 import { TripForm, SegmentForm, Delete } from "../components/forms";
+import { TripCollection } from "../components/trip-collection";
 import { saveTrip, saveSegment, deleteTrip } from "../app/actions";
 vi.mock("../app/actions", () => ({
   saveTrip: vi.fn(async () => {}),
@@ -132,4 +133,41 @@ it("requires confirmation before deletion", async () => {
   render(<Delete id="11111111-1111-4111-8111-111111111111" />);
   await user.click(screen.getByRole("button", { name: "Delete trip" }));
   expect(deleteTrip).not.toHaveBeenCalled();
+});
+
+it("offers saved-trip deletion only to owners and submits the selected trip after confirmation", async () => {
+  const user = userEvent.setup();
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  const owned = "11111111-1111-4111-8111-111111111111";
+  const base = {
+    start_date: "2027-05-01",
+    end_date: "2027-05-10",
+    timezone: "UTC",
+    travelers: 1,
+    style: "Comfort" as const,
+    lifecycle: "upcoming" as const,
+  };
+  render(
+    <TripCollection
+      trips={[
+        { ...base, id: owned, name: "My trip", shared: false },
+        {
+          ...base,
+          id: "22222222-2222-4222-8222-222222222222",
+          name: "Shared trip",
+          shared: true,
+        },
+      ]}
+    />,
+  );
+  expect(screen.getAllByRole("button", { name: "Delete trip" })).toHaveLength(
+    1,
+  );
+  const button = screen.getByRole("button", { name: "Delete trip" });
+  await user.click(button);
+  expect(deleteTrip).not.toHaveBeenCalled();
+  confirm.mockReturnValue(true);
+  await user.click(button);
+  await waitFor(() => expect(deleteTrip).toHaveBeenCalledOnce());
+  expect(vi.mocked(deleteTrip).mock.calls[0][0].get("id")).toBe(owned);
 });
