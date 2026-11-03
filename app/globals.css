@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./design-tokens.css";
 @import "./journey.css";
+@import "./onboarding.css";
 * {
   box-sizing: border-box;
 }

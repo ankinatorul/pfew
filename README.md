@@ -10,7 +10,7 @@ Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, then `npm 
 
 ## Database setup / upgrade
 
-For a new Supabase project, run numbered migrations 001–009 in order. **For the existing Phase 2 deployment, run only [`supabase/upgrade_phase2_to_phase4.sql`](supabase/upgrade_phase2_to_phase4.sql)** in Supabase SQL Editor. It combines 005–009 in the correct order and preserves existing data. Do not rerun 001 or drop tables to fix duplicate-column errors. Upgrade instructions: [`supabase/UPGRADE.md`](supabase/UPGRADE.md).
+For a new Supabase project, run numbered migrations 001–010 in order. **For the existing Phase 2 deployment, run only [`supabase/upgrade_phase2_to_phase4.sql`](supabase/upgrade_phase2_to_phase4.sql)** in Supabase SQL Editor. It combines 005–009 in the correct order and preserves existing data; then apply migration 010. **If 001–009 are already applied, run only [`010_trip_onboarding.sql`](supabase/migrations/010_trip_onboarding.sql).** Do not rerun 001 or drop tables to fix duplicate-column errors. Upgrade instructions: [`supabase/UPGRADE.md`](supabase/UPGRADE.md).
 
 The app uses the browser-publishable Supabase key and the signed-in user's cookies; RLS is the authorization boundary. No service-role key is used. SQL does not configure Google OAuth or external API credentials.
 
@@ -129,3 +129,7 @@ Selecting a pin highlights and focuses the corresponding card; selecting a liste
 ## Journey Overview visual review
 
 Open a trip → **Journey** (`?view=destinations`) for the first increment of the visual reset: colored destination chapters, readable dates/calendar nights, saved summaries, transport connections and contextual Trip Check/Ideas. Secondary edit/move/delete actions use a three-dot menu. Existing Supabase data and actions remain connected; no SQL or keys are needed. The daily list excludes destination periods as duplicate activities, but other screen redesigns are deferred pending approval. See [the visual system](DESIGN_SYSTEM.md) and [review steps](tests/JOURNEY_DESIGN_ACCEPTANCE.md). The supplied design brief did not include its referenced screenshots, so exact reference matching remains pending.
+
+## New-trip onboarding
+
+The supplied UI image now guides the five-step `/trips/new` flow: basics, multiple booking sources/manual destinations, explicit review, preferences and the real workspace handoff. Flight-only and empty trips are valid. Extraction review and reservation confirmation are separate, while incomplete imports remain owner-private drafts. **Existing projects need migration 010**; live AI additionally needs the existing server AI configuration. See [onboarding design/setup](ONBOARDING.md) and [acceptance checks](tests/ONBOARDING_ACCEPTANCE.md). Existing trip settings and unrelated modules retain their flows.

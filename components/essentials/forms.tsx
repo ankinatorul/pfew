@@ -1,4 +1,5 @@
 "use client";
+import { completeOnboardingDraft } from "../../app/onboarding-actions";
 import { saveReviewedBooking } from "../../app/booking-import-actions";
 import { LocationPicker } from "../location-picker";
 import { AutomaticTimezone } from "../automatic-timezone";
@@ -105,7 +106,9 @@ function Form({
   id,
   children,
   reviewed = false,
+  onboardingDraftId,
 }: {
+  onboardingDraftId?: string;
   reviewed?: boolean;
   table: keyof typeof schemas;
   trip: string;
@@ -116,7 +119,13 @@ function Form({
   const online = useOnline();
   return (
     <form
-      action={reviewed ? saveReviewedBooking : saveEssential}
+      action={
+        onboardingDraftId
+          ? completeOnboardingDraft
+          : reviewed
+            ? saveReviewedBooking
+            : saveEssential
+      }
       className="form"
       onSubmit={(e) => {
         const result = schemas[table].safeParse(
@@ -131,6 +140,13 @@ function Form({
       <input type="hidden" name="table" value={table} />
       <input type="hidden" name="trip_id" value={trip} />
       {id && <input type="hidden" name="id" value={id} />}
+      {onboardingDraftId && (
+        <input
+          type="hidden"
+          name="onboarding_draft_id"
+          value={onboardingDraftId}
+        />
+      )}
       {!online && (
         <p role="status">
           Connect to the internet to save changes. Offline editing is
@@ -144,6 +160,18 @@ function Form({
           </p>
         )}
         {children}
+        {onboardingDraftId && (
+          <label>
+            <input
+              type="checkbox"
+              name="onboarding_review"
+              value="yes"
+              required
+            />
+            I reviewed these fields and approve adding this booking to the
+            shared wallet. Verification stays as selected above.
+          </label>
+        )}
         <Submit>
           {reviewed
             ? "Approve and save booking"
@@ -212,7 +240,9 @@ export function BookingForm({
   segments,
   draft,
   review,
+  onboardingDraftId,
 }: {
+  onboardingDraftId?: string;
   trip: Trip;
   item?: Booking;
   draft?: Partial<Booking>;
@@ -222,7 +252,13 @@ export function BookingForm({
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [arrival, setArrival] = useState<ResolvedLocation | null>(null);
   return (
-    <Form table="bookings" trip={trip.id} id={item?.id} reviewed={!!review}>
+    <Form
+      table="bookings"
+      trip={trip.id}
+      id={item?.id}
+      reviewed={!!review}
+      onboardingDraftId={onboardingDraftId}
+    >
       <h2>
         {review
           ? "Review the booking details"
@@ -243,24 +279,33 @@ export function BookingForm({
       )}
       <LocationPicker
         label="Booking city / departure city · optional"
-        initialId={item?.location_id}
-        initialLabel={item?.location_label || ""}
+        initialId={item?.location_id || draft?.location_id}
+        initialLabel={item?.location_label || draft?.location_label || ""}
         onResolved={setLocation}
       />
       <AutomaticTimezone
-        value={location?.timezone || item?.timezone || trip.timezone}
+        value={
+          location?.timezone ||
+          item?.timezone ||
+          draft?.timezone ||
+          trip.timezone
+        }
       />
       <LocationPicker
         label="Arrival city · optional"
         name="end_location_id"
-        initialId={item?.end_location_id}
-        initialLabel={item?.end_location_label || ""}
+        initialId={item?.end_location_id || draft?.end_location_id}
+        initialLabel={
+          item?.end_location_label || draft?.end_location_label || ""
+        }
         onResolved={setArrival}
       />
       <input
         type="hidden"
         name="end_timezone"
-        value={arrival?.timezone || item?.end_timezone || ""}
+        value={
+          arrival?.timezone || item?.end_timezone || draft?.end_timezone || ""
+        }
       />
 
       <p className="muted">

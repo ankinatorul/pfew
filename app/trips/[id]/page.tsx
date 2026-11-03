@@ -1,3 +1,4 @@
+import { PrivateOnboardingDrafts } from "../../../components/onboarding/private-drafts";
 import { TripNavigation } from "../../../components/trip-navigation";
 import { QuickAdd } from "../../../components/quick-add";
 import { DayPlanControls } from "../../../components/day-plan-controls";
@@ -253,6 +254,9 @@ export default async function Hub({
             process.env.AI_MODE === "live" && Boolean(process.env.AI_API_KEY)
           }
         />
+      )}
+      {view === "setup-details" && role === "owner" && (
+        <PrivateOnboardingDrafts trip={trip} segments={segments} />
       )}
       {view === "offline" && <OfflineView tripId={id} />}
       {view === "destinations" && (

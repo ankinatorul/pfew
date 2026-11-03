@@ -17,6 +17,7 @@ it("keeps approved imports idempotent and enforces research roles, links and bud
       "migrations/004_private_booking_files.sql",
       "upgrade_phase2_to_phase4.sql",
       "migrations/009_research_and_booking_imports.sql",
+      "migrations/010_trip_onboarding.sql",
     ])
       await db.exec(readFileSync("supabase/" + file, "utf8"));
     const [owner, editor, viewer, stranger] = [1, 2, 3, 4].map(

@@ -6,6 +6,7 @@ export default defineConfig({
     "**/auth-shell.spec.ts",
     "**/navigation-layout.spec.tsx",
     "**/journey-layout.spec.tsx",
+    "**/onboarding-layout.spec.tsx",
   ],
   use: {
     baseURL: "http://127.0.0.1:3000",

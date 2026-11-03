@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current priority:** Journey Overview visual reset implemented for review. Stop here for the user’s visual approval before redesigning additional modules, as requested in the design-reset brief. The first pass follows the written direction; its referenced screenshots were not attached. See `DESIGN_SYSTEM.md`.
+**Current priority:** The user’s newer request authorizes new-trip onboarding, using the supplied five-step/flight-only UI image as reference. The onboarding implementation is ready for review and requires migration 010 plus separate live provider configuration; existing trip settings remain unchanged. See `ONBOARDING.md`.
 
 ## Completion status and finish line
 
