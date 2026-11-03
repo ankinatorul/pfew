@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current priority:** Apply the website UI correction to onboarding: preserve the existing website/design tokens and lavender sidebar, remove literal mockup framing, retain all five stages and partial-booking support, and connect the real workspace modules. No new migration beyond 010 is needed. See `ONBOARDING.md` and `DESIGN_SYSTEM.md`.
+**Current priority:** Apply the website UI correction to onboarding: preserve the existing website/design tokens, remove the onboarding side panel as requested, remove literal mockup framing, retain all five stages and partial-booking support, and connect the real workspace modules. No new migration beyond 010 is needed. See `ONBOARDING.md` and `DESIGN_SYSTEM.md`.
 
 ## Completion status and finish line
 

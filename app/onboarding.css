@@ -21,12 +21,6 @@ body:has(.pfew-onboarding) > main {
   align-items: center;
   justify-content: space-between;
 }
-.onboarding-logo {
-  font-size: 30px;
-  letter-spacing: -1.8px;
-  font-weight: 800;
-  line-height: 1.1;
-}
 .onboarding-close {
   display: flex;
   width: 44px;
@@ -573,15 +567,9 @@ body:has(.pfew-onboarding) > main {
 }
 
 /* Responsive web composition: one flow, with room to breathe at every width. */
-.pfew-onboarding {
-  gap: clamp(24px, 4vw, 64px);
-}
 .onboarding-panel {
   width: 100%;
   min-width: 0;
-}
-.onboarding-rail {
-  display: none;
 }
 .onboarding-upload-path,
 .onboarding-manual-path {
@@ -665,133 +653,6 @@ body:has(.pfew-onboarding) > main {
   body:has(.pfew-onboarding) > main {
     padding: 32px;
   }
-  .pfew-onboarding {
-    display: grid;
-    grid-template-columns: minmax(220px, 20%) minmax(0, 1fr);
-  }
-  .onboarding-rail {
-    display: flex;
-    flex-direction: column;
-    background: var(--pfew-lavender);
-    padding: 28px 24px;
-    border-radius: var(--pfew-radius-small);
-    position: sticky;
-    top: 24px;
-    min-width: 0;
-  }
-  .onboarding-rail .onboarding-logo {
-    align-self: start;
-    font-size: 34px;
-  }
-  .onboarding-rail-intro {
-    margin: 36px 0 24px;
-  }
-  .onboarding-rail-intro > span,
-  .onboarding-rail-summary > span {
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 1.2px;
-  }
-  .onboarding-rail-intro h2 {
-    font-size: 26px;
-    font-weight: 800;
-    line-height: 1.16;
-    letter-spacing: -1.4px;
-    margin: 12px 0;
-  }
-  .onboarding-rail-intro p {
-    font-size: 12px;
-    line-height: 1.8;
-    margin: 0;
-  }
-  .onboarding-rail nav {
-    display: block;
-  }
-  .onboarding-rail ol {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  .onboarding-rail li + li {
-    margin-top: 4px;
-  }
-  .onboarding-rail li button {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 44px;
-    padding: 8px 10px;
-    border: 0;
-    border-radius: 12px;
-    background: transparent;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 700;
-    color: #4b3d55;
-    cursor: pointer;
-  }
-  .onboarding-rail li button > span {
-    width: 27px;
-    height: 27px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    background: #ffffff60;
-    flex-shrink: 0;
-  }
-  .onboarding-rail li.current button {
-    background: #ffffff75;
-    color: var(--pfew-ink);
-  }
-  .onboarding-rail li.current button > span,
-  .onboarding-rail li.complete button > span {
-    color: white;
-    background: var(--pfew-ink);
-  }
-  .onboarding-rail li button:disabled {
-    cursor: default;
-  }
-  .onboarding-rail-summary {
-    background: #ffffff65;
-    border-radius: 20px;
-    padding: 16px;
-    margin-top: 24px;
-    overflow-wrap: anywhere;
-  }
-  .onboarding-rail-summary h3 {
-    margin: 10px 0 8px;
-    font-size: 19px;
-    font-weight: 800;
-    line-height: 1.35;
-    letter-spacing: -0.5px;
-  }
-  .onboarding-rail-summary p {
-    margin: 0 0 14px;
-    font-size: 12px;
-    line-height: 1.6;
-  }
-  .onboarding-rail-summary > div {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    font-size: 9px;
-    font-weight: 700;
-  }
-  .onboarding-rail-summary > div > span {
-    background: #ffffff80;
-    border-radius: 8px;
-    padding: 5px;
-  }
-  .onboarding-rail-summary small {
-    display: block;
-    margin-top: 14px;
-    font-size: 10px;
-    line-height: 1.7;
-    color: #514658;
-  }
   .onboarding-panel {
     position: relative;
     width: 100%;
@@ -802,9 +663,6 @@ body:has(.pfew-onboarding) > main {
     position: absolute;
     top: 0;
     right: 0;
-  }
-  .onboarding-top > .onboarding-logo {
-    display: none;
   }
   .onboarding-step {
     margin: 0 0 16px;

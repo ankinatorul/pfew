@@ -183,26 +183,12 @@ it("blocks saving offline or before the new schema is ready", async () => {
   await user.click(screen.getByRole("button", { name: "Continue" }));
   expect(fetcher).not.toHaveBeenCalled();
 });
-it("allows backward step navigation without bypassing validation or losing entered details", async () => {
+it("preserves entered details when returning with Back", async () => {
   const user = userEvent.setup();
   vi.spyOn(window, "scrollTo").mockImplementation(() => {});
   render(<TripOnboarding live={false} />);
-  expect(
-    (
-      screen.getByRole("button", {
-        name: /Your bookings/,
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
   await basics(user);
-  expect(
-    (
-      screen.getByRole("button", {
-        name: /Review details/,
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
-  await user.click(screen.getByRole("button", { name: "Trip basics" }));
+  await user.click(screen.getByRole("button", { name: "Back" }));
   expect((screen.getByLabelText("Trip name") as HTMLInputElement).value).toBe(
     "Summer in Japan",
   );

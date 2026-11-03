@@ -75,24 +75,17 @@ async function capture(page: Page, name: string, project: string) {
   );
   const viewport = page.viewportSize()!;
   const panel = await page.locator(".onboarding-panel").boundingBox();
-  if (viewport.width >= 1024) {
-    await expect(
-      page.getByRole("complementary", { name: "Trip setup overview" }),
-    ).toBeVisible();
-    expect(panel!.width).toBeGreaterThan(700);
-    if (name === "01-basics") {
-      const action = await page
-        .getByRole("button", { name: "Continue", exact: true })
-        .boundingBox();
-      expect(action!.y + action!.height).toBeLessThanOrEqual(viewport.height);
-    }
-    const rail = await page.locator(".onboarding-rail").boundingBox();
-    expect(panel!.x).toBeGreaterThanOrEqual(rail!.x + rail!.width - 1);
-  } else {
-    await expect(page.locator(".onboarding-rail")).toBeHidden();
-    expect(panel!.width).toBeGreaterThan(
-      viewport.width <= 480 ? viewport.width - 45 : 650,
-    );
+  await expect(
+    page.getByRole("complementary", { name: "Trip setup overview" }),
+  ).toHaveCount(0);
+  expect(panel!.width).toBeGreaterThan(
+    viewport.width <= 480 ? viewport.width - 45 : viewport.width - 80,
+  );
+  if (viewport.width >= 1024 && name === "01-basics") {
+    const action = await page
+      .getByRole("button", { name: "Continue", exact: true })
+      .boundingBox();
+    expect(action!.y + action!.height).toBeLessThanOrEqual(viewport.height);
   }
   await page.screenshot({
     path: `test-results/onboarding-${name}-${project}.png`,

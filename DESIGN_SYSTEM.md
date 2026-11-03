@@ -1,8 +1,8 @@
 # Pfew website design rules
 
-The existing Next.js website, shared tokens and working components are the source of truth. Preserve the lavender onboarding sidebar, five steps, branding, typography, colors, form controls, radii and navigation patterns. Figma boards illustrate UX concepts; they are not literal layouts to reproduce.
+The existing Next.js website, shared tokens and working components are the source of truth. Preserve the five onboarding steps, branding, typography, colors, form controls, radii and navigation patterns. Figma boards illustrate UX concepts; they are not literal layouts to reproduce.
 
-Use normal responsive Grid/Flexbox layouts: full content width with page padding on phones, compact mobile progress, comfortable touch targets, and the existing desktop sidebar with wider forms. Do not add outer mockup frames, device previews, fixed-size artboards or new feature shells. Keep global website navigation and account controls accessible. Reuse routed workspace sections and existing Supabase actions; confirmed, unverified and not-recorded details must remain distinct.
+Use normal responsive Grid/Flexbox layouts: full content width with page padding on phones, compact mobile progress, comfortable touch targets, and wider forms on desktop. Do not add outer mockup frames, device previews, fixed-size artboards or new feature shells. The user removed the onboarding side panel: retain the compact step label/progress bar above the form instead. Keep global website navigation and account controls accessible. Reuse routed workspace sections and existing Supabase actions; confirmed, unverified and not-recorded details must remain distinct.
 
 The following Journey notes describe its implementation history, not authorization to redesign other screens.
 
