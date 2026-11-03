@@ -37,6 +37,7 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(release.modules).toContain("budget-distribution");
   expect(release.modules).toContain("adaptive-home");
   expect(release.modules).toContain("responsive-trip-navigation");
+  expect(release.modules).toContain("setup-checks");
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,
@@ -65,6 +66,7 @@ test("configured app protects trips and offers Google sign-in only", async ({
   for (const route of [
     "/trips/new",
     "/profile",
+    "/profile/checks",
     "/trips/11111111-1111-4111-8111-111111111111",
   ]) {
     await page.goto(route);
@@ -74,6 +76,9 @@ test("configured app protects trips and offers Google sign-in only", async ({
     "/api/attachments/11111111-1111-4111-8111-111111111111",
   );
   expect(response.status()).toBe(401);
+  const checks = await page.request.get("/api/setup-checks?document=1");
+  expect(checks.status()).toBe(401);
+  expect(checks.headers()["cache-control"]).toBe("private, no-store");
 });
 
 test("city lookup supplies real time zones and private offline APIs require sign-in", async ({

@@ -29,3 +29,6 @@
 
 - Treat Home as a timestamped saved-plan dashboard. Rank known events using real saved instants, retain unknown times honestly, and derive destination context from saved periods without collecting live location.
 - Keep Home trip selection and collection filters as view state. Use a compact mobile section menu and full desktop links while preserving itinerary day context and existing ownership checks. No schema migration is needed.
+
+- Run launch read checks explicitly from the signed-in user's browser, without service-role credentials or paid provider calls. Distinguish schema/read success, configuration presence, unknown results and functional tests still pending; never collapse them into an overall launch-ready claim.
+- Offer an opt-in one-owned-document read sample without including object IDs, paths, contents or download links in reports. An anonymous denial requires a successful signed read before calling that sample passed. Keep cross-account authorization and administrator bucket policies as separate live acceptance tasks.

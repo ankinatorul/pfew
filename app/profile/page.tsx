@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import Link from "next/link";
 import { RemoveAttachment } from "../../components/essentials/attachment-form";
 import { access } from "../../lib/access";
 import { accountProfile } from "../../lib/account-profile";
@@ -28,7 +29,12 @@ export default async function Profile() {
           Trips stay private until you invite someone. Signing out of Pfew keeps
           your saved trips and leaves your Google account signed in.
         </p>
-        <SignOutForm />
+        <div className="actions">
+          <Link className="button secondary" href="/profile/checks">
+            Check app setup ↗
+          </Link>
+          <SignOutForm />
+        </div>
       </section>
       <section className="card">
         <h2>Your private documents</h2>

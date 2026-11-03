@@ -28,6 +28,7 @@ export async function GET() {
         "adaptive-home",
         "trip-filters",
         "responsive-trip-navigation",
+        "setup-checks",
       ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

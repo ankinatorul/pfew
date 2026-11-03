@@ -79,6 +79,12 @@ export async function authProviderDiagnostics() {
     url,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "",
   );
+  const google: "enabled" | "disabled" | "unknown" =
+    result.state === "ready"
+      ? result.google
+        ? "enabled"
+        : "disabled"
+      : "unknown";
   return {
     projectHost,
     callbackUrl: (() => {
@@ -89,12 +95,7 @@ export async function authProviderDiagnostics() {
         return null;
       }
     })(),
-    google:
-      result.state === "ready"
-        ? result.google
-          ? "enabled"
-          : "disabled"
-        : "unknown",
+    google,
     httpStatus: result.httpStatus,
     reason: result.reason,
     checkedAt: new Date().toISOString(),

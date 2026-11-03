@@ -873,3 +873,19 @@ blockquote {
   white-space: nowrap;
   border: 0;
 }
+.check-state-passed {
+  background: #e2f5d4;
+}
+.check-state-needs_setup {
+  background: #ffe1da;
+}
+.check-state-unknown,
+.check-state-not_tested {
+  background: #fff1d0;
+}
+.check-state-configured {
+  background: #dfebff;
+}
+.check-state-optional {
+  background: #eeeef1;
+}
