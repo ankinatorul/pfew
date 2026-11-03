@@ -1,4 +1,5 @@
 "use server";
+import { destinationOnDay } from "../lib/day-plan";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -252,7 +253,7 @@ export async function planIdea(form: FormData) {
     .single();
   const { data: idea } = await db
     .from("trip_segments")
-    .select("location_id,timezone")
+    .select("location_id,timezone,destination_id")
     .eq("id", input.id)
     .eq("trip_id", input.trip_id)
     .eq("status", "idea")
@@ -264,20 +265,23 @@ export async function planIdea(form: FormData) {
     input.day > trip.end_date
   )
     fail("Choose an idea and a day within this trip.");
-  const { data: dest } = await db
+  const { data: destinations, error: destinationError } = await db
     .from("trip_segments")
-    .select("timezone")
+    .select("*")
     .eq("trip_id", input.trip_id)
     .eq("kind", "destination")
-    .lte("start_date", input.day)
-    .gte("end_date", input.day)
-    .order("start_date", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .neq("status", "idea");
+  if (destinationError) fail("Could not load the destinations for this day.");
+  const dest = destinationOnDay(
+    (destinations || []) as Segment[],
+    input.day,
+    idea.destination_id,
+  );
   const { error } = await db
     .from("trip_segments")
     .update({
       status: "planned",
+      destination_id: dest?.id || null,
       start_date: input.day,
       end_date: input.day,
       local_time: input.local_time,

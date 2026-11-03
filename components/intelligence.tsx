@@ -1,3 +1,4 @@
+import { TravelNotes } from "./travel-notes";
 import Link from "next/link";
 import { access } from "../lib/access";
 import type { Trip, Segment } from "../lib/domain";
@@ -200,7 +201,7 @@ export async function Intelligence({
           <article className="card" key={idea.id}>
             <span className="pill">Saved idea</span>
             <h3>{idea.title}</h3>
-            <p className="notes">{idea.notes}</p>
+            <TravelNotes text={idea.notes} />
             {idea.google_place_id && (
               <a
                 href={

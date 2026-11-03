@@ -18,3 +18,7 @@
 - Keep booking source text/files temporary until review, and save only explicitly approved shared fields. No automatic raw-file upload, inbox integration or inferred confirmation/payment data. AI file processing requires separate consent and bounded document inspection; quoted model output alone is not verification.
 - Use explicit labeled-text extraction without a key rather than showing fabricated mock bookings. Unknown dates and currencies must be supplied during review. Idempotent import keys prevent repeat-save duplicates.
 - Official research uses a finite trusted source catalog and exact excerpt matching, with nationality/document/purpose/date context and retrieval/review times. Do not turn source retrieval into a visa decision. Free research still consumes the shared daily request allowance.
+
+- Reuse schema 9 for Quick Add and daily planning. Keep unexpanded Maps links as user-provided links, require deliberate review before saving, and make provider lookup optional and budgeted.
+- Treat an itinerary move as a plan change; keep actual booking records independent and demote changed confirmed items. Protect concurrent day edits with the saved row version and open the target day on success.
+- Compare known schedule instants across IANA zones with Temporal. Reject ambiguous DST conversion, avoid invented durations/travel time, and describe overlaps or linked-date differences as observations for review.

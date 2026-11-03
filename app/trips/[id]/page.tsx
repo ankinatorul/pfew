@@ -1,3 +1,7 @@
+import { QuickAdd } from "../../../components/quick-add";
+import { DayPlanControls } from "../../../components/day-plan-controls";
+import { DayOverview } from "../../../components/day-overview";
+import { TravelNotes } from "../../../components/travel-notes";
 import { ResearchView } from "../../../components/research-view";
 import { BookingImport } from "../../../components/booking-import";
 import { OfflineView } from "../../../components/offline-view";
@@ -130,7 +134,7 @@ export default async function Hub({
         <Link
           data-edit-action
           className="button primary"
-          href={base + "?view=add"}
+          href={base + "?view=add&day=" + day}
         >
           ＋ Smart Add
         </Link>
@@ -339,6 +343,17 @@ export default async function Hub({
               </Link>
             </div>
           )}
+          {!selected && (
+            <QuickAdd
+              trip={trip}
+              destinations={segments.filter(
+                (item) => item.kind === "destination",
+              )}
+              day={day}
+              livePlaces={Boolean(process.env.GOOGLE_PLACES_API_KEY)}
+            />
+          )}
+          {!selected && <h2>Or add the full details.</h2>}
           <SegmentForm
             key={selected?.id || q.kind || "new"}
             trip={trip}
@@ -379,7 +394,9 @@ export default async function Hub({
               className="button secondary"
               href={
                 base +
-                "?view=add&kind=" +
+                "?view=add&day=" +
+                day +
+                "&kind=" +
                 (modules.find((m) => m.key === view)?.kind || "activity")
               }
             >
@@ -393,7 +410,12 @@ export default async function Hub({
                     : "destination"}
             </Link>
           </div>
-          {view === "itinerary" && <DayBookings trip={trip.id} day={day} />}
+          {view === "itinerary" && (
+            <>
+              <DayOverview tripId={id} segments={segments} day={day} />
+              <DayBookings trip={trip.id} day={day} />
+            </>
+          )}
           <div className="timeline">
             {segments
               .filter((s) =>
@@ -429,7 +451,19 @@ export default async function Hub({
                         ` · arrival ${s.end_date} ${s.arrival_time} ${s.arrival_timezone || "(zone unspecified)"}`}
                     </p>
                   )}
-                  {s.notes && <p className="notes">{s.notes}</p>}
+                  {s.notes && <TravelNotes text={s.notes} />}
+                  {s.duration_minutes && (
+                    <p className="muted">
+                      Saved duration: {s.duration_minutes} minutes
+                    </p>
+                  )}
+                  {canEdit && (
+                    <DayPlanControls
+                      key={s.id + String(s.updated_at)}
+                      item={s}
+                      trip={trip}
+                    />
+                  )}
                   <div className="actions">
                     <Link
                       data-edit-action
@@ -461,9 +495,13 @@ export default async function Hub({
                   .filter((s) => s.status === "idea")
                   .map((s) => (
                     <p key={s.id}>
-                      <Link href={base + "?view=add&edit=" + s.id}>
-                        {s.title} · Edit to schedule ↗
-                      </Link>
+                      {canEdit ? (
+                        <Link href={base + "?view=ideas"}>
+                          {s.title} · Choose a day ↗
+                        </Link>
+                      ) : (
+                        <span>{s.title}</span>
+                      )}
                     </p>
                   ))}
               </section>

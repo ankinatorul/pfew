@@ -29,6 +29,9 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(release.modules).toContain("booking-import");
   expect(release.modules).toContain("official-research");
   expect(release.schemaVersionRequired).toBe(9);
+  expect(release.modules).toContain("quick-add");
+  expect(release.modules).toContain("day-planning");
+  expect(release.modules).toContain("schedule-check");
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,
@@ -172,7 +175,11 @@ test("encrypted copies unlock offline without caching authenticated pages", asyn
 test("booking imports and official research reject signed-out requests", async ({
   page,
 }) => {
-  for (const route of ["/api/booking-import", "/api/research"]) {
+  for (const route of [
+    "/api/booking-import",
+    "/api/research",
+    "/api/quick-place",
+  ]) {
     const response = await page.request.post(route, { data: {} });
     expect(response.status()).toBe(401);
     expect(response.headers()["cache-control"]).toContain("no-store");

@@ -19,6 +19,9 @@ export async function GET() {
         "encrypted-offline",
         "booking-import",
         "official-research",
+        "quick-add",
+        "day-planning",
+        "schedule-check",
       ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

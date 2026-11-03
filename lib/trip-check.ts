@@ -1,3 +1,4 @@
+import { savedSchedule, linkedDateDifferences } from "./schedule";
 import { createHash } from "node:crypto";
 import { days, type Trip, type Segment } from "./domain";
 import type { Booking, Task } from "./essentials";
@@ -31,6 +32,7 @@ export function checkTrip(
     observation: string,
     action_view: Finding["action_view"],
     priority: Finding["priority"] = "info",
+    uncertainty = "This describes information saved in Pfew. You may already have arrangements outside the app.",
   ) =>
     findings.push({
       fingerprint: createHash("sha256")
@@ -41,8 +43,7 @@ export function checkTrip(
       title,
       observation,
       action_view,
-      uncertainty:
-        "This describes information saved in Pfew. You may already have arrangements outside the app.",
+      uncertainty,
     });
   const stays = segments.filter(
     (s) => s.kind === "stay" && s.status !== "idea",
@@ -143,6 +144,50 @@ export function checkTrip(
           "attention",
         );
     }
+  const schedule = savedSchedule(segments, bookings);
+  for (const conflict of schedule.conflicts) {
+    const records = [conflict.first, conflict.second];
+    add(
+      "time_overlap",
+      records
+        .map((item) => [item.source, item.id, item.start, item.end])
+        .sort(),
+      "Saved times may overlap",
+      `${conflict.first.title} (${conflict.first.day} ${conflict.first.time} ${conflict.first.zone}) and ${conflict.second.title} (${conflict.second.day} ${conflict.second.time} ${conflict.second.zone}) overlap by ${conflict.minutes} minutes in your saved schedule.`,
+      "itinerary",
+      "attention",
+      "This may be intentional for different travelers. Only saved times and durations are compared; no travel time or provider availability has been verified.",
+    );
+  }
+  for (const item of schedule.uncertain) {
+    add(
+      "time_uncertain",
+      [item.source, item.id, item.evidence],
+      `${item.title}: check the saved time`,
+      item.reason,
+      item.source === "booking" ? "bookings" : "itinerary",
+      "info",
+      "Check the local times against your source. No overlap or reservation validity conclusion is possible from this record.",
+    );
+  }
+  for (const pair of linkedDateDifferences(segments, bookings)) {
+    add(
+      "linked_dates",
+      [
+        pair.segment.id,
+        pair.booking.id,
+        pair.segment.start_date,
+        pair.segment.end_date,
+        pair.booking.start_date,
+        pair.booking.end_date,
+      ],
+      "A plan and its linked booking have different dates",
+      `${pair.segment.title} is dated ${pair.segment.start_date} → ${pair.segment.end_date}; ${pair.booking.title} is dated ${pair.booking.start_date} → ${pair.booking.end_date}.`,
+      "bookings",
+      "attention",
+      "The records may cover different parts of the same arrangement. Review the source; moving a plan does not change a reservation.",
+    );
+  }
   const due = tasks.filter(
     (t) => !t.done && t.due_date && t.due_date <= trip.start_date,
   );

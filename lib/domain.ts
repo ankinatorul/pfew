@@ -140,6 +140,7 @@ export type Trip = {
   budget: number | null;
 };
 export type Segment = {
+  updated_at?: string;
   id: string;
   trip_id: string;
   kind: string;
