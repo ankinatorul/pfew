@@ -1,4 +1,3 @@
-import { PrivateOnboardingDrafts } from "../../../components/onboarding/private-drafts";
 import { TripNavigation } from "../../../components/trip-navigation";
 import { QuickAdd } from "../../../components/quick-add";
 import { DayPlanControls } from "../../../components/day-plan-controls";
@@ -23,9 +22,6 @@ import {
   Submit,
 } from "../../../components/forms";
 import { saveLayout } from "../../actions";
-import { JourneyOverview } from "../../../components/pfew/journey-overview";
-import { JourneyHeader } from "../../../components/pfew/journey-view";
-import { isDailyEntry } from "../../../lib/journey";
 export default async function Hub({
   params,
   searchParams,
@@ -116,14 +112,7 @@ export default async function Hub({
     (Date.parse(trip.start_date) - Date.parse(today)) / 86400000,
   );
   return (
-    <div
-      className={[
-        role === "viewer" ? "trip-viewer" : "",
-        view === "destinations" ? "pfew-journey-screen" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
+    <div className={role === "viewer" ? "trip-viewer" : undefined}>
       {role === "viewer" && (
         <p className="card" role="status">
           You have view-only access to this shared trip.
@@ -132,30 +121,26 @@ export default async function Hub({
       <Link href="/" className="muted">
         ← All your trips
       </Link>
-      {view === "destinations" ? (
-        <JourneyHeader trip={trip} canEdit={canEdit} LinkComponent={Link} />
-      ) : (
-        <div className="section-top">
-          <div>
-            <span className="eyebrow">
-              {lifecycle(trip.start_date, trip.end_date, trip.timezone)}
-              {countdown > 0 ? ` · ${countdown} days to go` : ""}
-            </span>
-            <h1>{trip.name}</h1>
-            <p className="muted">
-              {trip.start_date} — {trip.end_date} · {trip.travelers} travelers ·{" "}
-              {trip.style} · {trip.timezone}
-            </p>
-          </div>
-          <Link
-            data-edit-action
-            className="button primary"
-            href={base + "?view=add&day=" + day}
-          >
-            ＋ Smart Add
-          </Link>
+      <div className="section-top">
+        <div>
+          <span className="eyebrow">
+            {lifecycle(trip.start_date, trip.end_date, trip.timezone)}
+            {countdown > 0 ? ` · ${countdown} days to go` : ""}
+          </span>
+          <h1>{trip.name}</h1>
+          <p className="muted">
+            {trip.start_date} — {trip.end_date} · {trip.travelers} travelers ·{" "}
+            {trip.style} · {trip.timezone}
+          </p>
         </div>
-      )}
+        <Link
+          data-edit-action
+          className="button primary"
+          href={base + "?view=add&day=" + day}
+        >
+          ＋ Smart Add
+        </Link>
+      </div>
       <TripNavigation
         tripId={id}
         view={view}
@@ -255,13 +240,7 @@ export default async function Hub({
           }
         />
       )}
-      {view === "setup-details" && role === "owner" && (
-        <PrivateOnboardingDrafts trip={trip} segments={segments} />
-      )}
       {view === "offline" && <OfflineView tripId={id} />}
-      {view === "destinations" && (
-        <JourneyOverview trip={trip} segments={segments} canEdit={canEdit} />
-      )}
       {view === "people" && <CollaborationView trip={trip} role={role} />}
       {view === "settings" && role === "owner" && (
         <>
@@ -363,7 +342,7 @@ export default async function Hub({
           />
         </>
       )}
-      {["itinerary", "stays", "transport"].includes(view) && (
+      {["itinerary", "destinations", "stays", "transport"].includes(view) && (
         <>
           {view === "itinerary" && (
             <div className="tabs" aria-label="Trip days">
@@ -420,7 +399,9 @@ export default async function Hub({
             {segments
               .filter((s) =>
                 view === "itinerary"
-                  ? isDailyEntry(s, day)
+                  ? s.status !== "idea" &&
+                    s.start_date <= day &&
+                    s.end_date >= day
                   : s.kind === modules.find((m) => m.key === view)?.kind,
               )
               .map((s) => (
@@ -477,7 +458,7 @@ export default async function Hub({
           </div>
           {!segments.some((s) =>
             view === "itinerary"
-              ? isDailyEntry(s, day)
+              ? s.status !== "idea" && s.start_date <= day && s.end_date >= day
               : s.kind === modules.find((m) => m.key === view)?.kind,
           ) && (
             <div className="empty">

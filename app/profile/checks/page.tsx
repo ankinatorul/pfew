@@ -135,8 +135,8 @@ export default async function Checks() {
               database setup instructions
             </a>
             . Existing Phase 2 projects use the combined upgrade through
-            migration 009, followed by onboarding migration 010. Newly created
-            projects need the earlier foundation migrations first.
+            migration 009. Newly created projects need the earlier foundation
+            migrations first.
           </p>
           <p>
             Read probes can detect missing fields, but they do not inspect every

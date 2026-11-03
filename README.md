@@ -10,7 +10,7 @@ Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, then `npm 
 
 ## Database setup / upgrade
 
-For a new Supabase project, run numbered migrations 001–010 in order. **For the existing Phase 2 deployment, run only [`supabase/upgrade_phase2_to_phase4.sql`](supabase/upgrade_phase2_to_phase4.sql)** in Supabase SQL Editor. It combines 005–009 in the correct order and preserves existing data; then apply migration 010. **If 001–009 are already applied, run only [`010_trip_onboarding.sql`](supabase/migrations/010_trip_onboarding.sql).** Do not rerun 001 or drop tables to fix duplicate-column errors. Upgrade instructions: [`supabase/UPGRADE.md`](supabase/UPGRADE.md).
+For a new Supabase project, run numbered migrations 001–009 in order. **For the existing Phase 2 deployment, run only [`supabase/upgrade_phase2_to_phase4.sql`](supabase/upgrade_phase2_to_phase4.sql)** in Supabase SQL Editor. It combines 005–009 in the correct order and preserves existing data. Do not rerun 001 or drop tables to fix duplicate-column errors. Upgrade instructions: [`supabase/UPGRADE.md`](supabase/UPGRADE.md).
 
 The app uses the browser-publishable Supabase key and the signed-in user's cookies; RLS is the authorization boundary. No service-role key is used. SQL does not configure Google OAuth or external API credentials.
 
@@ -117,21 +117,3 @@ The checker requests zero rows from 23 expected table/column combinations and re
 The document checkbox is optional and off by default. It selects at most one ready upload owned by the current user, requests a short-lived signed URL, then tests the same object's unsigned public URL without cookies, keys or authorization. Requests ask for one byte and cancel the response body; contents are not returned or saved. An unsigned denial passes this single-file sample only after a successful signed read confirms the object exists. Missing/unreadable files remain unknown; an unsigned success needs setup. This does not inspect administrator bucket configuration or other users' storage policies.
 
 Finish with real save/reload, two-account invitation/role/document and offline-unlock checks in [the launch acceptance guide](tests/SETUP_CHECK_ACCEPTANCE.md). This workspace cannot directly verify the live deployment under its current network policy, or borrow your private Google session. Running the check from your browser provides an account-scoped report that can be copied back for diagnosis. The public `/api/health` endpoint retains its narrower release/configuration-only scope.
-
-## Combined trip Map and location list
-
-A trip's **Map** now brings destinations, stays, activities/notes, unscheduled ideas, booking locations and saved places into one list. Transportation departure/arrival points use their own saved dates. Type/day filters apply to both that list and map markers; the day filter has an explicit option to include undated ideas/places. A saved-place category filter only narrows saved places, leaving other trip records intact. Fresh search results stay separate from these filters and are never silently saved.
-
-City points are **approximate centers**, not hotel entrances, terminals or verified activity locations. Items without usable coordinates remain in the list without a guessed pin. A stored Google place ID can open its external Maps link without an API key; Editors/Owners can deliberately request fresh venue details when Places is configured. Provider coordinates/details remain transient, with attribution and retrieval time. Opening the page or changing filters makes no Places/AI request. Interactive map loading still requires the optional browser Maps key and its provider billing controls.
-
-Selecting a pin highlights and focuses the corresponding card; selecting a listed point highlights it on the map. Booking/day/Ideas links preserve the record's context. The map's booking query is trip-scoped under RLS and only selects shared location/display fields—no references, traveler names, notes, prices or attachment metadata. No SQL changes are required. See [Map acceptance](tests/MAP_ACCEPTANCE.md) and [the remaining two finishing milestones](ROADMAP.md#completion-status-and-finish-line).
-
-## Journey Overview visual review
-
-Open a trip → **Journey** (`?view=destinations`) for the first increment of the visual reset: colored destination chapters, readable dates/calendar nights, saved summaries, transport connections and contextual Trip Check/Ideas. Secondary edit/move/delete actions use a three-dot menu. Existing Supabase data and actions remain connected; no SQL or keys are needed. The daily list excludes destination periods as duplicate activities, but other screen redesigns are deferred pending approval. See [the visual system](DESIGN_SYSTEM.md) and [review steps](tests/JOURNEY_DESIGN_ACCEPTANCE.md). The supplied design brief did not include its referenced screenshots, so exact reference matching remains pending.
-
-## New-trip onboarding
-
-Existing website styles and shared design tokens guide the five-step `/trips/new` flow: basics, multiple booking sources/manual destinations, explicit review, preferences and the real workspace handoff. Flight-only and empty trips are valid. Extraction review and reservation confirmation are separate, while incomplete imports remain owner-private drafts. **Existing projects need migration 010**; live AI additionally needs the existing server AI configuration. See [onboarding design/setup](ONBOARDING.md) and [acceptance checks](tests/ONBOARDING_ACCEPTANCE.md). Existing trip settings and unrelated modules retain their flows.
-
-Onboarding adapts across phone, tablet and desktop widths. Desktop uses a wide form with parallel upload/manual options; the onboarding side panel has been removed, and phones use the full content width and a compact step indicator. The shared website header/account navigation stays available, with no outer artboard or fixed-height mockup. Preferred travel pace is saved with the existing private setup preferences. The responsive refinement requires no SQL beyond the already applied migration 010.

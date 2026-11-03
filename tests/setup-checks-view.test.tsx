@@ -18,7 +18,7 @@ afterEach(() => {
 const report: SetupReport = {
   checkedAt: "2026-11-03T12:00:00.000Z",
   release: "phase-4",
-  schemaVersionRequired: 10,
+  schemaVersionRequired: 9,
   commit: null,
   projectHost: "project.example.test",
   siteOrigin: "https://pfew.vercel.app",

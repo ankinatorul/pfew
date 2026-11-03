@@ -1,7 +1,11 @@
 @import "tailwindcss";
-@import "./design-tokens.css";
-@import "./journey.css";
-@import "./onboarding.css";
+:root {
+  --ink: #202023;
+  --paper: #f6f6f8;
+  --lime: #e0f57b;
+  --purple: #d9b4ef;
+  --blue: #435bc9;
+}
 * {
   box-sizing: border-box;
 }
@@ -9,7 +13,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--pfew-font);
+  font-family: Manrope, Arial, sans-serif;
   font-size: 16px;
 }
 a {
@@ -884,18 +888,4 @@ blockquote {
 }
 .check-state-optional {
   background: #eeeef1;
-}
-.map-location {
-  scroll-margin: 90px 0;
-  overflow-wrap: anywhere;
-}
-.map-location:focus {
-  outline: 3px solid var(--blue);
-  outline-offset: 3px;
-}
-#trip-map-display {
-  scroll-margin-top: 90px;
-}
-.map-filters {
-  margin: 24px 0;
 }

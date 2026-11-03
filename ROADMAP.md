@@ -1,16 +1,5 @@
 # Roadmap
 
-**Current priority:** Apply the website UI correction to onboarding: preserve the existing website/design tokens, remove the onboarding side panel as requested, remove literal mockup framing, retain all five stages and partial-booking support, and connect the real workspace modules. No new migration beyond 010 is needed. See `ONBOARDING.md` and `DESIGN_SYSTEM.md`.
-
-## Completion status and finish line
-
-The original brief contains **four phases**. Their core modules have code in place, but that is not a claim that every requirement and live acceptance case is complete. Treat the remaining work as **two finishing milestones**, rather than continually adding numbered phases. Each milestone may take several updates; testing can reveal further fixes.
-
-1. **Feature completion and usability.** Close concrete gaps against `PRODUCT_SPEC.md`, then review the core journeys on mobile/desktop. The current release completes the combined Map/list with booking locations, journey arrivals, day/type filters and explicit missing-location states. Remaining work includes source-backed budget cost intelligence (currently unimplemented; distribution uses the user's own numbers), and a final review of itinerary ordering, editing, empty/error states and accessibility. Manual estimate fields and generic AI ideas do not count as verified destination-price research.
-2. **Live integrations and release acceptance.** Configure the optional live AI/Maps/Places services wanted for the full experience; verify real requests, billing/referrer restrictions and unavailable states. Test real Google save/reload/sign-out flows, a second account's invitation/role changes, uploader-private documents and offline unlock. Fix discovered failures and verify the final deployed commit. The user's setup report confirms build `8db0be8`, the correct origins, Google sign-in, all 23 field-read probes and request-limit reporting; it does not establish writes or cross-account privacy. The report shows optional AI/Places/Maps are not configured.
-
-“Completely built” means the agreed functionality is implemented, live checks pass, and remaining limitations are documented. It does not mean configuration presence or local test counts alone. See `tests/MAP_ACCEPTANCE.md` for this release and the existing launch guides for live verification.
-
 ## Phases 1–2 — implemented
 
 Google-only authentication and account controls, real trip/segment persistence, guided multi-destination setup, flexible itinerary, independent stays/journeys, customized hub, booking wallet/private attachments, Prep, Packing/templates, budget projections and separate manual expenses. User reports production Google sign-in working. Full signed-in production acceptance remains unverified from this environment.
@@ -48,7 +37,3 @@ Home snapshots now cover before/during/past trip contexts, scoped checklist prog
 ## Launch verification — read checker implemented, live acceptance pending
 
 Authenticated `/profile/checks` now provides deliberate zero-row field probes, read-only request-limit reporting, current-session/provider diagnostics, optional integration-presence states and a sanitized copyable report. An opt-in single-owned-file signed/public read checks one sample without returning document contents or links. Saving, cross-account authorization and administrator Storage configuration remain explicitly untested. The page guides optional Maps/Places/AI configuration and real launch checks. Uses schema 9 with no new SQL. Independent signed-in production and provider acceptance still require the real deployed app/session; local checks do not establish deployment success.
-
-## Combined trip map release — implemented, live acceptance pending
-
-Map now combines saved itinerary locations, private-to-trip wallet location fields, saved places and explicitly separate fresh search results. Departures/arrivals use their respective saved dates; accommodation uses its saved date range. Type/day/category filters share the same derived data for list and markers. Undated ideas/places can be included explicitly. Selection synchronizes map/list focus, source links return to the relevant day/booking/Ideas, unknown locations remain visible without guessed points, and city centers are labeled approximate. Google-ID itinerary items can request fresh venue details deliberately through the existing budgeted endpoint; those results remain in memory only. Viewer controls, no-key list mode and offline restrictions remain intact. Uses existing schema 9; no new SQL or keys are required for the list/filter improvements.

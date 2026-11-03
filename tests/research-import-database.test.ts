@@ -2,8 +2,6 @@ import { it, expect } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { schemaProbes } from "../lib/setup-checks";
-import { mapBookingColumns } from "../lib/trip-map";
-import { journeyBookingColumns } from "../lib/journey";
 it("keeps approved imports idempotent and enforces research roles, links and budgets", async () => {
   const db = new PGlite();
   try {
@@ -17,7 +15,6 @@ it("keeps approved imports idempotent and enforces research roles, links and bud
       "migrations/004_private_booking_files.sql",
       "upgrade_phase2_to_phase4.sql",
       "migrations/009_research_and_booking_imports.sql",
-      "migrations/010_trip_onboarding.sql",
     ])
       await db.exec(readFileSync("supabase/" + file, "utf8"));
     const [owner, editor, viewer, stranger] = [1, 2, 3, 4].map(
@@ -33,20 +30,6 @@ it("keeps approved imports idempotent and enforces research roles, links and bud
         `reset role;set role authenticated;set request.jwt.claim.sub='${id}'`,
       );
     await act(owner);
-    expect(
-      (
-        await db.query(
-          `select ${journeyBookingColumns} from public.bookings limit 0`,
-        )
-      ).rows,
-    ).toEqual([]);
-    expect(
-      (
-        await db.query(
-          `select ${mapBookingColumns} from public.bookings limit 0`,
-        )
-      ).rows,
-    ).toEqual([]);
     // The production read checker must accept exactly the schema we ship,
     // using ordinary authenticated grants rather than an administrator role.
     for (const probe of schemaProbes)

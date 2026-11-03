@@ -28,7 +28,7 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(release.release).toBe("phase-4");
   expect(release.modules).toContain("booking-import");
   expect(release.modules).toContain("official-research");
-  expect(release.schemaVersionRequired).toBe(10);
+  expect(release.schemaVersionRequired).toBe(9);
   expect(release.modules).toContain("quick-add");
   expect(release.modules).toContain("day-planning");
   expect(release.modules).toContain("schedule-check");
@@ -38,8 +38,6 @@ test("configured app protects trips and offers Google sign-in only", async ({
   expect(release.modules).toContain("adaptive-home");
   expect(release.modules).toContain("responsive-trip-navigation");
   expect(release.modules).toContain("setup-checks");
-  expect(release.modules).toContain("trip-map-locations");
-  expect(release.modules).toContain("journey-overview-design");
   expect(release.configuration).toEqual({
     supabaseUrlPresent: true,
     publishableKeyPresent: true,
@@ -192,8 +190,6 @@ test("booking imports and official research reject signed-out requests", async (
     "/api/research",
     "/api/quick-place",
     "/api/packing-suggestions",
-    "/api/onboarding/create",
-    "/api/onboarding/extract",
   ]) {
     const response = await page.request.post(route, { data: {} });
     expect(response.status()).toBe(401);

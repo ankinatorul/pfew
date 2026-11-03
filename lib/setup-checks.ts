@@ -2,11 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { SetupCheck, SetupReport } from "./setup-check-types";
 export const schemaProbes = [
-  {
-    table: "trip_onboarding",
-    columns: "trip_id,owner_id,request_id,preferences",
-    title: "Private onboarding and review drafts",
-  },
   { table: "profiles", columns: "id,display_name", title: "Account profile" },
   {
     table: "trips",
@@ -525,7 +520,7 @@ export async function runSetupChecks(options: {
   return {
     checkedAt,
     release: "phase-4",
-    schemaVersionRequired: 10,
+    schemaVersionRequired: 9,
     commit:
       configuration.commit && /^[a-f0-9]{7,40}$/.test(configuration.commit)
         ? configuration.commit

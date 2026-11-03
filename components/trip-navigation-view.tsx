@@ -21,12 +21,7 @@ export function TripNavigationView({
 }) {
   const other = [
     ...secondaryTripSections,
-    ...(owner
-      ? [
-          { key: "setup-details", label: "Private setup drafts" },
-          { key: "settings", label: "Settings" },
-        ]
-      : []),
+    ...(owner ? [{ key: "settings", label: "Settings" }] : []),
   ];
   return (
     <nav aria-label="Trip sections" className="trip-navigation">

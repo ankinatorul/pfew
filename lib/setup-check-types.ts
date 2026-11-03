@@ -18,7 +18,7 @@ export type SetupCheck = z.infer<typeof setupCheckSchema>;
 export const setupReportSchema = z.object({
   checkedAt: z.iso.datetime(),
   release: z.literal("phase-4"),
-  schemaVersionRequired: z.literal(10),
+  schemaVersionRequired: z.literal(9),
   commit: z.string().nullable(),
   siteOrigin: z.string().nullable(),
   projectHost: z.string().nullable(),
