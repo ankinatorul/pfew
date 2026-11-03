@@ -889,3 +889,17 @@ blockquote {
 .check-state-optional {
   background: #eeeef1;
 }
+.map-location {
+  scroll-margin: 90px 0;
+  overflow-wrap: anywhere;
+}
+.map-location:focus {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+#trip-map-display {
+  scroll-margin-top: 90px;
+}
+.map-filters {
+  margin: 24px 0;
+}

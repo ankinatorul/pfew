@@ -32,3 +32,6 @@
 
 - Run launch read checks explicitly from the signed-in user's browser, without service-role credentials or paid provider calls. Distinguish schema/read success, configuration presence, unknown results and functional tests still pending; never collapse them into an overall launch-ready claim.
 - Offer an opt-in one-owned-document read sample without including object IDs, paths, contents or download links in reports. An anonymous denial requires a successful signed read before calling that sample passed. Keep cross-account authorization and administrator bucket policies as separate live acceptance tasks.
+
+- Keep the original four-phase plan and describe remaining delivery as two finishing milestones: feature completion/usability, then live integration/acceptance. Core implementation and passing read probes do not establish the full brief is complete; source-backed cost intelligence remains an explicit feature gap.
+- Derive Map cards and markers from the same filtered collection. Keep booking and itinerary records separate, departures/arrivals on their own local dates, ideas undated, city centers approximate, and unknown locations visible without guessed pins. Fresh provider details remain explicit and transient; no new schema or privileged client is needed.

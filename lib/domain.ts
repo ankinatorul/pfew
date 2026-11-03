@@ -169,6 +169,8 @@ export type Segment = {
   longitude?: number | null;
   arrival_location_id?: string | null;
   arrival_location_label?: string | null;
+  arrival_latitude?: number | null;
+  arrival_longitude?: number | null;
 };
 
 export const destinationSchema = z

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import type { Trip, Segment } from "../lib/domain";
 import { placeSchema, type PlaceResult } from "../lib/discovery-types";
@@ -12,17 +12,17 @@ import {
 } from "../app/intelligence-actions";
 import { Submit } from "./forms";
 import { Button } from "./button";
-export type SavedPlace = {
-  id: string;
-  title: string;
-  notes: string;
-  category: string;
-  source: "city" | "google";
-  location_id: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  google_place_id: string | null;
-};
+import { days } from "../lib/domain";
+import { useOnline } from "./essentials/online";
+import {
+  tripMapEntries,
+  filterMapEntries,
+  mapKinds,
+  mapKindLabels,
+  type MapBooking,
+  type SavedPlace,
+} from "../lib/trip-map";
+export type { SavedPlace } from "../lib/trip-map";
 function RemovePlace({ trip, id }: { trip: string; id: string }) {
   return (
     <form
@@ -61,72 +61,83 @@ export function Discovery({
   trip,
   segments,
   places,
+  bookings = [],
+  livePlaces = false,
   canEdit = true,
   searchQuery,
 }: {
   trip: Trip;
   segments: Segment[];
   places: SavedPlace[];
+  bookings?: MapBooking[];
+  livePlaces?: boolean;
   canEdit?: boolean;
   searchQuery?: string;
 }) {
   const [filter, setFilter] = useState("all");
+  const [kind, setKind] = useState("all");
+  const [day, setDay] = useState("");
+  const [includeUndated, setIncludeUndated] = useState(true);
+  const online = useOnline();
   const [selected, setSelected] = useState("");
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [details, setDetails] = useState<Record<string, PlaceResult>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const shown = places.filter((p) => filter === "all" || p.category === filter);
+  const entries = useMemo(
+    () => tripMapEntries(trip.id, segments, bookings, places, details),
+    [trip.id, segments, bookings, places, details],
+  );
+  const shown = useMemo(
+    () =>
+      filterMapEntries(entries, {
+        kind,
+        day,
+        includeUndated,
+        category: filter,
+      }),
+    [entries, kind, day, includeUndated, filter],
+  );
   const pins = useMemo<MapPin[]>(
     () => [
-      ...segments
-        .filter(
-          (s) =>
-            s.location_id &&
-            s.latitude !== null &&
-            s.latitude !== undefined &&
-            s.longitude !== null &&
-            s.longitude !== undefined,
-        )
-        .map((s) => ({
-          id: s.id,
-          label: s.title + " (city center)",
-          latitude: s.latitude!,
-          longitude: s.longitude!,
-        })),
-      ...places
-        .filter((p) => filter === "all" || p.category === filter)
-        .flatMap((p) =>
-          p.source === "city" && p.latitude !== null && p.longitude !== null
-            ? [
-                {
-                  id: p.id,
-                  label: p.title + " (city center)",
-                  latitude: p.latitude,
-                  longitude: p.longitude,
-                },
-              ]
-            : p.google_place_id && details[p.google_place_id]
-              ? [
-                  {
-                    id: p.id,
-                    label: details[p.google_place_id].name,
-                    latitude: details[p.google_place_id].latitude,
-                    longitude: details[p.google_place_id].longitude,
-                  },
-                ]
-              : [],
-        ),
+      ...shown.flatMap((entry) =>
+        entry.point
+          ? [
+              {
+                id: entry.id,
+                label:
+                  entry.title +
+                  (entry.role === "location" ? "" : " · " + entry.role) +
+                  (entry.precision === "city" ? " (city center)" : ""),
+                ...entry.point,
+              },
+            ]
+          : [],
+      ),
       ...results.map((p) => ({
-        id: p.id,
+        id: "result:" + p.id,
         label: p.name + " (search result)",
         latitude: p.latitude,
         longitude: p.longitude,
       })),
     ],
-    [segments, places, filter, details, results],
+    [shown, results],
   );
+  const activeSelection = pins.some((p) => p.id === selected) ? selected : "";
+  const selectFromMap = useCallback((id: string) => {
+    setSelected(id);
+    const card = document.getElementById("map-item-" + id);
+    card?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    card?.focus({ preventScroll: true });
+  }, []);
+  function selectFromList(id: string) {
+    setSelected(id);
+    document
+      .getElementById("trip-map-display")
+      ?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }
   async function search(form: FormData) {
+    if (!online || !livePlaces || loading) return;
     setLoading(true);
     setError("");
     try {
@@ -145,10 +156,11 @@ export function Discovery({
     }
   }
   async function loadDetails(id: string) {
+    if (!online || !livePlaces || loading || !canEdit) return;
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/place-details", {
+      const response = await fetch("/api/quick-place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ trip_id: trip.id, place_id: id }),
@@ -156,10 +168,10 @@ export function Discovery({
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.error || "Place details unavailable");
-      setDetails((current) => ({
-        ...current,
-        [id]: placeSchema.parse(data.result),
-      }));
+      const detail = placeSchema.parse(data.result);
+      if (detail.id !== id)
+        throw new Error("This response did not match the requested place.");
+      setDetails((current) => ({ ...current, [id]: detail }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Place details unavailable");
     } finally {
@@ -174,77 +186,136 @@ export function Discovery({
         City points mark approximate city centers. Venue points appear only from
         fresh Google place data. No offline maps are provided.
       </p>
-      <GoogleMap pins={pins} selected={selected} onSelect={setSelected} />
-      <div className="grid">
-        {segments
-          .filter(
-            (s) => s.location_id && s.latitude != null && s.longitude != null,
-          )
-          .map((s) => (
-            <article
-              key={s.id}
-              className={"card " + (selected === s.id ? "lime" : "")}
+      <div className="card map-filters" aria-label="Filter trip locations">
+        <div className="two">
+          <label>
+            Location type
+            <select
+              value={kind}
+              onChange={(event) => setKind(event.target.value)}
             >
-              <span className="pill">{s.kind} · city center</span>
-              <h3>{s.title}</h3>
-              <p>
-                {s.start_date} → {s.end_date}
-              </p>
-              <Button variant="secondary" onClick={() => setSelected(s.id)}>
-                Highlight this point
-              </Button>
-              <a
-                href={
-                  "https://www.google.com/maps/search/?api=1&query=" +
-                  s.latitude +
-                  "," +
-                  s.longitude
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open Google Maps ↗
-              </a>
-            </article>
-          ))}
+              <option value="all">All types</option>
+              {mapKinds.map((value) => (
+                <option key={value} value={value}>
+                  {mapKindLabels[value]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Trip day
+            <select
+              value={day}
+              onChange={(event) => setDay(event.target.value)}
+            >
+              <option value="">All trip days</option>
+              {days(trip.start_date, trip.end_date).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {day && (
+          <label>
+            <input
+              type="checkbox"
+              checked={includeUndated}
+              onChange={(event) => setIncludeUndated(event.target.checked)}
+            />
+            Include undated saved places and ideas
+          </label>
+        )}
+        <label>
+          Saved-place category
+          <select
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          >
+            {["all", "food", "activity", "stay", "transport", "other"].map(
+              (value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
+        <p className="muted">
+          Filters apply to your saved trip locations and their map points. Fresh
+          search results stay separate below.
+        </p>
       </div>
-      <label>
-        Filter saved places
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          {["all", "food", "activity", "stay", "transport", "other"].map(
-            (v) => (
-              <option key={v}>{v}</option>
-            ),
-          )}
-        </select>
-      </label>
-      <div className="grid">
-        {shown.map((p) => {
-          const detail = p.google_place_id ? details[p.google_place_id] : null;
-          const link = p.google_place_id
-            ? "https://www.google.com/maps/search/?api=1&query=" +
-              encodeURIComponent(p.title) +
-              "&query_place_id=" +
-              encodeURIComponent(p.google_place_id)
-            : "https://www.google.com/maps/search/?api=1&query=" +
-              p.latitude +
-              "," +
-              p.longitude;
+      <div id="trip-map-display">
+        <GoogleMap
+          pins={pins}
+          selected={activeSelection}
+          onSelect={selectFromMap}
+        />
+      </div>
+      <p role="status">
+        {shown.length} trip locations ·{" "}
+        {shown.filter((entry) => entry.point).length} map points.{" "}
+        {results.length > 0 && `${results.length} separate search results.`}
+      </p>
+      {error && (
+        <p role="status" className="error">
+          {error}
+        </p>
+      )}
+      <div className="grid" aria-label="Trip location list">
+        {shown.map((entry) => {
+          const saved =
+            entry.source === "saved"
+              ? places.find((p) => p.id === entry.recordId)
+              : null;
+          const detail = entry.placeId ? details[entry.placeId] : null;
+          const number = pins.findIndex((p) => p.id === entry.id) + 1;
           return (
             <article
-              className={"card " + (selected === p.id ? "lime" : "")}
-              key={p.id}
+              key={entry.id}
+              id={"map-item-" + entry.id}
+              tabIndex={-1}
+              className={
+                "card map-location " +
+                (activeSelection === entry.id ? "lime" : "")
+              }
             >
               <span className="pill">
-                {p.source === "city"
-                  ? "Saved city · approximate center"
-                  : "Saved Google place"}
+                {mapKindLabels[entry.kind]} ·{" "}
+                {entry.role === "location"
+                  ? entry.source === "booking"
+                    ? "Wallet"
+                    : entry.source === "saved"
+                      ? "Saved"
+                      : "Itinerary"
+                  : entry.role}
               </span>
-              <h3>{p.title}</h3>
-              <Button variant="secondary" onClick={() => setSelected(p.id)}>
-                Highlight this place
-              </Button>
-              <p className="notes">{p.notes}</p>
+              <h3>{entry.title}</h3>
+              <p>{entry.state}</p>
+              <p className="muted">
+                {entry.start
+                  ? entry.start +
+                    (entry.end !== entry.start ? " → " + entry.end : "")
+                  : "Unscheduled · no assigned day"}
+              </p>
+              <p>{entry.locationLabel}</p>
+              <p className="muted">
+                {entry.precision === "city"
+                  ? `Map point ${number} · approximate city center, not a venue or terminal.`
+                  : entry.precision === "place"
+                    ? `Map point ${number} · current Google place location.`
+                    : "No map point. A venue location has not been loaded or a city has not been entered."}
+              </p>
+              {entry.point && (
+                <Button
+                  variant="secondary"
+                  onClick={() => selectFromList(entry.id)}
+                >
+                  Select map point {number}
+                </Button>
+              )}
               {detail && (
                 <>
                   <p>
@@ -253,31 +324,53 @@ export function Discovery({
                   <Attribution place={detail} />
                 </>
               )}
-              <a
-                className="button secondary"
-                href={link}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Open Google Maps ↗
-              </a>
-              {p.google_place_id && canEdit && (
-                <Button
-                  disabled={loading}
-                  variant="secondary"
-                  onClick={() => loadDetails(p.google_place_id!)}
-                >
-                  Load current place details
-                </Button>
-              )}
-              {canEdit && (
+              {entry.placeId &&
+                canEdit &&
+                (livePlaces ? (
+                  <Button
+                    variant="secondary"
+                    disabled={loading || !online}
+                    onClick={() => loadDetails(entry.placeId!)}
+                  >
+                    Load current place details
+                  </Button>
+                ) : (
+                  <p className="muted">
+                    Current venue details need the optional Google Places
+                    integration. Your saved Maps link still works.
+                  </p>
+                ))}
+              {saved?.notes && <p className="notes">{saved.notes}</p>}
+              <div className="actions">
+                {entry.mapsUrl && (
+                  <a
+                    className="button secondary"
+                    href={entry.mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open Google Maps ↗
+                  </a>
+                )}
+                {entry.href && (
+                  <Link className="button secondary" href={entry.href}>
+                    {entry.source === "booking"
+                      ? "Open booking"
+                      : entry.kind === "idea"
+                        ? "Open Ideas"
+                        : "Open itinerary"}{" "}
+                    ↗
+                  </Link>
+                )}
+              </div>
+              {saved && canEdit && (
                 <div className="actions">
                   <form action={placeToIdea}>
                     <input type="hidden" name="trip_id" value={trip.id} />
-                    <input type="hidden" name="place_id" value={p.id} />
+                    <input type="hidden" name="place_id" value={saved.id} />
                     <Submit>Save to Ideas</Submit>
                   </form>
-                  <RemovePlace trip={trip.id} id={p.id} />
+                  <RemovePlace trip={trip.id} id={saved.id} />
                 </div>
               )}
             </article>
@@ -285,7 +378,9 @@ export function Discovery({
         })}
       </div>
       {!shown.length && (
-        <div className="empty">No saved places in this category yet.</div>
+        <div className="empty">
+          No trip locations match these filters. Choose another day or type.
+        </div>
       )}
       {canEdit && (
         <>
@@ -333,26 +428,41 @@ export function Discovery({
                 }
               />
             </label>
-            <Button disabled={loading}>
-              {loading ? "Searching…" : "Search places"}
-            </Button>
-            {error && (
-              <p role="status" className="error">
-                {error}
+            {!livePlaces && (
+              <p className="muted">
+                Google Places search is not configured yet. Your saved trip list
+                and Maps links work without it.
               </p>
             )}
+            {!online && (
+              <p role="status">
+                Reconnect to search or load current place details.
+              </p>
+            )}
+            <Button disabled={loading || !online || !livePlaces}>
+              {loading ? "Searching…" : "Search places"}
+            </Button>
           </form>
         </>
       )}
-      <div className="grid">
+      {results.length > 0 && <h3>Fresh search results · not saved</h3>}
+      <div className="grid" aria-label="Place search results">
         {results.map((p) => (
           <article
-            className={"card " + (selected === p.id ? "lime" : "")}
+            className={
+              "card map-location " +
+              (activeSelection === "result:" + p.id ? "lime" : "")
+            }
             key={p.id}
+            id={"map-item-result:" + p.id}
+            tabIndex={-1}
           >
             <span className="pill">Search result · not saved</span>
             <h3>{p.name}</h3>
-            <Button variant="secondary" onClick={() => setSelected(p.id)}>
+            <Button
+              variant="secondary"
+              onClick={() => selectFromList("result:" + p.id)}
+            >
               Highlight this result
             </Button>
             <p>{p.address}</p>

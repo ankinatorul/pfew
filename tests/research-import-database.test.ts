@@ -2,6 +2,7 @@ import { it, expect } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { schemaProbes } from "../lib/setup-checks";
+import { mapBookingColumns } from "../lib/trip-map";
 it("keeps approved imports idempotent and enforces research roles, links and budgets", async () => {
   const db = new PGlite();
   try {
@@ -30,6 +31,13 @@ it("keeps approved imports idempotent and enforces research roles, links and bud
         `reset role;set role authenticated;set request.jwt.claim.sub='${id}'`,
       );
     await act(owner);
+    expect(
+      (
+        await db.query(
+          `select ${mapBookingColumns} from public.bookings limit 0`,
+        )
+      ).rows,
+    ).toEqual([]);
     // The production read checker must accept exactly the schema we ship,
     // using ordinary authenticated grants rather than an administrator role.
     for (const probe of schemaProbes)

@@ -29,6 +29,7 @@ export async function GET() {
         "trip-filters",
         "responsive-trip-navigation",
         "setup-checks",
+        "trip-map-locations",
       ],
       configuration: {
         supabaseUrlPresent: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),

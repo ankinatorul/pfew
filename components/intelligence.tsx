@@ -14,6 +14,7 @@ import {
 } from "../app/intelligence-actions";
 import { Submit, Delete, SegmentForm } from "./forms";
 import { Discovery, type SavedPlace } from "./discovery";
+import { mapBookingColumns, type MapBooking } from "../lib/trip-map";
 export async function Intelligence({
   trip,
   segments,
@@ -34,9 +35,13 @@ export async function Intelligence({
       ? ["trip_check_findings", "finding_decisions", "trip_check_runs"]
       : view === "ideas"
         ? ["ai_suggestions"]
-        : ["saved_places"];
+        : ["saved_places", "bookings"];
   const result = await Promise.all(
-    tables.map((t) => db.from(t).select("*").eq("trip_id", trip.id)),
+    tables.map((t) =>
+      t === "bookings"
+        ? db.from(t).select(mapBookingColumns).eq("trip_id", trip.id)
+        : db.from(t).select("*").eq("trip_id", trip.id),
+    ),
   );
   if (
     result.some(
@@ -62,6 +67,8 @@ export async function Intelligence({
       <Discovery
         trip={trip}
         segments={segments}
+        bookings={rows.bookings as MapBooking[]}
+        livePlaces={Boolean(process.env.GOOGLE_PLACES_API_KEY)}
         places={rows.saved_places as SavedPlace[]}
         canEdit={canEdit}
         searchQuery={searchQuery}

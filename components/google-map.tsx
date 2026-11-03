@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
+import { useOnline } from "./essentials/online";
 export type MapPin = {
   id: string;
   label: string;
@@ -50,6 +51,7 @@ export function GoogleMap({
   onSelect: (id: string) => void;
 }) {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const online = useOnline();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
   const markers = useRef<google.maps.Marker[]>([]);
@@ -57,7 +59,7 @@ export function GoogleMap({
   const [error, setError] = useState("");
   const hasPins = pins.length > 0;
   useEffect(() => {
-    if (!key || !hasPins) return;
+    if (!key || !hasPins || !online) return;
     let cancelled = false;
     const authFailure = () =>
       setError(
@@ -83,9 +85,9 @@ export function GoogleMap({
       cancelled = true;
       window.removeEventListener("pfew-maps-error", authFailure);
     };
-  }, [key, hasPins]);
+  }, [key, hasPins, online]);
   useEffect(() => {
-    if (!ready || !map.current) return;
+    if (!ready || !map.current || !online) return;
     markers.current.forEach((m) => m.setMap(null));
     markers.current = [];
     const bounds = new google.maps.LatLngBounds();
@@ -108,36 +110,42 @@ export function GoogleMap({
       markers.current.forEach((m) => m.setMap(null));
       markers.current = [];
     };
-  }, [ready, pins, onSelect]);
+  }, [ready, pins, onSelect, online]);
   useEffect(() => {
     const pin = pins.find((pin) => pin.id === selected);
-    if (ready && map.current && pin) {
+    if (ready && online && map.current && pin) {
       map.current.panTo({ lat: pin.latitude, lng: pin.longitude });
     }
-    markers.current.forEach((marker, index) =>
-      marker.setAnimation(
-        pins[index]?.id === selected ? google.maps.Animation.BOUNCE : null,
-      ),
-    );
-  }, [selected, pins, ready]);
+    markers.current.forEach((marker, index) => {
+      const active = pins[index]?.id === selected;
+      marker.setZIndex(active ? 1000 : index);
+      marker.setOpacity(selected && !active ? 0.65 : 1);
+    });
+  }, [selected, pins, ready, online]);
   if (!key)
     return (
       <div className="empty">
         <h3>Your places, at a glance.</h3>
         <p>
-          Interactive maps are unavailable for this deployment. Your saved
-          places and Open Google Maps links work below.
+          Interactive maps are unavailable for this deployment. Your saved trip
+          locations and Open Google Maps links work below.
         </p>
       </div>
     );
   return (
     <section aria-label="Trip map">
+      {!online && (
+        <p role="status">
+          Reconnect to use interactive maps. Downloaded trips remain available
+          in the offline reader.
+        </p>
+      )}
       {error && (
         <p role="status" className="error">
           {error}
         </p>
       )}
-      <div className="map-canvas" ref={container} />
+      <div className="map-canvas" ref={container} hidden={!online} />
       {!hasPins && (
         <p className="muted">
           Save a located destination or city to add a map point.
