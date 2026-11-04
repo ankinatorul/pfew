@@ -10,3 +10,25 @@ export function safeReturnPath(value: unknown) {
     ? value
     : null;
 }
+
+/** OAuth must return to the configured browser origin, not a wildcard bind host. */
+export function authRedirectOrigin(requestUrl: string, siteUrl?: string) {
+  if (siteUrl) {
+    try {
+      const configured = new URL(siteUrl);
+      if (
+        ["http:", "https:"].includes(configured.protocol) &&
+        !configured.username &&
+        !configured.password &&
+        !["0.0.0.0", "[::]"].includes(configured.hostname)
+      )
+        return configured.origin;
+    } catch {
+      /* Fall back to the current request when no site origin is configured. */
+    }
+  }
+  const incoming = new URL(requestUrl);
+  if (["0.0.0.0", "[::]"].includes(incoming.hostname))
+    incoming.hostname = "localhost";
+  return incoming.origin;
+}
