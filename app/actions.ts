@@ -115,42 +115,46 @@ export async function saveTrip(form: FormData) {
       fail(
         "Trip could not be created. Apply the automatic locations upgrade and check your connection.",
       );
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     redirect("/trips/" + data);
   }
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   redirect("/trips/" + id);
 }
 export async function deleteTrip(form: FormData) {
   const { db, user } = await client();
-  const id = z.uuid().parse(form.get("id"));
-  const { data: owned } = await db
+  const parsed = z.uuid().safeParse(form.get("id"));
+  if (!parsed.success) return { error: "Invalid trip. Nothing was deleted." };
+  const id = parsed.data;
+  const { data: owned, error: ownerError } = await db
     .from("trips")
     .select("id")
     .eq("id", id)
     .eq("owner_id", user.id)
     .single();
-  if (!owned) fail("Only the trip owner can delete this trip.");
+  if (ownerError && ownerError.code !== "PGRST116")
+    return { error: "Could not verify trip ownership. Nothing was deleted. Try again." };
+  if (!owned) return { error: "Only the trip owner can delete this trip. Nothing was deleted." };
   const { data: hasOther, error: privateError } = await db.rpc(
     "has_other_private_files",
     { target: id },
   );
   if (hasOther)
-    fail(
-      "Other travelers have private documents attached. They need to remove those files from their own account before this trip can be deleted.",
-    );
+    return {
+      error: "Other travelers have private documents attached. They need to remove those files from their own account before this trip can be deleted. Your trip is still saved.",
+    };
   if (privateError && privateError.code !== "PGRST202")
-    fail("Could not check private document ownership.");
+    return { error: "Could not check private document ownership. Your trip is still saved. Try again." };
   const fileError = await removeBookingFiles(db, id);
-  if (fileError) fail(fileError);
+  if (fileError) return { error: fileError + " Your trip is still saved." };
   const { error } = await db
     .from("trips")
     .delete()
     .eq("id", id)
     .eq("owner_id", user.id);
-  if (error) fail("Could not delete trip");
-  revalidatePath("/");
-  redirect("/");
+  if (error) return { error: "Could not delete the trip. Your trip is still saved, but attached files may already have been removed. Retry deletion to finish." };
+  revalidatePath("/", "layout");
+  redirect("/trips");
 }
 export async function saveSegment(form: FormData) {
   const { db } = await client();

@@ -10,6 +10,7 @@ export const secondaryTripSections = [
   { key: "transport", label: "Transport" },
   { key: "prep", label: "Prep" },
   { key: "packing", label: "Packing" },
+  { key: "documents", label: "Documents" },
   { key: "budget", label: "Budget" },
   { key: "ideas", label: "Ideas" },
   { key: "check", label: "Trip Check" },
@@ -17,8 +18,15 @@ export const secondaryTripSections = [
   { key: "people", label: "People" },
   { key: "offline", label: "Offline" },
 ];
-export function tripSectionUrl(tripId: string, view: string, day: string) {
+export function workspaceTripSections(owner: boolean) {
+  return [
+    ...primaryTripSections,
+    ...secondaryTripSections,
+    ...(owner ? [{ key: "settings", label: "Settings" }] : []),
+  ];
+}
+export function tripSectionUrl(tripId: string, view: string, day?: string) {
   const query = new URLSearchParams({ view });
-  query.set("day", day);
-  return "/trips/" + tripId + "?" + query;
+  if (day) query.set("day", day);
+  return "/trips/" + encodeURIComponent(tripId) + "?" + query;
 }

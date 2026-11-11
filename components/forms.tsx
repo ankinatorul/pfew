@@ -1,10 +1,15 @@
 "use client";
+import { travelStyles } from "../lib/trip-style";
 import { AutomaticTimezone } from "./automatic-timezone";
 import { LocationPicker } from "./location-picker";
 import type { ResolvedLocation } from "../lib/location-types";
-import { useState, useRef } from "react";
+import { useState, useRef, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "./button";
+import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
+import { tripSectionUrl } from "../lib/trip-navigation";
+import { tripDeletionDescription } from "../lib/trip-deletion";
 import {
   saveTrip,
   saveSegment,
@@ -24,23 +29,46 @@ export function Submit({ children }: { children: React.ReactNode }) {
   return <Button disabled={pending}>{pending ? "Saving…" : children}</Button>;
 }
 export function Delete({ id, tripId }: { id: string; tripId?: string }) {
+  const [notice, setNotice] = useState("");
+  const [state, action, pending] = useActionState(
+    async (_previous: { error: string } | null, form: FormData) => {
+      if (tripId) {
+        await deleteSegment(form);
+        return null;
+      }
+      try {
+        return (await deleteTrip(form)) ?? null;
+      } catch (error) {
+        unstable_rethrow(error);
+        return { error: "We couldn’t confirm deletion. Check My Trips before retrying. Some attached files may have been removed." };
+      }
+    },
+    null,
+  );
   return (
     <form
-      action={tripId ? deleteSegment : deleteTrip}
+      action={action}
+      className="delete-form"
       onSubmit={(e) => {
+        setNotice("");
         if (
           !window.confirm(
             tripId
               ? "Remove this item?"
-              : "Delete this trip and all its plans? This cannot be undone.",
+              : "Delete trip?\n\n" + tripDeletionDescription,
           )
-        )
+        ) {
           e.preventDefault();
+          setNotice(tripId ? "Removal cancelled." : "Deletion cancelled. Your trip is unchanged.");
+        }
       }}
     >
       <input type="hidden" name="id" value={id} />
       {tripId && <input type="hidden" name="trip_id" value={tripId} />}
-      <Button variant="danger">Delete {tripId ? "item" : "trip"}</Button>
+      <Button variant="danger" disabled={pending}>
+        {pending ? "Deleting…" : "Delete " + (tripId ? "item" : "trip")}
+      </Button>
+      {notice ? <p role="status">{notice}</p> : state?.error ? <p role="alert" className="error">{state.error}</p> : null}
     </form>
   );
 }
@@ -142,9 +170,9 @@ export function TripForm({ trip }: { trip?: Trip }) {
       <fieldset hidden={step !== 1}>
         <legend>A stop or two along the way?</legend>
         <p className="muted">
-          {trip
-            ? "Manage destinations from your trip’s Destinations tab."
-            : "Add the places you know. Skip this step if you’re still deciding."}
+          {trip ? (
+            <>Manage saved stops in <Link href={tripSectionUrl(trip.id, "destinations")}>Destinations</Link>.</>
+          ) : "Add the places you know. Skip this step if you’re still deciding."}
         </p>
         {!trip && (
           <>
@@ -153,6 +181,7 @@ export function TripForm({ trip }: { trip?: Trip }) {
                 <h3>Destination {index + 1}</h3>
                 <LocationPicker
                   label="Destination name"
+                  scope="destination"
                   name="destination_location_id"
                   titleName="destination_name"
                   required
@@ -239,9 +268,9 @@ export function TripForm({ trip }: { trip?: Trip }) {
         <label>
           Travel style
           <select name="style" defaultValue={trip?.style || "Comfort"}>
-            <option>Budget</option>
-            <option>Comfort</option>
-            <option>Luxury</option>
+            {travelStyles.map((style) => (
+              <option key={style.stored} value={style.stored}>{style.value}</option>
+            ))}
           </select>
         </label>
         <div className="two">
@@ -269,8 +298,7 @@ export function TripForm({ trip }: { trip?: Trip }) {
       <fieldset hidden={step !== 3}>
         <legend>A little structure. A lot of possibility.</legend>
         <p>
-          Your trip will include the destinations you entered. No bookings or
-          activities are created automatically.
+          {trip ? "Save your updated trip details. Existing bookings and plans stay in their current sections." : "Your trip will include the destinations you entered. No bookings or activities are created automatically."}
         </p>
         <p className="muted">
           Travel style and budget are preferences. You can change everything
@@ -328,7 +356,7 @@ export function TripForm({ trip }: { trip?: Trip }) {
               setStep(step + 1);
             }}
           >
-            {step === 1 && destinations.length === 0
+            {step === 1 && !trip && destinations.length === 0
               ? "Skip destinations"
               : "Continue"}
           </Button>
@@ -418,6 +446,7 @@ export function SegmentForm({
         initialId={item?.location_id}
         initialLabel={item?.location_label || ""}
         required={currentKind === "destination"}
+        scope={currentKind === "destination" ? "destination" : "place"}
         onResolved={setLocation}
       />
       <AutomaticTimezone

@@ -1,4 +1,5 @@
 "use server";
+import { travelStyleLabel } from "../lib/trip-style";
 import { destinationOnDay } from "../lib/day-plan";
 import { z } from "zod";
 import { redirect } from "next/navigation";
@@ -10,6 +11,7 @@ import type { Trip, Segment } from "../lib/domain";
 import { validationMessage } from "../lib/domain";
 import type { Booking, Task } from "../lib/essentials";
 import { aiProvider } from "../lib/ai";
+import { savedIdeaDate, missingIdeaDateMessage } from "../lib/idea-dates";
 function fail(message: string): never {
   redirect("/error?message=" + encodeURIComponent(message));
 }
@@ -158,6 +160,7 @@ export async function generateSuggestions(form: FormData) {
     destination = result.data;
   }
   if (!trip) fail("Trip unavailable.");
+  if (!savedIdeaDate(trip)) fail("Add valid departure and return dates in Edit trip before requesting ideas. No suggestion request has been made.");
   let provider;
   try {
     provider = aiProvider(input.data.mode);
@@ -174,7 +177,7 @@ export async function generateSuggestions(form: FormData) {
     suggestions = await provider.suggest({
       tripName: trip.name,
       destination: destination?.title || "your selected destinations",
-      style: trip.style,
+      style: travelStyleLabel(trip.style),
       currency: trip.currency,
       budget: trip.budget,
       travelers: trip.travelers,
@@ -209,13 +212,18 @@ export async function acceptSuggestion(form: FormData) {
   const suggestion = z.uuid().parse(form.get("suggestion_id"));
   const { data } = await db
     .from("ai_suggestions")
-    .select("id")
+    .select("id,accepted_segment_id")
     .eq("id", suggestion)
     .eq("trip_id", trip)
     .single();
   if (!data) fail("Suggestion unavailable.");
+  if (data.accepted_segment_id) done(trip, "ideas");
+  const { data: tripData, error: tripError } = await db
+    .from("trips").select("start_date,end_date").eq("id", trip).single();
+  if (tripError || !tripData) fail("Your trip could not be loaded. Your suggestion is still saved. Please try again.");
+  if (!savedIdeaDate(tripData)) fail(missingIdeaDateMessage);
   const { error } = await db.rpc("accept_ai_idea", { suggestion });
-  if (error) fail("Could not add this suggestion to Ideas.");
+  if (error) fail(error.message?.includes("IDEA_DATE_REQUIRED") ? missingIdeaDateMessage : "Could not save this idea. Your suggestion is still saved. Please try again.");
   done(trip, "ideas");
 }
 export async function dismissSuggestion(form: FormData) {
@@ -310,10 +318,12 @@ export async function placeToIdea(form: FormData) {
     .single();
   const { data: tripData } = await db
     .from("trips")
-    .select("start_date,timezone")
+    .select("start_date,end_date,timezone")
     .eq("id", trip)
     .single();
   if (!place || !tripData) fail("Place unavailable.");
+  const day = savedIdeaDate(tripData);
+  if (!day) fail(missingIdeaDateMessage);
   const location = place.location_id
     ? resolveLocation(place.location_id)
     : null;
@@ -321,8 +331,8 @@ export async function placeToIdea(form: FormData) {
     trip_id: trip,
     kind: "activity",
     title: place.title,
-    start_date: tripData.start_date,
-    end_date: tripData.start_date,
+    start_date: day,
+    end_date: day,
     timezone: location?.timezone || tripData.timezone,
     status: "idea",
     notes: place.notes,

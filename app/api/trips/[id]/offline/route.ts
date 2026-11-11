@@ -17,10 +17,10 @@ export async function GET(
     return new NextResponse("Sign in required", { status: 401 });
   const { data: trip, error } = await db
     .from("trips")
-    .select("id,name,start_date,end_date,timezone,currency,budget")
+    .select("*")
     .eq("id", id)
     .single();
-  if (error || !trip)
+  if (error || !trip || trip.creation_state === "draft")
     return new NextResponse("Trip unavailable", { status: 404 });
   const tables = [
     "trip_segments",
@@ -40,7 +40,7 @@ export async function GET(
     {
       version: 1,
       userId: user.id,
-      trip,
+      trip: { id: trip.id, name: trip.name, start_date: trip.start_date, end_date: trip.end_date, timezone: trip.timezone, currency: trip.currency, budget: trip.budget },
       downloadedAt: new Date().toISOString(),
       ...Object.fromEntries(
         tables.map((table, index) => [table, results[index].data]),

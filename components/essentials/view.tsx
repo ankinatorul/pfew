@@ -33,6 +33,7 @@ import {
   applyPackingTemplate,
 } from "../../app/essentials-actions";
 import { Attachments } from "./attachments";
+import { PendingBookingCollection } from "../pending-booking-collection";
 export function MigrationNotice() {
   return (
     <section className="card">
@@ -57,7 +58,7 @@ export async function EssentialsView({
   edit?: string;
   group?: string;
 }) {
-  const { db } = await access();
+  const { db, user } = await access();
   const context = {
     days:
       Math.round(
@@ -128,6 +129,9 @@ export async function EssentialsView({
         : ["timeline"];
     return (
       <>
+        {trip.owner_id === user.id && (
+          <PendingBookingCollection trip={trip} segments={segments} />
+        )}
         <div className="row">
           <div>
             <span className="eyebrow">Smart Travel Wallet</span>
@@ -154,9 +158,16 @@ export async function EssentialsView({
                   <article key={b.id} className="card">
                     <div className="row">
                       <span className="eyebrow">{b.category}</span>
-                      <span className="pill">{b.verification}</span>
+                      <span className="pill">
+                        {b.verification === "user confirmed"
+                          ? "Details reviewed"
+                          : "Needs review"}
+                      </span>
                     </div>
                     <h3>{b.title}</h3>
+                    <p className="muted">
+                      Reservation: {b.reservation_status || "unknown"}
+                    </p>
                     {b.import_method && b.import_method !== "manual" && (
                       <p className="muted">
                         {b.import_method === "ai"

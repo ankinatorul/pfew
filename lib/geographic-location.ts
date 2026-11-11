@@ -3,20 +3,30 @@ import type { ResolvedLocation } from "./location-types";
 import { coordinateTimezone } from "./coordinate-timezone";
 // These are user-selected geographic points, not authenticated provider records.
 // The server validates the point and derives its zone rather than accepting one.
-const pointSchema = z.tuple([
-  z.string().trim().min(1).max(200),
-  z.string().trim().max(200),
-  z.number().finite().min(-90).max(90),
-  z.number().finite().min(-180).max(180),
-]);
+const pointSchema = z
+  .tuple([
+    z.string().trim().min(1).max(200),
+    z.string().trim().max(200),
+    z.number().finite().min(-90).max(90),
+    z.number().finite().min(-180).max(180),
+  ])
+  .rest(z.string().regex(/^osm:[NRW]:[1-9]\d*$/))
+  .refine((point) => point.length <= 5);
 export function geographicLocation(
   name: string,
   country: string,
   latitude: number,
   longitude: number,
   countryCode = "ZZ",
+  providerId?: string,
 ): ResolvedLocation {
-  const point = pointSchema.parse([name, country, latitude, longitude]);
+  const point = pointSchema.parse([
+    name,
+    country,
+    latitude,
+    longitude,
+    ...(providerId ? [providerId] : []),
+  ]);
   const code = z
     .string()
     .regex(/^[A-Z]{2}$/)
@@ -36,6 +46,7 @@ export function geographicLocation(
     longitude: point[3],
     timezone: coordinateTimezone(point[2], point[3]),
     source: "coordinates",
+    ...(point[4] ? { providerId: point[4] } : {}),
   };
 }
 export function resolveGeographicLocation(id: string): ResolvedLocation | null {
@@ -45,7 +56,14 @@ export function resolveGeographicLocation(id: string): ResolvedLocation | null {
     const point = pointSchema.parse(
       JSON.parse(Buffer.from(match[2], "base64url").toString("utf8")),
     );
-    const location = geographicLocation(...point, match[1]);
+    const location = geographicLocation(
+      point[0],
+      point[1],
+      point[2],
+      point[3],
+      match[1],
+      point[4],
+    );
     return location.id === id ? location : null;
   } catch {
     return null;

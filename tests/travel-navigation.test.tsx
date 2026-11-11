@@ -2,43 +2,33 @@
 import { afterEach, it, expect, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-const mocks = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 import { TripNavigation } from "../components/trip-navigation";
 import { TripCollection } from "../components/trip-collection";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-it("keeps the day in navigation and exposes Settings only to owners", async () => {
-  const user = userEvent.setup();
+it("keeps the day in contextual tools and exposes Settings only to owners", () => {
   render(
     <TripNavigation
       tripId="trip"
-      view="itinerary"
+      view="budget"
       day="2027-05-03"
       owner={false}
     />,
   );
   expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-  expect(screen.queryByRole("option", { name: "Settings" })).toBeNull();
-  await user.selectOptions(
-    screen.getByLabelText("More trip sections"),
-    "budget",
-  );
-  expect(mocks.push).toHaveBeenCalledWith(
-    "/trips/trip?view=budget&day=2027-05-03",
-  );
   expect(
-    screen
-      .getByRole("link", { name: /Itinerary/ })
-      .getAttribute("aria-current"),
+    screen.getByRole("link", { name: "Budget" }).getAttribute("href"),
+  ).toBe("/trips/trip?view=budget&day=2027-05-03");
+  expect(
+    screen.getByRole("link", { name: "Budget" }).getAttribute("aria-current"),
   ).toBe("page");
   cleanup();
   render(
     <TripNavigation tripId="trip" view="settings" day="2027-05-03" owner />,
   );
-  expect(screen.getByRole("option", { name: "Settings" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
 });
 it("filters owned/shared and past trips locally without changing data", async () => {
   const user = userEvent.setup();
@@ -70,6 +60,7 @@ it("filters owned/shared and past trips locally without changing data", async ()
       ]}
     />,
   );
+  await user.click(screen.getByText(/Search & filter trips/));
   await user.selectOptions(screen.getByLabelText("Trip access"), "shared");
   expect(screen.getByRole("status").textContent).toBe("1 of 2 trips shown.");
   expect(

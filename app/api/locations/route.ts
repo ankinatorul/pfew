@@ -2,17 +2,29 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { searchWorldwideLocations } from "../../../lib/worldwide-locations";
 import {
+  canSearchLocation,
+  locationQuery,
+  LOCATION_QUERY_LIMIT,
+} from "../../../lib/location-search";
+import {
   coordinatesFromInput,
   geographicLocation,
 } from "../../../lib/geographic-location";
 export async function GET(request: Request) {
-  const q = new URL(request.url).searchParams.get("q") || "";
-  if (q.trim().length < 2 || q.length > 100)
+  const params = new URL(request.url).searchParams;
+  const q = locationQuery(params.get("q") || "");
+  const scope = params.get("scope") || "place";
+  if (scope !== "destination" && scope !== "place")
+    return NextResponse.json(
+      { error: "Choose a valid location search scope." },
+      { status: 400 },
+    );
+  if (!canSearchLocation(q))
     return NextResponse.json(
       { results: [] },
-      { status: q.length > 100 ? 400 : 200 },
+      { status: q.length > LOCATION_QUERY_LIMIT ? 400 : 200 },
     );
-  const result = await searchWorldwideLocations(q);
+  const result = await searchWorldwideLocations(q, fetch, scope);
   return NextResponse.json(result, {
     headers: {
       "Cache-Control": result.worldwideAvailable

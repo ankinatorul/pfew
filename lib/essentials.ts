@@ -67,6 +67,9 @@ export const bookingSchema = z
     currency: z.string().regex(/^[A-Z]{3}$/),
     payment_status: z.enum(["unknown", "unpaid", "partial", "paid"]),
     verification: z.enum(["unverified", "user confirmed"]),
+    reservation_status: z
+      .enum(["unknown", "confirmed", "pending", "cancelled"])
+      .optional(),
   })
   .refine((v) => v.end_date >= v.start_date, {
     message: "End date must follow start date",

@@ -3,6 +3,7 @@ export async function removeBookingFiles(
   db: SupabaseClient,
   trip: string,
   booking?: string,
+  intake?: string,
 ) {
   for (;;) {
     let query = db
@@ -11,6 +12,7 @@ export async function removeBookingFiles(
       .eq("trip_id", trip)
       .limit(100);
     if (booking) query = query.eq("booking_id", booking);
+    if (intake) query = query.eq("intake_id", intake).is("booking_id", null);
     const { data, error } = await query;
     if (error?.code === "PGRST205" || error?.code === "42P01") return null;
     if (error)

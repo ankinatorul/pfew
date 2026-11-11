@@ -119,6 +119,8 @@ export function lifecycle(
   zone: string,
   now = new Date(),
 ) {
+  if (!z.iso.date().safeParse(start).success || !z.iso.date().safeParse(end).success || end < start) return "unknown";
+  try {
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: zone,
     year: "numeric",
@@ -126,11 +128,15 @@ export function lifecycle(
     day: "2-digit",
   }).format(now);
   return today < start ? "upcoming" : today > end ? "past" : "traveling";
+  } catch { return "unknown"; }
 }
 export type Trip = {
   id: string;
   name: string;
   owner_id?: string;
+  creation_state?: "draft" | "finalized";
+  theme?: string;
+  draft_data?: Record<string, unknown>;
   start_date: string;
   end_date: string;
   timezone: string;
@@ -216,7 +222,7 @@ export function validationMessage(error: unknown) {
 }
 
 export function nextTrip(trips: Trip[], now = new Date()) {
-  const ordered = [...trips].sort((a, b) =>
+  const ordered = trips.filter(t => t.creation_state !== "draft").sort((a, b) =>
     a.start_date.localeCompare(b.start_date),
   );
   return (
@@ -232,6 +238,7 @@ export function nextTrip(trips: Trip[], now = new Date()) {
   );
 }
 export function departureCountdown(trip: Trip, now = new Date()) {
+  if (trip.creation_state === "draft" || lifecycle(trip.start_date, trip.end_date, trip.timezone, now) === "unknown") return 0;
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: trip.timezone,
     year: "numeric",
@@ -242,4 +249,12 @@ export function departureCountdown(trip: Trip, now = new Date()) {
     0,
     Math.round((Date.parse(trip.start_date) - Date.parse(today)) / 86400000),
   );
+}
+
+export function tripDateLabel(start: string | null, end: string | null) {
+  const format = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" });
+  const a = z.iso.date().safeParse(start).success ? new Date(start + "T12:00:00Z") : null;
+  const b = z.iso.date().safeParse(end).success ? new Date(end + "T12:00:00Z") : null;
+  if (a && b) return a <= b ? format.formatRange(a, b) : "Review the saved dates";
+  return a ? `From ${format.format(a)} · return date not set` : b ? `Until ${format.format(b)} · departure date not set` : "Dates not set";
 }

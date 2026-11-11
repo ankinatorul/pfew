@@ -158,7 +158,7 @@ On desktop, use a more spacious navigation structure.
 
 ## 5. Home — Adaptive Home
 
-Home is a personal travel dashboard.
+Home is a calm entry point into saved trips. Its initial view shows one featured trip with a primary Open trip action, at most two contextual summaries, and a compact trip list. Search, filters, and trip management are available on demand. Detailed budget, packing, and Trip Check information lives inside the trip rather than expanding the Home dashboard.
 
 It should highlight the next or currently active trip and provide access to other trips.
 
@@ -221,12 +221,18 @@ Do not build a full Notion-style page builder.
 
 ## 7. Guided trip creation
 
+**Current POC decision (10 November 2026), superseding Decision 15 / optional dates:** Step 1 requires a trip name, at least one resolved destination, a start date and an end date on or after the start. Missing or partial input may be recovered locally, but cannot be saved as a new server draft or advanced to Step 2. Preserve private drafts, multiple destinations and explicit Resume / Start New. Legacy records with missing dates stay intact and use safe neutral presentation; never fabricate dates. No migration is applied automatically.
+
+**Phase 7C — Add Bookings (local implementation):** After valid Step 1, collect optional uploads, manual entries and labeled text in one grouped review. Users may continue with Needs review entries or skip Step 2 entirely. Preserve originals and reliable fields when reading fails. Review status is separate from reservation status (unknown by default); reviewing details never confirms a reservation. Save unfinished/Back/Continue persist edited details with the private draft. Unfinished entries remain owner-accessible in Bookings after future finalization. Step 3 now supports Travel Style & Review and atomic creation as documented in the Phase 7D acceptance report. Migration 012 is prepared for developer review only; 010/011/012 must not be applied to the shared live Supabase project without backup, separate-environment testing and explicit approval. See `tests/PHASE_7C_BOOKING_COLLECTION_ACCEPTANCE.md`.
+
+**Phase 7D — Travel Style & Review (local implementation):** Budget / Balanced / Premium map to existing Budget / Comfort / Luxury storage, default Balanced. Editing and explicit recommendation requests reuse the preference; selecting it does not set a monetary budget or call AI. The final review preserves basics, ordered destinations and all staged bookings. Automatic, conservative theme assignment uses the trip name and saved geographic context, with Default for uncertain/mixed cases; the persisted theme is stable after creation. One atomic, owner-authorized operation promotes the existing draft ID, converts ready reviewed bookings through the existing RPC, and retains unfinished entries/files. Success waits for Open my trip before navigation and active selection. The old four-step creation URL redirects to the new flow. Migration 013 is prepared only; do not apply 010–013 to the connected live project. See `tests/PHASE_7D_TRIP_CREATION_ACCEPTANCE.md`.
+
 New trips are created through a short, guided, skippable setup.
 
 Collect:
-- Trip name, optional.
-- Start and end dates.
-- Destinations and approximate stay dates.
+- Trip name, required in the new Step 1 journey.
+- Start and end dates, both required.
+- At least one destination, with multiple destinations supported.
 - Travelers.
 - Preferred travel style: Budget, Comfort, or Luxury.
 - Optional overall budget and currency.

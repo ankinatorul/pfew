@@ -1,4 +1,11 @@
+import { Suspense } from "react";
+import { Itinerary } from "../../../components/itinerary";
+import { savedTripDestinations } from "../../../lib/trip-destinations";
+import { travelStyleLabel } from "../../../lib/trip-style";
 import { TripNavigation } from "../../../components/trip-navigation";
+import { TripDocuments } from "../../../components/trip-documents";
+import { TripDashboard } from "../../../components/trip-overview";
+import { TripEdit } from "../../../components/trip-edit";
 import { QuickAdd } from "../../../components/quick-add";
 import { DayPlanControls } from "../../../components/day-plan-controls";
 import { DayOverview } from "../../../components/day-overview";
@@ -7,20 +14,16 @@ import { ResearchView } from "../../../components/research-view";
 import { BookingImport } from "../../../components/booking-import";
 import { OfflineView } from "../../../components/offline-view";
 import { CollaborationView } from "../../../components/collaboration-view";
+import { displayTrip } from "../../../lib/finalized-trips";
 import { tripRole } from "../../../lib/trip-role";
 import { Intelligence } from "../../../components/intelligence";
 import { DayBookings } from "../../../components/essentials/day-bookings";
 import { EssentialsView } from "../../../components/essentials/view";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { access } from "../../../lib/access";
 import { days, lifecycle, type Trip, type Segment } from "../../../lib/domain";
-import {
-  TripForm,
-  SegmentForm,
-  Delete,
-  Submit,
-} from "../../../components/forms";
+import { SegmentForm, Delete, Submit } from "../../../components/forms";
 import { saveLayout } from "../../actions";
 export default async function Hub({
   params,
@@ -45,7 +48,11 @@ export default async function Hub({
     .eq("id", id)
     .maybeSingle();
   if (error || !data) notFound();
-  const trip = data as Trip;
+  if (data.creation_state === "draft") {
+    if (data.owner_id !== user.id) notFound();
+    redirect("/trips/new?draft=" + id);
+  }
+  const trip = displayTrip(data as Trip);
   const role = await tripRole(db, trip, user.id);
   const canEdit = role !== "viewer";
   const [{ data: items, error: itemError }, { data: prefs, error: prefError }] =
@@ -66,9 +73,44 @@ export default async function Hub({
     throw new Error("Trip details could not be loaded");
   const segments = (items || []) as Segment[];
   const view = q.view || "hub";
+  const overviewNow = new Date();
+  if (view === "hub")
+    return (
+      <TripDashboard
+        trip={trip}
+        segments={segments}
+        role={role}
+        day={q.day}
+        now={overviewNow}
+      />
+    );
+  if (view === "itinerary" || view === "ideas")
+    return (
+      <Suspense
+        key={id + ":" + (q.day || "")}
+        fallback={
+          <div className="trip-itinerary" aria-busy="true">
+            <h1>Your itinerary</h1>
+            <p role="status">Loading your saved plans…</p>
+          </div>
+        }
+      >
+        <Itinerary
+          trip={trip}
+          segments={segments}
+          canEdit={canEdit}
+          day={q.day}
+          explore={view === "ideas"}
+        />
+      </Suspense>
+    );
   const day = days(trip.start_date, trip.end_date).includes(q.day || "")
     ? q.day!
     : trip.start_date;
+  if (view === "settings") {
+    if (role !== "owner") notFound();
+    return <TripEdit trip={trip} day={day} LinkComponent={Link} />;
+  }
   const modules = [
     { key: "itinerary", label: "Your days, your way", kind: "activity" },
     { key: "destinations", label: "Places to call yours", kind: "destination" },
@@ -130,7 +172,7 @@ export default async function Hub({
           <h1>{trip.name}</h1>
           <p className="muted">
             {trip.start_date} — {trip.end_date} · {trip.travelers} travelers ·{" "}
-            {trip.style} · {trip.timezone}
+            {travelStyleLabel(trip.style)} · {trip.timezone}
           </p>
         </div>
         <Link
@@ -147,67 +189,7 @@ export default async function Hub({
         day={day}
         owner={role === "owner"}
       />
-      {view === "hub" && (
-        <>
-          <div className="row">
-            <h2>A little home for your adventure.</h2>
-            <Link
-              data-edit-action
-              className="muted"
-              href={base + "?view=customize"}
-            >
-              Customize hub ↗
-            </Link>
-          </div>
-          <div className="grid">
-            {[...layout]
-              .sort((a, b) => a.order - b.order)
-              .filter((p) => p.visible)
-              .map((p) => {
-                const m = modules.find((m) => m.key === p.key);
-                if (!m) return null;
-                return (
-                  <Link
-                    className={
-                      "card " +
-                      (p.highlight ? "lime " : "") +
-                      (p.size === "wide" ? "wide" : "")
-                    }
-                    key={p.key}
-                    href={base + "?view=" + p.key}
-                  >
-                    <span className="eyebrow">{p.key}</span>
-                    <h2 style={{ marginTop: 30 }}>{m.label}</h2>
-                    <p>
-                      {[
-                        "bookings",
-                        "prep",
-                        "packing",
-                        "budget",
-                        "map",
-                        "ideas",
-                        "check",
-                      ].includes(p.key)
-                        ? "Keep the essentials close."
-                        : `${segments.filter((s) => p.key === "itinerary" || s.kind === m.kind).length} saved items`}
-                    </p>
-                    <span>Open module ↗</span>
-                  </Link>
-                );
-              })}
-          </div>
-          <p className="muted">
-            Your budget preference:{" "}
-            {trip.budget === null
-              ? "No total set"
-              : trip.currency + " " + trip.budget}
-            .{" "}
-            <Link href={base + "?view=budget"}>
-              Open Budget for planned and recorded spending →
-            </Link>
-          </p>
-        </>
-      )}
+      {view === "documents" && <TripDocuments tripId={id} />}
       {["bookings", "prep", "packing", "budget"].includes(view) && (
         <EssentialsView
           trip={trip}
@@ -242,12 +224,6 @@ export default async function Hub({
       )}
       {view === "offline" && <OfflineView tripId={id} />}
       {view === "people" && <CollaborationView trip={trip} role={role} />}
-      {view === "settings" && role === "owner" && (
-        <>
-          <TripForm trip={trip} />
-          <Delete id={id} />
-        </>
-      )}
       {view === "customize" && canEdit && (
         <form action={saveLayout} className="form">
           <h2>Make room for what matters.</h2>
@@ -395,6 +371,22 @@ export default async function Hub({
               <DayBookings trip={trip.id} day={day} />
             </>
           )}
+          {view === "destinations" &&
+            !segments.some((s) => s.kind === "destination") &&
+            savedTripDestinations(trip).length > 0 && (
+              <section className="card">
+                <h3>Your saved destinations</h3>
+                <ol>
+                  {savedTripDestinations(trip).map((d, i) => (
+                    <li key={i}>{d.label}</li>
+                  ))}
+                </ol>
+                <p>
+                  Saved in your chosen order. Add a destination period when you
+                  know its dates; no stop dates have been assumed.
+                </p>
+              </section>
+            )}
           <div className="timeline">
             {segments
               .filter((s) =>

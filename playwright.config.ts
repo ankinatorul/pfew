@@ -2,7 +2,20 @@ import { existsSync } from "node:fs";
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/browser",
-  testMatch: ["**/auth-shell.spec.ts", "**/navigation-layout.spec.tsx"],
+  testMatch: [
+    "**/auth-shell.spec.ts",
+    "**/navigation-layout.spec.tsx",
+    "**/home-layout.spec.tsx",
+    "**/trip-overview-layout.spec.tsx",
+    "**/trip-management.spec.tsx",
+    "**/during-trip-layout.spec.tsx",
+    "**/completed-trip-layout.spec.tsx",
+    "**/location-search.spec.tsx",
+    "**/trip-basics.spec.tsx",
+    "**/booking-collection.spec.tsx",
+    "**/trip-review.spec.tsx",
+    "**/itinerary.spec.tsx",
+  ],
   use: {
     baseURL: "http://127.0.0.1:3000",
     launchOptions: {

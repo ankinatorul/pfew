@@ -161,6 +161,12 @@ it("offers saved-trip deletion only to owners and submits the selected trip afte
       ]}
     />,
   );
+  expect(
+    screen
+      .getByLabelText("Options for My trip")
+      .parentElement?.hasAttribute("open"),
+  ).toBe(false);
+  await user.click(screen.getByLabelText("Options for My trip"));
   expect(screen.getAllByRole("button", { name: "Delete trip" })).toHaveLength(
     1,
   );

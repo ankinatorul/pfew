@@ -1,8 +1,8 @@
 import type { Trip } from "./domain";
 export type TripCard = Pick<
   Trip,
-  "id" | "name" | "start_date" | "end_date" | "timezone" | "travelers" | "style"
-> & { shared: boolean; lifecycle: "traveling" | "upcoming" | "past" };
+  "id" | "name" | "start_date" | "end_date" | "timezone" | "travelers" | "style" | "creation_state"
+> & { shared: boolean; lifecycle: "traveling" | "upcoming" | "past" | "unknown" };
 export function organizeTrips(
   trips: TripCard[],
   query: string,
@@ -10,10 +10,11 @@ export function organizeTrips(
   relation: string,
 ) {
   const text = query.trim().toLocaleLowerCase();
-  const rank = { traveling: 0, upcoming: 1, past: 2 };
+  const rank = { traveling: 0, upcoming: 1, past: 2, unknown: 3 };
   return trips
     .filter(
       (trip) =>
+        trip.creation_state !== "draft" &&
         (!text || trip.name.toLocaleLowerCase().includes(text)) &&
         (status === "all" || trip.lifecycle === status) &&
         (relation === "all" ||

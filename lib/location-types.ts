@@ -8,5 +8,9 @@ export const resolvedLocationSchema = z.object({
   longitude: z.number().min(-180).max(180),
   timezone: z.string().max(100),
   source: z.enum(["city-timezones", "coordinates"]),
+  providerId: z
+    .string()
+    .regex(/^osm:[NRW]:[1-9]\d*$/)
+    .optional(),
 });
 export type ResolvedLocation = z.infer<typeof resolvedLocationSchema>;

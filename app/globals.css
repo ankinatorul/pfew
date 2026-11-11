@@ -1,10 +1,42 @@
 @import "tailwindcss";
+@import "./shell.css";
 :root {
-  --ink: #202023;
-  --paper: #f6f6f8;
-  --lime: #e0f57b;
-  --purple: #d9b4ef;
-  --blue: #435bc9;
+  --color-lavender: #d9b4ef;
+  --color-lime: #e0f57b;
+  --color-cobalt: #435bc9;
+  --color-orange: #f45c39;
+  --color-pink: #f0c7e9;
+  --color-off-white: #f6f6f8;
+  --text-primary: #22252b;
+  --text-secondary: #666b76;
+  --surface-page: var(--color-off-white);
+  --surface-card: #fff;
+  --surface-subtle: color-mix(in srgb, var(--color-lavender) 12%, var(--surface-card));
+  --border-subtle: color-mix(in srgb, var(--text-primary) 12%, var(--surface-card));
+  --interactive-primary: var(--color-cobalt);
+  --interactive-selected: var(--color-lime);
+  --focus-ring: var(--color-cobalt);
+  --font-body: Manrope, Arial, sans-serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+  --shadow-soft: 0 6px 24px color-mix(in srgb, var(--text-primary) 7%, transparent);
+  --shadow-floating: 0 12px 40px color-mix(in srgb, var(--text-primary) 16%, transparent);
+  /* Compatibility aliases preserve existing modules throughout the redesign. */
+  --ink: var(--text-primary);
+  --paper: var(--surface-page);
+  --lime: var(--color-lime);
+  --purple: var(--color-lavender);
+  --blue: var(--color-cobalt);
+  --line: var(--border-subtle);
 }
 * {
   box-sizing: border-box;
@@ -13,7 +45,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: Manrope, Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
 }
 a {
@@ -34,10 +66,10 @@ textarea {
   touch-action: manipulation;
 }
 :focus-visible {
-  outline: 3px solid var(--blue);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 4px;
 }
-header {
+.public-header {
   max-width: 1440px;
   margin: auto;
   padding: 26px 5%;
@@ -52,13 +84,13 @@ header {
   letter-spacing: -4px;
 }
 .logo span {
-  color: #f45c39;
+  color: var(--color-orange);
 }
-nav {
+.public-nav {
   display: flex;
   gap: 28px;
 }
-nav a {
+.public-nav a {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -69,10 +101,10 @@ nav a {
   margin-left: auto;
   display: flex;
   gap: 9px;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 12px;
 }
-main {
+.public-main {
   max-width: 1280px;
   min-height: 75vh;
   margin: auto;
@@ -100,7 +132,7 @@ p {
 }
 small,
 .muted {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 .eyebrow {
@@ -171,8 +203,8 @@ small,
   margin: 28px 0;
 }
 .card {
-  background: white;
-  border-radius: 24px;
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
   padding: 28px;
   min-width: 0;
 }
@@ -184,7 +216,7 @@ small,
   color: white;
 }
 .card.pink {
-  background: #f0c7e9;
+  background: var(--color-pink);
 }
 .wide {
   grid-column: span 2;
@@ -423,23 +455,23 @@ legend {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-footer {
+.public-footer {
   max-width: 1280px;
   margin: auto;
   padding: 30px 32px;
   display: flex;
   gap: 24px;
   align-items: center;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 12px;
   border-top: 1px solid #ddd;
 }
-footer strong {
+.public-footer strong {
   font-size: 26px;
   color: var(--ink);
   letter-spacing: -2px;
 }
-footer a {
+.public-footer a {
   margin-left: auto;
 }
 .setup {
@@ -457,7 +489,7 @@ footer a {
   padding: 24px;
 }
 @media (max-width: 700px) {
-  header {
+  .public-header {
     padding: 18px 22px;
     gap: 24px;
   }
@@ -467,14 +499,14 @@ footer a {
   .header-note {
     display: none;
   }
-  nav {
+  .public-nav {
     margin-left: auto;
     gap: 15px;
   }
-  nav a {
+  .public-nav a {
     font-size: 12px;
   }
-  main {
+  .public-main {
     padding: 30px 20px;
   }
   .hero {
@@ -511,7 +543,7 @@ footer a {
   .section-top h2 {
     font-size: 23px;
   }
-  footer span {
+  .public-footer span {
     display: none;
   }
   .row {
@@ -684,11 +716,11 @@ fieldset {
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  color: #435bc9;
+  color: var(--color-cobalt);
 }
 .account-email {
   font-size: 13px;
-  color: #666;
+  color: var(--text-secondary);
 }
 .account-menu-separator {
   height: 1px;
@@ -738,21 +770,21 @@ fieldset {
   margin: 8px 0;
 }
 @media (max-width: 700px) {
-  header {
+  .public-header {
     gap: 12px;
   }
-  header nav {
+  .public-header .public-nav {
     gap: 10px;
     margin-left: 0;
   }
-  header nav a {
+  .public-header .public-nav a {
     min-height: 44px;
   }
-  header .nav-add {
+  .public-header .nav-add {
     justify-content: center;
     min-width: 44px;
   }
-  header .nav-add-label {
+  .public-header .nav-add-label {
     display: none;
   }
   .account-trigger-name,
@@ -800,6 +832,8 @@ fieldset {
   border-radius: 9px;
   cursor: pointer;
   font-size: 14px;
+  min-height: 44px;
+  overflow-wrap: anywhere;
 }
 .location-results li[aria-selected="true"],
 .location-results li:hover {
@@ -808,7 +842,7 @@ fieldset {
 .location-hint {
   display: block;
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   margin-top: 7px;
 }
 .map-canvas {
@@ -925,39 +959,6 @@ blockquote {
 .trip-filters {
   overflow-wrap: anywhere;
 }
-.trip-navigation {
-  margin: 24px 0 32px;
-}
-.trip-nav-primary,
-.trip-nav-secondary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.trip-nav-secondary {
-  margin-top: 10px;
-}
-.trip-navigation a {
-  padding: 10px 16px;
-  border-radius: 100px;
-  text-decoration: none;
-  color: var(--ink, #222225);
-  background: white;
-  border: 1px solid var(--line, #ddd);
-  font-weight: 700;
-}
-.trip-navigation a.selected {
-  background: var(--lime, #d9f88c);
-  border-color: transparent;
-}
-.trip-nav-more,
-.trip-label-short {
-  display: none;
-}
-.anchor-target,
-#expense {
-  scroll-margin-top: 110px;
-}
 @media (max-width: 700px) {
   .trip-filters {
     grid-template-columns: 1fr;
@@ -965,40 +966,6 @@ blockquote {
   .home-trip-selector {
     align-items: stretch;
     flex-direction: column;
-  }
-  .trip-nav-primary {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 5px;
-  }
-  .trip-nav-primary a {
-    padding: 11px 3px;
-    text-align: center;
-    font-size: 0.82rem;
-  }
-  .trip-nav-secondary,
-  .trip-label-wide {
-    display: none;
-  }
-  .trip-label-short {
-    display: inline;
-  }
-  .trip-nav-more {
-    display: block;
-    min-width: 0;
-  }
-  .trip-nav-more select {
-    min-width: 0;
-    width: 100%;
-    font-size: 0.8rem;
-    padding: 10px 24px 10px 10px;
-    background-position: right 7px center;
-    background-size: 12px;
-    border-radius: 100px;
-    height: 100%;
-  }
-  .trip-nav-more select:focus-visible {
-    outline: 2px solid var(--ink, #222225);
   }
 }
 .sr-only {
@@ -1045,4 +1012,162 @@ blockquote {
 }
 .location-attribution a {
   text-decoration: underline;
+}
+
+/* Home keeps the focus on one trip, with details revealed when needed. */
+.home-page {
+  max-width: 1000px;
+  margin-inline: auto;
+}
+.home-hero {
+  padding: clamp(28px, 5vw, 56px);
+}
+.home-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 75%;
+}
+.home-hero h1,
+.home-trip-main h3,
+.home-focus-card h2 {
+  overflow-wrap: anywhere;
+}
+.home-hero .hero-mark {
+  pointer-events: none;
+  right: 36px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-15deg);
+  opacity: 0.12;
+}
+.home-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.home-text-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.home-focus {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
+  margin-block: 24px 48px;
+}
+.home-focus-card {
+  min-width: 0;
+  background: white;
+  border-radius: 24px;
+  padding: 28px;
+}
+.home-focus-card h2 {
+  font-size: 21px;
+  letter-spacing: -0.5px;
+  margin: 14px 0 8px;
+}
+.home-focus-card p {
+  margin-block: 10px;
+}
+.home-focus-card progress {
+  accent-color: var(--blue);
+  width: 100%;
+  height: 7px;
+  margin-block: 12px;
+}
+.home-focus-list {
+  padding: 0;
+  list-style: none;
+  margin: 10px 0;
+}
+.home-focus-list li {
+  line-height: 1.6;
+  padding-block: 6px;
+  overflow-wrap: anywhere;
+}
+.home-focus-list span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.home-filter-disclosure > summary,
+.home-trip-options > summary {
+  cursor: pointer;
+  min-height: 44px;
+  align-content: center;
+  font-size: 14px;
+  color: #555;
+}
+.home-filter-disclosure > summary svg {
+  display: inline-block;
+  vertical-align: middle;
+  margin-inline: 6px;
+}
+.home-trip-count {
+  margin-block: 8px 18px;
+}
+.home-trip-list {
+  background: white;
+  border-radius: 24px;
+  padding-inline: 28px;
+}
+.home-trip-row + .home-trip-row {
+  border-top: 1px solid #ebebef;
+}
+.home-trip-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 24px;
+}
+.home-trip-main > div {
+  min-width: 0;
+}
+.home-trip-main > svg {
+  flex-shrink: 0;
+}
+.home-trip-main:hover h3 {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.home-trip-stage {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.home-trip-main h3 {
+  margin: 6px 0;
+  font-size: 21px;
+}
+.home-trip-main p {
+  margin: 0;
+}
+.home-trip-options {
+  padding-bottom: 12px;
+}
+.home-trip-options .actions {
+  margin: 0 0 12px;
+}
+.home-notice a {
+  text-decoration: underline;
+}
+@media (max-width: 700px) {
+  .home-hero-content {
+    max-width: 100%;
+  }
+  .home-hero .hero-mark {
+    display: none;
+  }
+  .home-hero h1 {
+    font-size: 40px;
+  }
+  .home-focus-card {
+    padding: 24px;
+  }
+  .home-trip-list {
+    padding-inline: 22px;
+  }
 }
