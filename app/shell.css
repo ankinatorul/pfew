@@ -211,7 +211,17 @@
 }
 /* Home and trip overview share the same full-width application canvas. */
 .app-main:has(
-  > :is(.home-hq, .trip-overview, .trip-edit, .create-trip, .trip-itinerary)
+  > :is(
+    .home-hq,
+    .trip-overview,
+    .trip-edit,
+    .create-trip,
+    .trip-itinerary,
+    .trip-bookings,
+    .trip-budget,
+    .trip-packing,
+    .trip-documents
+  )
 ) {
   width: 100%;
   max-width: none;

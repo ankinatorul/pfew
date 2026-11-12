@@ -169,6 +169,7 @@ function Fixture() {
       <section className="create-trip">
         {step === 2 ? (
           <BookingCollection
+            paymentDueReady
             key={cycle}
             trip={trip}
             initialEntries={load().entries}

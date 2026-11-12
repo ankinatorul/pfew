@@ -6,7 +6,7 @@ import {
   useEffect,
   useId,
 } from "react";
-import { ArrowDown, ArrowUp, Plus, X, LockKeyhole } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, X, ArrowLeft } from "lucide-react";
 import { useCreationFocus } from "../lib/use-creation-focus";
 import { LocationPicker } from "./location-picker";
 import {
@@ -23,6 +23,34 @@ import {
   writeLocalBasics,
   type LocalTripBasics,
 } from "../lib/trip-draft-cache";
+
+export function CreationBack({
+  onClick,
+  href = "/trips",
+  label = "Back to My Trips",
+  disabled = false,
+}: {
+  onClick?: () => void;
+  href?: string;
+  label?: string;
+  disabled?: boolean;
+}) {
+  return onClick ? (
+    <button
+      type="button"
+      className="creation-back"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <ArrowLeft size={20} aria-hidden="true" />
+    </button>
+  ) : (
+    <a className="creation-back" href={href} aria-label={label}>
+      <ArrowLeft size={20} aria-hidden="true" />
+    </a>
+  );
+}
 
 export function CreationProgress({ step = 1 }: { step?: number }) {
   return (
@@ -139,9 +167,7 @@ function TripBasicsFields({
         }
         if (value.rows.some((row) => !row.location)) {
           setInvalidFields(["destinations"]);
-          setError(
-            "Choose a destination from the results, or add its map position, for each destination.",
-          );
+          setError("Choose a destination from the search results.");
           return;
         }
         const parsed = tripBasicsSchema.safeParse({
@@ -154,7 +180,7 @@ function TripBasicsFields({
           setInvalidFields(
             parsed.error.issues.map((issue) => String(issue.path[0])),
           );
-          setError(parsed.error.issues.map((issue) => issue.message).join(" "));
+          setError(parsed.error.issues[0].message);
           return;
         }
         running.current = true;
@@ -180,19 +206,18 @@ function TripBasicsFields({
         }
       }}
     >
+      <CreationBack />
       <CreationProgress />
       <div className="create-intro">
-        <span className="eyebrow">Step 1 of 3</span>
         <h1 ref={headingRef} tabIndex={-1}>
-          Start with a little possibility.
+          Trip Basics
         </h1>
-        <p>A name, a place, and something to look forward to.</p>
       </div>
       <fieldset disabled={busy} className="create-fields">
         <section className="create-card" aria-labelledby="basics-name">
-          <h2 id="basics-name">Your next adventure</h2>
+          <h2 id="basics-name">Trip name</h2>
           <label>
-            Trip name <span className="muted">(required)</span>
+            Trip name
             <input
               name="name"
               aria-invalid={invalidFields.includes("name") || undefined}
@@ -213,11 +238,7 @@ function TripBasicsFields({
         <section className="create-card" aria-labelledby="basics-destinations">
           <div className="section-top">
             <div>
-              <h2 id="basics-destinations">Where are you headed?</h2>
-              <p>
-                Add at least one destination. Put your stops in the order you
-                like.
-              </p>
+              <h2 id="basics-destinations">Destinations</h2>
             </div>
           </div>
           <div className="create-destinations">
@@ -232,7 +253,12 @@ function TripBasicsFields({
               >
                 <div className="create-location">
                   <LocationPicker
-                    label={`Destination ${index + 1}`}
+                    label={
+                      value.rows.length === 1
+                        ? "Destination"
+                        : `Destination ${index + 1}`
+                    }
+                    compact
                     name={`destination_${row.key}`}
                     scope="destination"
                     invalid={
@@ -265,42 +291,44 @@ function TripBasicsFields({
                     }}
                   />
                 </div>
-                <div className="create-stop-actions">
-                  <button
-                    type="button"
-                    className="button secondary"
-                    aria-label={`Move destination ${index + 1} up`}
-                    disabled={index === 0}
-                    onClick={() => move(index, -1)}
-                  >
-                    <ArrowUp size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    aria-label={`Move destination ${index + 1} down`}
-                    disabled={index === value.rows.length - 1}
-                    onClick={() => move(index, 1)}
-                  >
-                    <ArrowDown size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    aria-label={`Remove destination ${index + 1}`}
-                    disabled={value.rows.length === 1}
-                    onClick={() => {
-                      const rows = value.rows.filter(
-                        (item) => item.key !== row.key,
-                      );
-                      pendingDestination.current =
-                        rows[Math.min(index, rows.length - 1)].key;
-                      change({ ...value, rows });
-                    }}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                {value.rows.length > 1 && (
+                  <div className="create-stop-actions">
+                    <button
+                      type="button"
+                      className="button secondary"
+                      aria-label={`Move destination ${index + 1} up`}
+                      disabled={index === 0}
+                      onClick={() => move(index, -1)}
+                    >
+                      <ArrowUp size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      aria-label={`Move destination ${index + 1} down`}
+                      disabled={index === value.rows.length - 1}
+                      onClick={() => move(index, 1)}
+                    >
+                      <ArrowDown size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      aria-label={`Remove destination ${index + 1}`}
+                      disabled={value.rows.length === 1}
+                      onClick={() => {
+                        const rows = value.rows.filter(
+                          (item) => item.key !== row.key,
+                        );
+                        pendingDestination.current =
+                          rows[Math.min(index, rows.length - 1)].key;
+                        change({ ...value, rows });
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -322,20 +350,17 @@ function TripBasicsFields({
         </section>
         <section className="create-card" aria-labelledby="basics-dates">
           <h2 id="basics-dates">When are you going?</h2>
-          <p id="required-dates">
-            Choose both dates to continue. Return on or after departure. You can
-            edit them later.
-          </p>
+
           <div className="create-date-fields">
             <label>
-              Departure <span className="muted">(required)</span>
+              Start date
               <input
                 type="date"
                 name="start_date"
                 required
                 aria-invalid={invalidFields.includes("start_date") || undefined}
                 aria-describedby={
-                  "required-dates" +
+                  "" +
                   (invalidFields.includes("start_date") ? " " + errorId : "")
                 }
                 value={value.start_date}
@@ -345,7 +370,7 @@ function TripBasicsFields({
               />
             </label>
             <label>
-              Return <span className="muted">(required)</span>
+              End date
               <input
                 type="date"
                 name="end_date"
@@ -353,8 +378,7 @@ function TripBasicsFields({
                 min={value.start_date || undefined}
                 aria-invalid={invalidFields.includes("end_date") || undefined}
                 aria-describedby={
-                  "required-dates" +
-                  (invalidFields.includes("end_date") ? " " + errorId : "")
+                  "" + (invalidFields.includes("end_date") ? " " + errorId : "")
                 }
                 value={value.end_date}
                 onChange={(event) =>
@@ -367,8 +391,7 @@ function TripBasicsFields({
       </fieldset>
       {!ready && (
         <p className="create-notice" role="status">
-          Private drafts need database migration 010 before saving is available.
-          Your inputs can still be kept in this browser.
+          Saving is temporarily unavailable. Your inputs stay in this browser.
         </p>
       )}
       {storageError && (
@@ -401,10 +424,6 @@ function TripBasicsFields({
         </p>
       )}
       <div className="create-footer">
-        <p>
-          <LockKeyhole size={16} aria-hidden="true" /> Private until you finish
-          creating your trip.
-        </p>
         <button
           className="button primary"
           type="submit"
@@ -437,6 +456,7 @@ export function DraftChoices({
   );
   return (
     <section className="create-trip">
+      <CreationBack />
       <CreationProgress />
       <div className="create-intro">
         <h1 ref={headingRef} tabIndex={-1}>

@@ -234,6 +234,22 @@ export async function POST(request: Request) {
     if (body.action !== "save")
       return reply({ error: "Choose a supported booking action." }, 400);
     const fields = collectionFieldsSchema.parse(body.fields);
+    if (fields.payment_due_date) {
+      if (!z.iso.date().safeParse(fields.payment_due_date).success)
+        return reply({ error: "Choose a valid payment due date." }, 400);
+      const capability = await db
+        .from("bookings")
+        .select("payment_due_date")
+        .limit(0);
+      if (capability.error)
+        return reply(
+          {
+            error:
+              "Payment deadlines aren’t available yet. Your other details are still here.",
+          },
+          409,
+        );
+    }
     const reservation_status = z
       .enum(reservationStatuses)
       .parse(body.reservation_status);
@@ -249,6 +265,28 @@ export async function POST(request: Request) {
       // Staging IDs are not normal booking IDs; resolve current geographic context.
       values.delete("id");
       const canonical = await bookingLocationValues(db, values);
+      // A compact edit must not replace a saved zone/legacy geographic label
+      // merely because its controls are no longer visible. Resolve changed
+      // point IDs as before; preserve unchanged context from the owned entry.
+      for (const prefix of ["", "end_"]) {
+        const samePoint =
+          fields[prefix + "location_id"] ===
+          entry.fields[prefix + "location_id"];
+        if (samePoint && fields.segment_id === entry.fields.segment_id) {
+          const zone = prefix === "end_" ? "end_timezone" : "timezone";
+          if (entry.fields[zone] && fields[zone] === entry.fields[zone])
+            canonical[zone] = entry.fields[zone];
+          if (!fields[prefix + "location_id"])
+            for (const part of ["location_label", "latitude", "longitude"]) {
+              const key = prefix + part;
+              if (
+                entry.fields[key] !== undefined &&
+                fields[key] === entry.fields[key]
+              )
+                canonical[key] = entry.fields[key];
+            }
+        }
+      }
       const reviewed = reviewedBookingFields(
         canonical as CollectionEntry["fields"],
         input.trip_id,

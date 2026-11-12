@@ -266,9 +266,11 @@ export function PackingSuggestions({
       <section className="card">
         <h3>A starting point, shaped by you.</h3>
         <p>
-          {context.days} trip days. Quantities apply to this list only; choose
-          clothing days for your own laundry and luggage plans. Current items
-          will be kept.
+          {context.days
+            ? context.days + " trip days."
+            : "Trip dates unavailable."}{" "}
+          Quantities apply to this list only; choose clothing days for your own
+          laundry and luggage plans. Current items will be kept.
         </p>
         <form action={generate} className="form">
           <fieldset disabled={busy || !online}>
@@ -279,7 +281,7 @@ export function PackingSuggestions({
                 type="number"
                 min="1"
                 max="30"
-                defaultValue={Math.min(context.days, 7)}
+                defaultValue={Math.max(1, Math.min(context.days || 1, 7))}
                 required
               />
             </label>

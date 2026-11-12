@@ -125,6 +125,10 @@ export default async function New({
             initialEntries={collection.entries}
             initialAttachments={collection.attachments}
             ready={collection.ready}
+            paymentDueReady={
+              !(await db.from("bookings").select("payment_due_date").limit(0))
+                .error
+            }
             setupError={collection.error}
             live={
               process.env.AI_MODE === "live" && Boolean(process.env.AI_API_KEY)

@@ -1,0 +1,266 @@
+.readiness-page {
+  width: 100%;
+  min-width: 0;
+}
+.readiness-page .readiness-progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(130deg, #f5eefb, #fcf9ff 65%, #f1def6);
+  margin-bottom: 20px;
+}
+.readiness-progress > div {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  column-gap: 14px;
+  align-items: center;
+}
+.readiness-progress .money-icon {
+  grid-row: 1/3;
+  margin: 0;
+}
+.readiness-progress h2,
+.readiness-progress p {
+  margin: 0;
+}
+.readiness-progress progress {
+  width: min(320px, 100%);
+  height: 12px;
+  border: 0;
+  border-radius: 99px;
+  overflow: hidden;
+  background: #e5e0eb;
+  accent-color: var(--color-lime);
+}
+.readiness-progress progress::-webkit-progress-bar {
+  background: #e5e0eb;
+}
+.readiness-progress progress::-webkit-progress-value {
+  background: var(--color-lime);
+}
+.readiness-progress progress::-moz-progress-bar {
+  background: var(--color-lime);
+}
+.readiness-page .packing-list-choice {
+  min-width: 180px;
+  max-width: 360px;
+}
+.packing-list-form,
+.packing-quick-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 18px 0;
+}
+.packing-list-form label {
+  flex: 1;
+}
+.packing-quick-add input {
+  flex: 1;
+}
+.packing-quick-add > button {
+  flex-shrink: 0;
+}
+.money-page .packing-collapse {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  margin: 12px 0;
+}
+.packing-category {
+  margin: 24px 0;
+}
+.readiness-page .packing-category > h3 {
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+.readiness-page .packing-items {
+  padding: 0 20px;
+}
+.packing-row,
+.reminder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.packing-row:last-child,
+.reminder-row:last-child {
+  border-bottom: 0;
+}
+.money-page .packing-row > label,
+.money-page .reminder-row > label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.money-page .packing-row input[type="checkbox"],
+.money-page .reminder-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  accent-color: var(--color-cobalt);
+}
+.packing-row span,
+.reminder-row span {
+  overflow-wrap: anywhere;
+}
+.packing-row small,
+.reminder-row small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+.packing-row.is-packed > label > span {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+.packing-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.readiness-page .packing-row-actions button {
+  min-width: 38px;
+  min-height: 44px;
+  padding: 6px 9px;
+  font-size: 0.75rem;
+}
+.packing-editor,
+.readiness-reminders,
+.packing-reuse,
+.packing-suggestions {
+  margin: 22px 0;
+}
+.readiness-page .reminder-editor {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 12px;
+  margin: 16px 0;
+}
+.reminder-editor .money-card-actions {
+  grid-column: 1/-1;
+}
+.readiness-page .readiness-reminders .money-section-heading {
+  margin-bottom: 8px;
+}
+.readiness-page .reminder-row .money-card-actions {
+  margin-top: 0;
+}
+.document-filters {
+  display: grid;
+  grid-template-columns: 1fr 220px auto;
+  align-items: end;
+  gap: 16px;
+  margin: 24px 0;
+}
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 24px 0;
+}
+.document-card .money-badge {
+  margin-bottom: 14px;
+}
+.document-card h2 {
+  font-size: 1.05rem;
+}
+.document-card p {
+  font-size: 0.8rem;
+}
+.document-upload {
+  margin: 20px 0;
+}
+.readiness-page .readiness-file-input {
+  width: 1px;
+  min-height: 1px;
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+}
+.readiness-page .button:has(.readiness-file-input:focus-visible) {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+.packing-suggestions > details {
+  border: 1px solid var(--border-subtle);
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.packing-suggestions .card {
+  box-shadow: none;
+}
+@media (max-width: 1100px) {
+  .document-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .document-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+  .document-filters .packing-collapse {
+    grid-column: 1/-1;
+  }
+}
+@media (max-width: 650px) {
+  .document-grid {
+    grid-template-columns: 1fr;
+  }
+  .document-filters {
+    grid-template-columns: 1fr;
+  }
+  .packing-row,
+  .reminder-row {
+    flex-wrap: wrap;
+  }
+  .packing-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .readiness-page .reminder-row > label {
+    flex-basis: 100%;
+  }
+  .readiness-page .reminder-row .money-card-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .readiness-page .reminder-editor {
+    grid-template-columns: 1fr;
+  }
+  .packing-list-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .readiness-progress progress {
+    width: 100%;
+  }
+  .readiness-progress > div {
+    grid-template-columns: 38px 1fr;
+  }
+  .packing-quick-add button {
+    padding-inline: 12px;
+  }
+  .readiness-page .packing-items {
+    padding-inline: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .readiness-page * {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

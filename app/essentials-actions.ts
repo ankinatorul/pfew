@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { bookingLocationValues } from "../lib/automatic-zones";
-import { removeBookingFiles } from "../lib/storage-cleanup";
+import { prepareBookingRemoval } from "../lib/booking-removal";
 import { access } from "../lib/access";
 import { validationMessage } from "../lib/domain";
 import {
@@ -89,18 +89,7 @@ export async function deleteEssential(form: FormData) {
   const trip = z.uuid().parse(form.get("trip_id"));
   const id = z.uuid().parse(form.get("id"));
   if (table === "bookings") {
-    const { data: canEdit } = await db.rpc("can_edit_trip", { target: trip });
-    if (!canEdit) fail("Editing permission required.");
-    const { data: otherFiles, error: privateError } = await db.rpc(
-      "has_other_private_files",
-      { target: trip, booking: id },
-    );
-    if (otherFiles)
-      fail(
-        "Other travelers have private documents attached. They can remove those files from their own account before the booking is deleted.",
-      );
-    if (privateError) fail("Could not check private documents.");
-    const fileError = await removeBookingFiles(db, trip, id);
+    const fileError = await prepareBookingRemoval(db, trip, id);
     if (fileError) fail(fileError);
   }
   const { error } = await db

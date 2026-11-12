@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   revalidate: vi.fn(),
   remove: vi.fn(),
   fileRecord: vi.fn(),
+  capability: vi.fn(),
 }));
 vi.mock("../lib/auth-session", () => ({ currentGoogleUser: mocks.user }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
@@ -50,6 +51,7 @@ vi.mock("../lib/supabase", () => ({
         select: () => query,
         eq: () => query,
         maybeSingle: mocks.fileRecord,
+        limit: mocks.capability,
         single: async () =>
           operation === "update"
             ? { data: { id: "file" }, error: null }
@@ -82,6 +84,7 @@ let entry: CollectionEntry;
 const bytes = new TextEncoder().encode("%PDF-1.4 isolated fixture");
 beforeEach(() => {
   entry = emptyCollectionEntry(id);
+  mocks.capability.mockResolvedValue({ data: [], error: null });
   mocks.user.mockResolvedValue({ id: "owner" });
   mocks.access.mockImplementation(async () => ({
     trip: {
@@ -315,5 +318,97 @@ it("passes a stale save revision to the atomic RPC instead of defeating retry/co
     expect.anything(),
     trip,
     expect.objectContaining({ revision: 1 }),
+  );
+});
+
+it("validates and gates payment deadlines without losing or saving unsupported fields", async () => {
+  const body = {
+    action: "save",
+    revision: 0,
+    fields: {
+      title: "Later payment",
+      payment_status: "unpaid",
+      payment_due_date: "2027-05-01",
+    },
+    review_status: "needs_review",
+    reservation_status: "unknown",
+  };
+  mocks.capability.mockResolvedValueOnce({ error: { code: "42703" } });
+  expect((await POST(json(body))).status).toBe(409);
+  expect(mocks.persist).not.toHaveBeenCalled();
+  expect(
+    (
+      await POST(
+        json({
+          ...body,
+          fields: { ...body.fields, payment_due_date: "not a date" },
+        }),
+      )
+    ).status,
+  ).toBe(400);
+  expect((await POST(json(body))).status).toBe(200);
+  expect(mocks.persist).toHaveBeenCalledWith(
+    expect.anything(),
+    trip,
+    expect.objectContaining({
+      fields: body.fields,
+      review_status: "needs_review",
+      reservation_status: "unknown",
+    }),
+  );
+});
+
+it("preserves unedited legacy zones and geographic context during a compact reviewed edit", async () => {
+  entry = {
+    ...entry,
+    revision: 1,
+    fields: {
+      ...entry.fields,
+      title: "Old name",
+      category: "flight",
+      currency: "EUR",
+      start_date: "2027-05-01",
+      end_date: "2027-05-01",
+      timezone: "Pacific/Honolulu",
+      end_timezone: "Pacific/Honolulu",
+      travelers: "Keep traveler",
+      notes: "Keep notes",
+      payment_status: "partial",
+      paid_amount: 10,
+      location_id: null,
+      location_label: "Original receipt location",
+      latitude: 21.3,
+      longitude: -157.8,
+      segment_id: null,
+    },
+  };
+  const response = await POST(
+    json({
+      action: "save",
+      revision: 1,
+      fields: { ...entry.fields, title: "Corrected name" },
+      review_status: "reviewed",
+      reservation_status: "pending",
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.persist).toHaveBeenCalledWith(
+    expect.anything(),
+    trip,
+    expect.objectContaining({
+      reservation_status: "pending",
+      fields: expect.objectContaining({
+        title: "Corrected name",
+        timezone: "Pacific/Honolulu",
+        end_timezone: "Pacific/Honolulu",
+        location_label: "Original receipt location",
+        latitude: 21.3,
+        longitude: -157.8,
+        travelers: "Keep traveler",
+        notes: "Keep notes",
+        paid_amount: 10,
+        payment_status: "partial",
+      }),
+    }),
   );
 });

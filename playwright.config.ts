@@ -15,6 +15,8 @@ export default defineConfig({
     "**/booking-collection.spec.tsx",
     "**/trip-review.spec.tsx",
     "**/itinerary.spec.tsx",
+    "**/booking-budget.spec.tsx",
+    "**/packing-documents.spec.tsx",
   ],
   use: {
     baseURL: "http://127.0.0.1:3000",

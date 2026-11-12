@@ -3,6 +3,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { access } from "../lib/access";
+import { removePrivateDocument } from "../lib/private-document-removal";
 import { MAX_FILE_SIZE, validFileType, safeFilename } from "../lib/files";
 function fail(message: string): never {
   redirect("/error?message=" + encodeURIComponent(message));
@@ -80,22 +81,8 @@ export async function deleteAttachment(form: FormData) {
   const { db } = await access();
   const id = z.uuid().parse(form.get("id"));
   const trip = z.uuid().parse(form.get("trip_id"));
-  const { data } = await db
-    .from("booking_attachments")
-    .select("path")
-    .eq("id", id)
-    .eq("trip_id", trip)
-    .single();
-  if (!data) fail("Document unavailable");
-  const { error } = await db.storage.from("booking-files").remove([data.path]);
-  if (error) fail("Could not remove stored document");
-  const { error: metaError } = await db
-    .from("booking_attachments")
-    .delete()
-    .eq("id", id)
-    .eq("trip_id", trip);
-  if (metaError)
-    fail("Document removed, but metadata cleanup failed. Please retry.");
+  const error = await removePrivateDocument(db, trip, id);
+  if (error) fail(error);
   revalidatePath("/trips/" + trip);
   revalidatePath("/profile");
 }

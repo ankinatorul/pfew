@@ -170,21 +170,15 @@ it("promotes real geographic candidates beyond the old eight-result window and r
   };
   const result = await searchWorldwideLocations(
     "京都",
-    vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({
-          features: [
-            ...Array.from({ length: 12 }, (_, i) => poi(i)),
-            city,
-            city,
-          ],
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      Response.json({
+        features: [...Array.from({ length: 12 }, (_, i) => poi(i)), city, city],
+      }),
+    ),
     "destination",
   );
   expect(result.results[0].city).toBe("Kyoto");
-  expect(result.results).toHaveLength(12);
+  expect(result.results).toHaveLength(1); // streets are excluded from destination results
   expect(result.results.filter((item) => item.city === "Kyoto")).toHaveLength(
     1,
   );
@@ -206,21 +200,16 @@ it("ranks exact accented place names ahead of containing names and includes city
   });
   const result = await searchWorldwideLocations(
     "Sao Tome",
-    vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({
-          features: [
-            same("São Tomé and Príncipe", 6.7),
-            same("São Tomé", 6.73),
-          ],
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      Response.json({
+        features: [same("São Tomé and Príncipe", 6.7), same("São Tomé", 6.73)],
+      }),
+    ),
     "destination",
   );
   expect(result.results[0].city).toBe("São Tomé");
   expect(result.results[0].label).toContain(
-    "Centre, Água Grande, São Tomé and Príncipe",
+    "Água Grande, São Tomé and Príncipe",
   );
   expect(resolveLocation(result.results[0].id)).toEqual(result.results[0]);
 });
@@ -293,4 +282,98 @@ it("accepts short non-English names and normalizes input without making broad si
       )
     ).status,
   ).toBe(400);
+});
+
+it("Ao Nang favors traveler destinations over streets/subdivisions and keeps namesakes distinct", async () => {
+  const features = [
+    {
+      name: "Ao Nang Road",
+      type: "street",
+      osm_key: "highway",
+      osm_value: "residential",
+      osm_id: 1,
+    },
+    {
+      name: "Ao Nang",
+      type: "district",
+      osm_key: "boundary",
+      osm_value: "administrative",
+      osm_id: 2,
+    },
+    {
+      name: "Ao Nang",
+      type: "city",
+      osm_key: "place",
+      osm_value: "town",
+      osm_id: 3,
+    },
+    {
+      name: "Ao Nang",
+      type: "city",
+      osm_key: "place",
+      osm_value: "town",
+      osm_id: 3,
+    },
+  ].map((p, i) => ({
+    geometry: { type: "Point", coordinates: [98.82 + i * 0.001, 8.03] },
+    properties: {
+      country: "Thailand",
+      state: "Krabi",
+      county: "Mueang Krabi",
+      district: "Minor subdivision",
+      osm_type: "N",
+      ...p,
+    },
+  }));
+  const result = await searchWorldwideLocations(
+    "Ao Nang",
+    vi.fn().mockResolvedValue(Response.json({ features })),
+    "destination",
+  );
+  expect(result.results[0].label).toBe("Ao Nang, Krabi, Thailand");
+  expect(result.results[0].providerId).toBe("osm:N:3");
+  expect(result.results.some((r) => r.city === "Ao Nang Road")).toBe(false);
+  expect(result.results.filter((r) => r.providerId === "osm:N:3")).toHaveLength(
+    1,
+  );
+  const namesakes = await searchWorldwideLocations(
+    "Springfield",
+    vi.fn().mockResolvedValue(
+      Response.json({
+        features: [
+          {
+            geometry: { type: "Point", coordinates: [-89.65, 39.78] },
+            properties: {
+              name: "Springfield",
+              type: "city",
+              country: "United States",
+              state: "Illinois",
+            },
+          },
+          {
+            geometry: { type: "Point", coordinates: [-72.59, 42.1] },
+            properties: {
+              name: "Springfield",
+              type: "city",
+              country: "United States",
+              state: "Massachusetts",
+            },
+          },
+        ],
+      }),
+    ),
+    "destination",
+  );
+  expect(namesakes.results.some((r) => r.label.includes("Illinois"))).toBe(
+    true,
+  );
+  expect(namesakes.results.some((r) => r.label.includes("Massachusetts"))).toBe(
+    true,
+  );
+  expect(
+    namesakes.results.filter((r) => r.city === "Springfield").length,
+  ).toBeGreaterThanOrEqual(2);
+  expect(new Set(namesakes.results.map((r) => r.label)).size).toBe(
+    namesakes.results.length,
+  );
 });

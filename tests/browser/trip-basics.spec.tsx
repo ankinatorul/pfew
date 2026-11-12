@@ -47,7 +47,13 @@ async function mount(page: Page, query = "") {
 }
 async function choose(page: Page, number: number, index = 0) {
   const input = page.getByRole("combobox", {
-    name: `Destination ${number}`,
+    name:
+      number === 1 &&
+      (await page
+        .getByRole("combobox", { name: "Destination", exact: true })
+        .count())
+        ? "Destination"
+        : `Destination ${number}`,
     exact: true,
   });
   await input.fill(index ? "São" : "Kyoto");
@@ -180,7 +186,7 @@ test("retains incomplete local input through reload, reports save failures, and 
     "My first possibility",
   );
   await expect(
-    page.getByRole("combobox", { name: "Destination 1", exact: true }),
+    page.getByRole("combobox", { name: "Destination", exact: true }),
   ).toHaveValue(choices[0].label);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("departure date");

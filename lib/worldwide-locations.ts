@@ -43,6 +43,7 @@ type Candidate = {
   order: number;
   object?: string;
   kind?: string;
+  destinationRank: number;
 };
 const layers = [
   "country",
@@ -104,17 +105,23 @@ function isGeographic(p: Feature["properties"]) {
     (p.osm_key === "leisure" && p.osm_value === "park")
   );
 }
-function candidate(feature: Feature, order: number): Candidate {
+function candidate(
+  feature: Feature,
+  order: number,
+  scope: LocationSearchScope,
+): Candidate {
   const p = feature.properties;
   const name = p.name.slice(0, 200);
   const seen = new Set([folded(name)]);
-  const context = [p.district, p.city, p.county, p.state, p.country].filter(
-    (value): value is string => {
-      if (!value?.trim() || seen.has(folded(value))) return false;
-      seen.add(folded(value));
-      return true;
-    },
-  );
+  const context = (
+    scope === "destination"
+      ? [p.state || p.county || p.city, p.country]
+      : [p.city, p.state || p.county, p.country]
+  ).filter((value): value is string => {
+    if (!value?.trim() || seen.has(folded(value))) return false;
+    seen.add(folded(value));
+    return true;
+  });
   // Keep the country visible within the existing 200-character saved-label limit.
   const country = context.at(-1) || "";
   const room = Math.max(0, 198 - name.length);
@@ -139,6 +146,17 @@ function candidate(feature: Feature, order: number): Candidate {
         : undefined,
     ),
     geographic: isGeographic(p),
+    destinationRank:
+      ["highway", "building", "addr:housenumber"].includes(p.osm_key || "") ||
+      ["street", "house"].includes(p.type || "")
+        ? 9
+        : ["suburb", "neighbourhood", "quarter", "district"].includes(
+              p.osm_value || "",
+            ) || p.type === "district"
+          ? 2
+          : isGeographic(p)
+            ? 0
+            : 3,
     order,
     object:
       p.osm_type && p.osm_id != null ? p.osm_type + ":" + p.osm_id : undefined,
@@ -182,7 +200,7 @@ export async function searchWorldwideLocations(
       const parsed = featureSchema.safeParse(entry);
       if (!parsed.success) return [];
       try {
-        return [candidate(parsed.data, order)];
+        return [candidate(parsed.data, order, scope)];
       } catch {
         return [];
       } // malformed coordinates must not hide other valid results
@@ -212,6 +230,7 @@ export async function searchWorldwideLocations(
       ...local.map((location, order) => ({
         location,
         geographic: true,
+        destinationRank: 0,
         order: remote.length + order,
       })),
     ];
@@ -220,15 +239,31 @@ export async function searchWorldwideLocations(
         nameRank(a.location.city, query) - nameRank(b.location.city, query);
       const geography = Number(!a.geographic) - Number(!b.geographic);
       return (
-        (scope === "destination" ? geography || name : name || geography) ||
-        a.order - b.order
+        (scope === "destination"
+          ? a.destinationRank - b.destinationRank || geography || name
+          : name || geography) || a.order - b.order
       );
     });
     const objects = new Set<string>(),
       points = new Set<string>();
     const unique = candidates
       .filter((item) => {
+        if (scope === "destination" && item.destinationRank === 9) return false;
         const r = item.location;
+        // City-timezones is a fallback representation, not another provider
+        // place. Prefer the matching Photon settlement with the same full
+        // region/country label and nearby center; keep other namesakes.
+        if (
+          r.source === "city-timezones" &&
+          remote.some(
+            (other) =>
+              other.geographic &&
+              folded(other.location.label) === folded(r.label) &&
+              Math.abs(other.location.latitude - r.latitude) < 0.03 &&
+              Math.abs(other.location.longitude - r.longitude) < 0.03,
+          )
+        )
+          return false;
         const point = `${folded(r.city)}:${r.latitude.toFixed(3)}:${r.longitude.toFixed(3)}`;
         if ((item.object && objects.has(item.object)) || points.has(point))
           return false;
@@ -241,9 +276,7 @@ export async function searchWorldwideLocations(
       const r = item.location;
       if (
         item.kind &&
-        unique.some(
-          (other) => other !== item && other.location.label === r.label,
-        )
+        unique.find((other) => other.location.label === r.label) !== item
       )
         return geographicLocation(
           r.city,

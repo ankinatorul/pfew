@@ -2,13 +2,12 @@
 import { useRef, useState } from "react";
 import { Check, ArrowRight } from "lucide-react";
 import { useCreationFocus } from "../lib/use-creation-focus";
-import { CreationProgress } from "./trip-basics";
+import { CreationProgress, CreationBack } from "./trip-basics";
 import {
   travelStyles,
   travelStyleLabel,
   type TravelStyle,
 } from "../lib/trip-style";
-import { automaticTripTheme } from "../lib/trip-theme";
 import {
   bookingReviewStamp,
   type ReviewInput,
@@ -42,17 +41,13 @@ export function TripReview(props: TripReviewProps) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [created, setCreated] = useState(props.finalized || false);
-  const [createdTheme, setCreatedTheme] = useState(
-    props.trip.theme || "Default",
-  );
   const running = useRef(false);
   const { headingRef, errorRef } = useCreationFocus(
     created ? "success" : "review",
     error,
     busy,
   );
-  const counts = collectionCounts(props.entries),
-    theme = automaticTripTheme(props.basics.name, props.basics.destinations);
+  const counts = collectionCounts(props.entries);
   const input = (selected = style): ReviewInput => ({
     id: props.trip.id,
     revision,
@@ -103,12 +98,7 @@ export function TripReview(props: TripReviewProps) {
           <p>
             {props.basics.start_date} – {props.basics.end_date}
           </p>
-          <p>
-            {style} travel style · {createdTheme} theme
-          </p>
-          <p>
-            Any saved bookings stay in Bookings, including unfinished reviews.
-          </p>
+          <p>{style}</p>
         </div>
         <button
           type="button"
@@ -121,20 +111,24 @@ export function TripReview(props: TripReviewProps) {
     );
   return (
     <div className="trip-review">
+      <CreationBack
+        label="Back to Add Bookings"
+        disabled={busy}
+        onClick={() =>
+          void perform(async () => {
+            if (!dirty || (await persist())) props.onNavigate(2);
+          })
+        }
+      />
       <CreationProgress step={3} />
       <header className="create-intro">
-        <span className="eyebrow">Step 3 of 3</span>
         <h1 ref={headingRef} tabIndex={-1}>
-          Make it your kind of trip.
+          Travel Style & Review
         </h1>
-        <p>
-          Choose your travel style, check the details, and you’re ready to go.
-        </p>
       </header>
       {!props.ready && (
         <p className="create-notice" role="status">
-          {props.setupError ||
-            "Trip creation needs the reviewed migrations in a separate development database. Nothing was applied to the live project."}
+          Trip creation is temporarily unavailable. Your draft is saved.
         </p>
       )}
       <fieldset
@@ -172,14 +166,11 @@ export function TripReview(props: TripReviewProps) {
           </label>
         ))}
       </fieldset>
-      <p className="muted" role="status">
-        {busy
-          ? "Saving your changes…"
-          : dirty
-            ? "Your selection has unsaved changes. Create my trip will retry saving it."
-            : "Travel style saved. You can change it later in Edit trip."}{" "}
-        Choosing a style won’t set or change your budget.
-      </p>
+      {(busy || dirty) && (
+        <p className="muted" role="status">
+          {busy ? "Saving…" : "Selection not saved. Try again."}
+        </p>
+      )}
       <div className="review-grid">
         <section
           className="create-card review-basics"
@@ -220,10 +211,6 @@ export function TripReview(props: TripReviewProps) {
               <dd>{style}</dd>
             </div>
           </dl>
-          <p className="muted">
-            Destinations stay in this order. Individual stop dates have not been
-            assigned.
-          </p>
         </section>
         <section
           className="create-card"
@@ -263,7 +250,6 @@ export function TripReview(props: TripReviewProps) {
                     {entry.review_status === "reviewed"
                       ? "Reviewed"
                       : "Needs review"}{" "}
-                    · Reservation: {entry.reservation_status}
                   </span>
                   {entry.fields.start_date && (
                     <span>
@@ -280,24 +266,8 @@ export function TripReview(props: TripReviewProps) {
           ) : (
             <p>No bookings added. You can add them after creating your trip.</p>
           )}
-          <p className="muted">
-            Unfinished entries and saved originals stay available in Bookings.
-            Reviewing details does not confirm a reservation.
-          </p>
         </section>
       </div>
-      <section className="create-card review-theme">
-        <span className="pill">{theme.theme} theme</span>
-        <div>
-          <h2>A little destination character, chosen for you.</h2>
-          <p>
-            {theme.theme === "Default"
-              ? "We’ll keep things versatile while your plans take shape."
-              : "Chosen from your trip name and destinations."}{" "}
-            Your theme stays the same after creation.
-          </p>
-        </div>
-      </section>
       {error && (
         <p ref={errorRef} tabIndex={-1} className="create-error" role="alert">
           {error}{" "}
@@ -311,17 +281,6 @@ export function TripReview(props: TripReviewProps) {
         </p>
       )}
       <footer className="create-footer">
-        <button
-          className="button secondary"
-          disabled={busy}
-          onClick={() =>
-            void perform(async () => {
-              if (!dirty || (await persist())) props.onNavigate(2);
-            })
-          }
-        >
-          Back to Add Bookings
-        </button>
         <button
           type="button"
           className="button primary"
@@ -340,7 +299,6 @@ export function TripReview(props: TripReviewProps) {
                 return;
               }
               setStyle(result.style);
-              setCreatedTheme(result.theme);
               setDirty(false);
               setCreated(true);
             })

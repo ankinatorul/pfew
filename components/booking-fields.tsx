@@ -13,6 +13,7 @@ export function BookingFields({
   draft,
   review,
   collection = false,
+  managed = false,
 }: {
   trip: Trip;
   item?: Booking;
@@ -20,6 +21,7 @@ export function BookingFields({
   review?: { importKey: string; method: "text" | "ai" };
   segments: Segment[];
   collection?: boolean;
+  managed?: boolean;
 }) {
   const [location, setLocation] = useState<ResolvedLocation | null>(null);
   const [arrival, setArrival] = useState<ResolvedLocation | null>(null);
@@ -83,6 +85,7 @@ export function BookingFields({
       <label>
         Link to itinerary segment · optional
         <select
+          aria-label="Link to itinerary segment · optional"
           name="segment_id"
           defaultValue={item?.segment_id || draft?.segment_id || ""}
         >
@@ -162,10 +165,13 @@ export function BookingFields({
           },
           {
             name: "verification",
-            label: "Verification",
+            label: managed ? "Review status" : "Verification",
+            optionLabels: managed
+              ? { unverified: "Needs review", "user confirmed": "Reviewed" }
+              : undefined,
             options: ["unverified", "user confirmed"],
           },
-          ...(!collection && item?.reservation_status !== undefined
+          ...(!collection && (managed || item?.reservation_status !== undefined)
             ? [
                 {
                   name: "reservation_status",

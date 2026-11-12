@@ -63,34 +63,21 @@ test("collects multiple sources and manual details in one review, distinguishes 
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   await expect(page.locator("article.collection-entry")).toHaveCount(3);
   const manual = page.locator("article.collection-entry").last();
+  await manual.getByLabel("Name", { exact: true }).fill("My manual flight");
+  await manual.getByRole("radio", { name: "Transport", exact: true }).check();
+  await manual.getByLabel("Travel date", { exact: true }).fill("2027-05-01");
   await manual
-    .getByRole("button", { name: "Review / edit", exact: true })
+    .getByLabel("End date (optional)", { exact: true })
+    .fill("2027-05-01");
+  await manual.getByLabel("Currency", { exact: true }).fill("EUR");
+  await manual
+    .getByRole("button", { name: "Save booking", exact: true })
     .click();
-  await manual
-    .getByLabel("Booking name", { exact: true })
-    .fill("My manual flight");
-  await manual
-    .getByRole("combobox", { name: "Category", exact: true })
-    .selectOption("flight");
-  await manual.getByLabel("Start date", { exact: true }).fill("2027-05-01");
-  await manual.getByLabel("End date", { exact: true }).fill("2027-05-01");
-  await manual
-    .getByRole("button", { name: "Mark details reviewed", exact: true })
-    .click();
-  await expect(page.getByRole("alert")).toContainText(
-    "required booking fields",
-  );
-  await manual
-    .getByLabel("Currency · three uppercase letters", { exact: true })
-    .fill("EUR");
-  await manual
-    .getByRole("button", { name: "Mark details reviewed", exact: true })
-    .click();
-  await expect(manual.getByText("Reviewed", { exact: true })).toBeVisible();
-  await expect(manual.getByText(/Reservation: unknown/)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(manual.getByText(/Reservation: unknown/)).toHaveCount(0);
   await expect(
     page.getByText(/3 added · 1 reviewed · 2 need review/),
-  ).toBeVisible();
+  ).toHaveCount(1);
   for (const width of [320, 375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(
@@ -101,9 +88,6 @@ test("collects multiple sources and manual details in one review, distinguishes 
   }
   await page.setViewportSize(testInfo.project.use.viewport!);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await manual.locator(".collection-editor").evaluate((node) => {
-    (node as HTMLDetailsElement).open = false;
-  });
   await page.screenshot({
     path: testInfo.outputPath("booking-collection.png"),
     fullPage: true,
@@ -165,18 +149,19 @@ test("retains originals after reading failure, retries from saved source, and sa
     .click();
   await expect(card.getByText(/Fixture airline/).first()).toBeVisible();
   await expect(card.getByText("Needs review", { exact: true })).toBeVisible();
+  await card.getByLabel(/More actions/).click();
   page.once("dialog", (dialog) => dialog.dismiss());
   await card.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.locator("article.collection-entry")).toHaveCount(1);
   page.once("dialog", (dialog) => dialog.accept());
   await card.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(page.locator("article.collection-entry")).toHaveCount(0);
-  await page.getByRole("button", { name: "Skip for now", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Travel Style & Review is next" }),
   ).toBeVisible();
 });
-test("storage failure is honest, retry keeps the same entry, drafts are isolated and pasted text joins the group", async ({
+test("storage failure is honest, retry keeps the same entry and drafts are isolated", async ({
   page,
 }) => {
   await mount(page, "?failUpload=1");
@@ -192,28 +177,15 @@ test("storage failure is honest, retry keeps the same entry, drafts are isolated
     1,
   );
   await expect(page.locator("article.collection-entry")).toHaveCount(1);
-  await page
-    .getByText("Paste confirmation text · no AI", { exact: true })
-    .click();
-  await page
-    .getByLabel("Confirmation text", { exact: true })
-    .fill("Provider: Reliable provider\nStart date: 2027-05-02");
-  await page
-    .getByRole("button", { name: "Read labeled text", exact: true })
-    .click();
-  await expect(page.locator("article.collection-entry")).toHaveCount(2);
   await expect(
-    page
-      .locator("article.collection-entry")
-      .last()
-      .getByRole("heading", { name: "Reliable provider", exact: true }),
-  ).toBeVisible();
+    page.getByText("Paste confirmation text · no AI", { exact: true }),
+  ).toHaveCount(0);
   await mount(page, "?trip=88888888-8888-4888-8888-888888888888");
   await expect(page.locator("article.collection-entry")).toHaveCount(0);
-  await page.getByRole("button", { name: "Skip for now", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByText("0 reviewed · 0 need review")).toBeVisible();
   await mount(page, "?failUpload=1");
-  await expect(page.locator("article.collection-entry")).toHaveCount(2);
+  await expect(page.locator("article.collection-entry")).toHaveCount(1);
 });
 
 test("Continue preserves unsaved fields from several cards while saving them sequentially", async ({
@@ -228,10 +200,9 @@ test("Continue preserves unsaved fields from several cards while saving them seq
       .getByRole("button", { name: "Add manually", exact: true })
       .click();
     const card = page.locator("article.collection-entry").last();
-    await card
-      .getByRole("button", { name: "Review / edit", exact: true })
-      .click();
-    await card.getByLabel("Booking name", { exact: true }).fill(title);
+    await card.getByLabel("Name", { exact: true }).fill(title);
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Close booking editor" }).click();
   }
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(

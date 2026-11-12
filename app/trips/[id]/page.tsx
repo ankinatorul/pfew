@@ -1,3 +1,5 @@
+import { PackingDocuments } from "../../../components/packing-documents";
+import { BookingBudget } from "../../../components/booking-budget";
 import { Suspense } from "react";
 import { Itinerary } from "../../../components/itinerary";
 import { savedTripDestinations } from "../../../lib/trip-destinations";
@@ -101,6 +103,61 @@ export default async function Hub({
           canEdit={canEdit}
           day={q.day}
           explore={view === "ideas"}
+        />
+      </Suspense>
+    );
+  if (view === "bookings" || view === "budget")
+    return (
+      <Suspense
+        key={id + ":" + view}
+        fallback={
+          <div
+            className={
+              view === "bookings"
+                ? "trip-bookings money-page"
+                : "trip-budget money-page"
+            }
+            aria-busy="true"
+          >
+            <h1>{view === "bookings" ? "Your bookings" : "Your budget"}</h1>
+            <p role="status">Loading your saved details…</p>
+          </div>
+        }
+      >
+        <BookingBudget
+          trip={trip}
+          segments={segments}
+          view={view}
+          canEdit={canEdit}
+          edit={q.edit}
+        />
+      </Suspense>
+    );
+  if (view === "packing" || view === "documents")
+    return (
+      <Suspense
+        key={id + ":" + view}
+        fallback={
+          <div
+            className={
+              view === "packing"
+                ? "trip-packing money-page"
+                : "trip-documents money-page"
+            }
+            aria-busy="true"
+          >
+            <h1>
+              {view === "packing" ? "Your packing list" : "Your documents"}
+            </h1>
+            <p role="status">Loading your saved items…</p>
+          </div>
+        }
+      >
+        <PackingDocuments
+          trip={trip}
+          segments={segments}
+          view={view}
+          canEdit={canEdit}
         />
       </Suspense>
     );

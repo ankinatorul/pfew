@@ -46,6 +46,7 @@ function Fixture() {
     newTrip?: boolean;
     attachments?: CollectionAttachment[];
     failedReads?: string[];
+    failedBookingSaves?: string[];
   };
   const initial: Store = {
     draft: {
@@ -257,6 +258,14 @@ function Fixture() {
     }
     if (values.action === "save") {
       if (
+        params.get("failBookingSave") === "1" &&
+        !(next.failedBookingSaves || []).includes(entryId)
+      ) {
+        next.failedBookingSaves = [...(next.failedBookingSaves || []), entryId];
+        store(next);
+        return { error: "Couldn’t save this booking. Try again." };
+      }
+      if (
         values.review_status === "reviewed" &&
         !reviewedBookingFields(values.fields as CollectionEntry["fields"], id)
           .success
@@ -380,6 +389,7 @@ function Fixture() {
           />
         ) : state.step === 2 ? (
           <BookingCollection
+            paymentDueReady
             trip={trip}
             initialEntries={state.entries}
             initialAttachments={state.attachments || []}

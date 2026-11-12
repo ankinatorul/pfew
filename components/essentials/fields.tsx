@@ -3,6 +3,7 @@ type Fields = {
   label: string;
   type?: string;
   options?: readonly string[];
+  optionLabels?: Record<string, string>;
   required?: boolean;
   max?: number;
   min?: number;
@@ -30,10 +31,14 @@ export function Fields({
           <label key={f.name}>
             {f.label}
             {f.options ? (
-              <select name={f.name} defaultValue={value(f.name, f.options[0])}>
+              <select
+                aria-label={f.label}
+                name={f.name}
+                defaultValue={value(f.name, f.options[0])}
+              >
                 {f.options.map((o) => (
                   <option key={o} value={o}>
-                    {o || "Not specified"}
+                    {f.optionLabels?.[o] || o || "Not specified"}
                   </option>
                 ))}
               </select>

@@ -7,7 +7,7 @@ import {
 } from "./booking-collection";
 
 export const collectionSetupMessage =
-  "Booking collection needs the reviewed draft/collection migrations in a separate development database. Nothing was saved to the connected project.";
+  "Booking collection needs the reviewed draft/collection database updates. Nothing was saved.";
 export async function loadBookingCollection(
   db: SupabaseClient,
   tripId: string,

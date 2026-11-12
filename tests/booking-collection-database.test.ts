@@ -74,6 +74,43 @@ it("persists owner-private unfinished booking collection, retains files and mate
     expect(
       (await db.query("select reservation_status from bookings")).rows,
     ).toEqual([{ reservation_status: "unknown" }]);
+    await db.exec("reset role");
+    const inspection = readFileSync(
+      "supabase/VERIFY_PHASE11A1_READ_ONLY.sql",
+      "utf8",
+    );
+    const inspect = async () =>
+      JSON.parse(
+        String(
+          (await db.exec(inspection))
+            .flatMap((r) => r.rows)
+            .find((r) => r.phase11a1_report)!.phase11a1_report,
+        ),
+      );
+    const deadlineBefore = await inspect();
+    const deadlineSQL = readFileSync(
+      "supabase/migrations/017_booking_payment_due.sql",
+      "utf8",
+    );
+    await db.exec(deadlineSQL);
+    await db.exec(deadlineSQL);
+    const deadlineAfter = await inspect();
+    expect(deadlineAfter.booking_baseline).toEqual(
+      deadlineBefore.booking_baseline,
+    );
+    expect(deadlineBefore.payment_due_date).toBeNull();
+    expect(deadlineAfter.payment_due_date).toEqual({
+      type: "date",
+      not_null: false,
+    });
+    expect(deadlineAfter.routine).toMatchObject({
+      security_definer: false,
+      anon_execute: false,
+    });
+    expect(
+      (await db.query("select payment_due_date from bookings")).rows,
+    ).toEqual([{ payment_due_date: null }]);
+    await act(owner);
     const trip = crypto.randomUUID(),
       secondTrip = crypto.randomUUID();
     const basics = JSON.stringify({
@@ -227,7 +264,8 @@ it("persists owner-private unfinished booking collection, retains files and mate
       price: null,
       paid_amount: null,
       currency: "EUR",
-      payment_status: "unknown",
+      payment_status: "unpaid",
+      payment_due_date: "2027-04-15",
       verification: "user confirmed",
     };
     let complete = await save(finalized, {
@@ -267,6 +305,23 @@ it("persists owner-private unfinished booking collection, retains files and mate
       );
     const result = await materialize();
     expect((await materialize()).rows).toEqual(result.rows);
+    expect(
+      (
+        await db.query(
+          "select payment_due_date::text, payment_status,reservation_status from bookings where id=$1",
+          [result.rows[0].id],
+        )
+      ).rows,
+    ).toEqual([
+      {
+        payment_due_date: "2027-04-15",
+        payment_status: "unpaid",
+        reservation_status: "unknown",
+      },
+    ]);
+    expect(
+      (await db.query("select count(*)::int n from expenses")).rows,
+    ).toEqual([{ n: 0 }]);
     expect(
       (
         await db.query(

@@ -23,6 +23,7 @@ export function LocationPicker({
   scope = "place",
   invalid = false,
   errorDescriptionId,
+  compact = false,
 }: {
   label: string;
   name?: string;
@@ -35,6 +36,7 @@ export function LocationPicker({
   scope?: LocationSearchScope;
   invalid?: boolean;
   errorDescriptionId?: string;
+  compact?: boolean;
 }) {
   const [query, setQuery] = useState(initialLabel);
   const [selected, setSelected] = useState(initialId || "");
@@ -64,7 +66,7 @@ export function LocationPicker({
   useEffect(() => {
     input.current?.setCustomValidity(
       (required || query.trim().length > 0) && !selected
-        ? "Choose a place from the results, or add its map position."
+        ? "Choose a place from the search results."
         : "",
     );
   }, [required, selected, query]);
@@ -298,19 +300,18 @@ export function LocationPicker({
             searchedQuery === locationQuery(query)
               ? results.length
                 ? "Choose the matching place below."
-                : "No matches found. Try another spelling or add a country, or use a map position below."
+                : "No matches. Try a nearby town or add the country."
               : "")}
-        {selected
+        {selected && !compact
           ? "Local time is set automatically from the selected map point."
           : ""}
       </span>
       {!selected && !worldwideAvailable && (
         <p className="location-hint">
-          Worldwide search is temporarily unavailable. City results may still
-          appear; you can add any named place using its map position below.
+          Search is temporarily limited. Try a nearby town or try again shortly.
         </p>
       )}
-      {!selected && (
+      {!selected && !compact && (
         <details
           className="location-manual"
           onToggle={(event) => {
@@ -354,7 +355,11 @@ export function LocationPicker({
           {manualError && <p role="alert">{manualError}</p>}
         </details>
       )}
-      <small className="location-attribution">
+      <small
+        className={
+          "location-attribution" + (compact ? " compact-attribution" : "")
+        }
+      >
         Worldwide search:{" "}
         <a href="https://photon.komoot.io" target="_blank" rel="noreferrer">
           Photon

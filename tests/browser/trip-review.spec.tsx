@@ -65,9 +65,9 @@ test("review defaults to Balanced, saves all three choices, resumes, and opens t
   }
   await mount(page);
   await expect(page.getByRole("radio", { name: /^Balanced/ })).toBeChecked();
-  await expect(
-    page.getByText("City Break theme", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("City Break theme", { exact: true })).toHaveCount(
+    0,
+  );
   for (const width of [320, 375, 768, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     expect(
@@ -137,15 +137,14 @@ test("edit actions preserve style and basics through the three steps; unfinished
     .fill("Paris city weekend");
   await page.getByRole("button", { name: /Continue/ }).click();
   await expect(
-    page.getByRole("heading", { name: "Got bookings already?" }),
+    page.getByRole("heading", { name: "Add your bookings" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   await page
-    .getByRole("button", { name: "Review / edit", exact: true })
-    .click();
-  await page
-    .getByLabel("Booking name", { exact: true })
+    .getByLabel("Name", { exact: true })
     .fill("Saved unfinished transfer");
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Close booking editor" }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("radio", { name: /^Premium/ })).toBeChecked();
   await expect(
@@ -163,7 +162,7 @@ test("edit actions preserve style and basics through the three steps; unfinished
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Skip for now", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByRole("button", { name: "Create my trip", exact: true })
     .click();
@@ -214,12 +213,24 @@ async function capturePhase7E(page: Page, info: TestInfo, name: string) {
 }
 async function chooseDestination(page: Page, index: number, query = "Paris") {
   const field = page.getByRole("combobox", {
-    name: `Destination ${index}`,
+    name:
+      index === 1 &&
+      (await page
+        .getByRole("combobox", { name: "Destination", exact: true })
+        .count())
+        ? "Destination"
+        : `Destination ${index}`,
     exact: true,
   });
   await field.fill(query);
   const list = page.getByRole("listbox", {
-    name: `Destination ${index} suggestions`,
+    name:
+      index === 1 &&
+      (await page
+        .getByRole("combobox", { name: "Destination", exact: true })
+        .count())
+        ? "Destination suggestions"
+        : `Destination ${index} suggestions`,
     exact: true,
   });
   await expect(list).toBeVisible();
@@ -295,7 +306,7 @@ test("Phase 7E complete mixed-booking journey preserves originals, recovers draf
   await capturePhase7E(page, info, "step-1");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Got bookings already?" }),
+    page.getByRole("heading", { name: "Add your bookings" }),
   ).toBeFocused();
   await page.getByLabel("Upload confirmations", { exact: true }).setInputFiles([
     {
@@ -335,28 +346,22 @@ test("Phase 7E complete mixed-booking journey preserves originals, recovers draf
   ).toBeVisible();
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   const manual = page.locator("article.collection-entry").last();
-  await expect(
-    manual.getByLabel("Booking name", { exact: true }),
-  ).toBeFocused();
+  await expect(manual.getByLabel("Name", { exact: true })).toBeFocused();
+  await manual.getByLabel("Name", { exact: true }).fill("My reviewed transfer");
+  await manual.getByRole("radio", { name: "Transport", exact: true }).check();
+  await manual.getByLabel("Travel date", { exact: true }).fill("2027-06-01");
   await manual
-    .getByLabel("Booking name", { exact: true })
-    .fill("My reviewed transfer");
+    .getByLabel("End date (optional)", { exact: true })
+    .fill("2027-06-01");
+  await manual.getByLabel("Currency", { exact: true }).fill("EUR");
   await manual
-    .getByRole("combobox", { name: "Category", exact: true })
-    .selectOption("ground transport");
-  await manual.getByLabel("Start date", { exact: true }).fill("2027-06-01");
-  await manual.getByLabel("End date", { exact: true }).fill("2027-06-01");
-  await manual
-    .getByLabel("Currency · three uppercase letters", { exact: true })
-    .fill("EUR");
-  await manual
-    .getByRole("button", { name: "Mark details reviewed", exact: true })
+    .getByRole("button", { name: "Save booking", exact: true })
     .click();
-  await expect(manual.getByText("Reviewed", { exact: true })).toBeVisible();
-  await expect(manual.getByText(/Reservation: unknown/)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(manual.getByText(/Reservation: unknown/)).toHaveCount(0);
   await expect(
     page.getByText("3 added · 1 reviewed · 2 need review", { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(1);
   await page
     .locator(".collection-entry details")
     .evaluateAll((nodes) =>
@@ -394,13 +399,13 @@ test("Phase 7E complete mixed-booking journey preserves originals, recovers draf
   );
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Make it your kind of trip." }),
+    page.getByRole("heading", { name: "Travel Style & Review" }),
   ).toBeFocused();
   await page.getByRole("radio", { name: /^Premium/ }).check();
   await expect(
     page.getByRole("button", { name: "Create my trip", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByText("Default theme", { exact: true })).toBeVisible();
+  await expect(page.getByText("Default theme", { exact: true })).toHaveCount(0);
   await expect(
     page.getByText("1 reviewed · 2 need review", { exact: true }),
   ).toBeVisible();
@@ -442,24 +447,24 @@ test("Phase 7E keyboard validation, debounced destination search, tap targets an
   await page.emulateMedia({ reducedMotion: "reduce" });
   await mount(page, "?fresh=1");
   await expect(
-    page.getByRole("heading", { name: "Start with a little possibility." }),
+    page.getByRole("heading", { name: "Trip Basics" }),
   ).toBeFocused();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("alert")).toBeFocused();
   const destination = page.getByRole("combobox", {
-    name: "Destination 1",
+    name: "Destination",
     exact: true,
   });
   await expect(destination).toHaveAttribute("aria-invalid", "true");
   await destination.pressSequentially("Paris", { delay: 30 });
   await expect(
     page
-      .getByRole("listbox", { name: "Destination 1 suggestions", exact: true })
+      .getByRole("listbox", { name: "Destination suggestions", exact: true })
       .getByRole("option"),
   ).toHaveCount(1);
   expect(requests).toBe(1);
   const popup = page.getByRole("listbox", {
-    name: "Destination 1 suggestions",
+    name: "Destination suggestions",
     exact: true,
   });
   for (const width of [320, 768, 1440, 2560]) {
@@ -514,7 +519,14 @@ test("Phase 7E keyboard validation, debounced destination search, tap targets an
       button.click();
     });
   await expect(page.locator("article.collection-entry")).toHaveCount(1);
-  await expect(page.getByLabel("Booking name", { exact: true })).toBeFocused();
+  await expect(page.getByLabel("Name", { exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Close booking editor" }).click();
+  // An untouched new entry is cancelled without creating an empty saved booking.
+  await expect(page.locator("article.collection-entry")).toHaveCount(0);
+  await page.getByRole("button", { name: "Add manually", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Removal fixture");
+  await page.getByRole("button", { name: "Save booking", exact: true }).click();
+  await page.getByLabel(/More actions for Removal fixture/).click();
   const remove = page.getByRole("button", { name: "Remove", exact: true });
   page.once("dialog", (dialog) => dialog.dismiss());
   await remove.click();
@@ -523,8 +535,8 @@ test("Phase 7E keyboard validation, debounced destination search, tap targets an
   page.once("dialog", (dialog) => dialog.accept());
   await remove.click();
   await expect(page.locator("article.collection-entry")).toHaveCount(0);
-  await expect(page.locator(".collection-counts")).toBeFocused();
-  await page.getByRole("button", { name: "Skip for now", exact: true }).click();
+  await expect(page.locator(".sr-only[role=status]")).toBeFocused();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   const balanced = page.getByRole("radio", { name: /^Balanced/ });
   await balanced.focus();
   await balanced.press("ArrowRight");
@@ -556,4 +568,356 @@ test("Phase 7E keyboard validation, debounced destination search, tap targets an
   await expect(
     page.getByRole("button", { name: "Open my trip", exact: true }),
   ).toBeFocused();
+});
+
+async function phase11Capture(page: Page, info: TestInfo, name: string) {
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement)?.blur();
+    window.scrollTo(0, 0);
+  });
+  await page.screenshot({
+    path: info.outputPath("phase11a1-" + name + ".png"),
+    fullPage: true,
+  });
+}
+test("Phase 11A.1 compact journey, four booking types, contextual payment, drop uploads and hidden themes", async ({
+  page,
+}, info) => {
+  const { geographicLocation } = await import("../../lib/geographic-location");
+  await page.route("**/api/locations?**", (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q");
+    return route.fulfill({
+      json: {
+        results: [
+          geographicLocation(
+            query === "Stay fixture" ? "Stay fixture" : "Ao Nang",
+            "Krabi, Thailand",
+            8.03,
+            98.82,
+            "TH",
+          ),
+        ],
+        worldwideAvailable: true,
+      },
+    });
+  });
+  await mount(page, "?fresh=1");
+  await page
+    .getByRole("textbox", { name: /Trip name/ })
+    .fill("Coastal getaway");
+  await phase11Capture(page, info, "step-1");
+  const destination = page.getByRole("combobox", {
+    name: "Destination",
+    exact: true,
+  });
+  await destination.fill("Ao Nang");
+  await expect(
+    page.getByRole("option", { name: "Ao Nang, Krabi, Thailand" }),
+  ).toBeVisible();
+  await phase11Capture(page, info, "destination-search");
+  await destination.focus();
+  await destination.press("ArrowDown");
+  await destination.press("Enter");
+  await expect(page.getByText(/map position/)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Move destination/ }),
+  ).toHaveCount(0);
+  await page.locator("[name=start_date]").fill("2027-06-01");
+  await page.locator("[name=end_date]").fill("2027-06-07");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await phase11Capture(page, info, "step-2");
+  await expect(page.getByRole("button", { name: "Skip for now" })).toHaveCount(
+    0,
+  );
+  for (const type of ["Stay", "Transport", "Experience", "Other"]) {
+    await page
+      .getByRole("button", { name: "Add manually", exact: true })
+      .click();
+    const card = page.locator("article.collection-entry").last();
+    await card.getByRole("radio", { name: type, exact: true }).check();
+    await card.getByLabel("Name", { exact: true }).fill(type + " fixture");
+    if (type === "Stay") {
+      await card
+        .getByLabel("Check-in date", { exact: true })
+        .fill("2027-06-01");
+      await card
+        .getByLabel("Check-out date", { exact: true })
+        .fill("2027-06-04");
+      await card.getByRole("radio", { name: "Paid", exact: true }).check();
+      await card.getByLabel("Cost (optional)", { exact: true }).fill("480");
+      await card.getByText("Location (optional)", { exact: true }).click();
+      const hotel = card.getByRole("combobox", {
+        name: "Find a place",
+        exact: true,
+      });
+      await expect(hotel).toHaveValue("Stay fixture");
+      await hotel.focus();
+      await card
+        .getByRole("option", {
+          name: "Stay fixture, Krabi, Thailand",
+          exact: true,
+        })
+        .click();
+      await card
+        .getByLabel("Location name", { exact: true })
+        .fill("Hotel reception");
+      await phase11Capture(page, info, "manual-stay");
+    } else if (type === "Transport") {
+      await card.getByLabel("Travel date", { exact: true }).fill("2027-06-04");
+      await card
+        .getByText("Pickup & drop-off (optional)", { exact: true })
+        .click();
+      await card
+        .getByLabel("Pickup location", { exact: true })
+        .fill("My hotel");
+      await card
+        .getByLabel("Drop-off location", { exact: true })
+        .fill("Airport");
+      await card.getByRole("radio", { name: "Pay later", exact: true }).check();
+      await card.getByLabel("Payment due", { exact: true }).fill("2027-05-25");
+      await phase11Capture(page, info, "manual-transport");
+    } else if (type === "Experience")
+      await card.getByLabel("Date", { exact: true }).fill("2027-06-05");
+    await card
+      .getByRole("button", { name: "Save booking", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Continue", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      card.getByRole("heading", { name: type + " fixture", exact: true }),
+    ).toBeVisible();
+  }
+  const saved = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("fixture:review:"))
+      .map((k) => JSON.parse(localStorage.getItem(k)!))
+      .find((s) => s.draft.name === "Coastal getaway"),
+  );
+  expect(
+    saved.entries.find(
+      (e: { fields: { title: string } }) =>
+        e.fields.title === "Transport fixture",
+    ).fields,
+  ).toMatchObject({
+    origin: "My hotel",
+    destination: "Airport",
+    payment_status: "unpaid",
+    payment_due_date: "2027-05-25",
+  });
+  expect(
+    saved.entries.find(
+      (e: { fields: { title: string } }) => e.fields.title === "Stay fixture",
+    ).fields,
+  ).toMatchObject({
+    location_label: "Stay fixture, Krabi, Thailand",
+    destination: "Hotel reception",
+  });
+  expect(
+    saved.entries.find(
+      (e: { fields: { title: string } }) => e.fields.title === "Other fixture",
+    ).review_status,
+  ).toBe("needs_review");
+  expect(
+    saved.entries.every(
+      (e: { reservation_status: string }) => e.reservation_status === "unknown",
+    ),
+  ).toBe(true);
+  const data = await page.evaluateHandle(() => {
+    const d = new DataTransfer();
+    for (const name of ["first.pdf", "second.pdf"])
+      d.items.add(
+        new File(["%PDF-1.4 harmless fixture"], name, {
+          type: "application/pdf",
+        }),
+      );
+    return d;
+  });
+  await page
+    .locator(".collection-dropzone")
+    .dispatchEvent("drop", { dataTransfer: data });
+  await expect(page.getByRole("link", { name: /Open saved file/ })).toHaveCount(
+    2,
+  );
+  await phase11Capture(page, info, "booking-cards");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.locator(".review-theme")).toHaveCount(0);
+  await expect(page.getByText(/theme/i)).toHaveCount(0);
+  await phase11Capture(page, info, "step-3");
+  await page
+    .getByRole("button", { name: "Create my trip", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Your adventure starts here!" }),
+  ).toBeVisible();
+  await phase11Capture(page, info, "success");
+  await page.getByRole("button", { name: "Open my trip", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Coastal getaway", exact: true }),
+  ).toBeVisible();
+});
+
+async function drawerCapture(page: Page, info: TestInfo, name: string) {
+  const dialog = page.getByRole("dialog");
+  const open = await dialog.count();
+  if (open)
+    await dialog.evaluate(async (node) => {
+      await Promise.all(
+        node.getAnimations().map((animation) => animation.finished),
+      );
+    });
+  await page.screenshot({
+    path: resolve(
+      "tests/screenshots/phase11a1b",
+      info.project.name,
+      name + ".png",
+    ),
+    fullPage: !open,
+  });
+}
+test("Phase 11A.1B drawer contains focus, protects closing, keeps a fixed Save footer and retries without duplicates", async ({
+  page,
+}, info) => {
+  if (info.project.name === "mobile")
+    await page.emulateMedia({ reducedMotion: "reduce" });
+  await mount(page, "?step=2&failBookingSave=1");
+  await drawerCapture(page, info, "add-bookings");
+  const add = page.getByRole("button", { name: "Add manually", exact: true });
+  await add.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Add a booking",
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Name", { exact: true })).toBeFocused();
+  await dialog.evaluate(async (node) => {
+    await Promise.all(
+      node.getAnimations().map((animation) => animation.finished),
+    );
+  });
+  if (info.project.name === "mobile")
+    expect(
+      await dialog.evaluate((node) => getComputedStyle(node).animationName),
+    ).toBe("none");
+  const rect = (await dialog.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(Math.abs(rect.x + rect.width - viewport.width)).toBeLessThan(2);
+  expect(rect.width).toBe(viewport.width <= 640 ? viewport.width : 480);
+  await expect(page.locator(".collection-editor")).toHaveCount(0);
+  expect(
+    await page.evaluate(() => document.documentElement.style.overflow),
+  ).toBe("hidden");
+  for (let i = 0; i < 22; i++) {
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(() => !!document.activeElement?.closest("dialog")),
+    ).toBe(true);
+  }
+  await dialog.getByRole("radio", { name: "Stay", exact: true }).check();
+  await dialog.getByLabel("Name", { exact: true }).fill("Garden stay");
+  await dialog.getByLabel("Check-in date", { exact: true }).fill("2027-06-01");
+  await dialog.getByLabel("Check-out date", { exact: true }).fill("2027-06-04");
+  await dialog.getByLabel("Cost (optional)", { exact: true }).fill("480");
+  await dialog.getByRole("radio", { name: "Paid", exact: true }).check();
+  await drawerCapture(page, info, "stay-drawer");
+  if (viewport.width < 640) {
+    await page.setViewportSize({ width: viewport.width, height: 500 });
+    await expect
+      .poll(async () => {
+        const r = (await dialog
+          .getByRole("button", { name: "Save booking" })
+          .boundingBox())!;
+        return r.y + r.height;
+      })
+      .toBeLessThanOrEqual(500);
+    await page.setViewportSize(viewport);
+  }
+  page.once("dialog", (d) => d.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Save booking", exact: true })
+    .evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
+  await expect(dialog.getByRole("alert")).toContainText("Try again");
+  await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(
+    "Garden stay",
+  );
+  await dialog
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(add).toBeFocused();
+  await expect(page.locator("article.collection-entry")).toHaveCount(1);
+  await expect(page.getByText("Reviewed", { exact: true })).toHaveCount(0);
+  const saved = await page.evaluate(
+    () =>
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("fixture:review:"))
+        .map((k) => JSON.parse(localStorage.getItem(k)!))[0],
+  );
+  expect(saved.entries).toHaveLength(1);
+  expect(saved.entries[0].id).toBe(saved.failedBookingSaves[0]);
+  expect(saved.entries[0].reservation_status).toBe("unknown");
+  await drawerCapture(page, info, "saved-cards");
+  const card = page.locator("article.collection-entry");
+  await card.getByLabel(/More actions/).click();
+  await card.getByRole("button", { name: "Edit", exact: true }).click();
+  const edit = page.getByRole("dialog", { name: "Edit booking", exact: true });
+  await edit.getByRole("radio", { name: "Transport", exact: true }).check();
+  await edit.getByLabel("Name", { exact: true }).fill("Airport transfer");
+  await edit.getByRole("radio", { name: "Pay later", exact: true }).check();
+  await edit.getByLabel("Payment due", { exact: true }).fill("2027-05-25");
+  await drawerCapture(page, info, "transport-drawer");
+  await edit.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator("article.collection-entry")).toHaveCount(1);
+});
+test("Phase 11A.1B uploaded reviews share the drawer and preserve originals and unknown reservation status", async ({
+  page,
+}, info) => {
+  await mount(page, "?step=2");
+  await page.getByLabel("Upload confirmations", { exact: true }).setInputFiles({
+    name: "fixture-confirmation.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4 isolated fixture"),
+  });
+  const card = page.locator("article.collection-entry");
+  await card
+    .getByText("Read or retry reading this saved file", { exact: true })
+    .click();
+  await card.getByRole("checkbox").check();
+  await card
+    .getByRole("button", { name: "Read saved file", exact: true })
+    .click();
+  await card
+    .getByRole("button", { name: "Fixture airline", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Review booking",
+    exact: true,
+  });
+  await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(
+    "Fixture airline",
+  );
+  await drawerCapture(page, info, "uploaded-review");
+  await dialog
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Open saved file/ })).toHaveCount(
+    1,
+  );
+  const saved = await page.evaluate(
+    () =>
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("fixture:review:"))
+        .map((k) => JSON.parse(localStorage.getItem(k)!))[0],
+  );
+  expect(saved.entries[0].source.filename).toBe("fixture-confirmation.pdf");
+  expect(saved.entries[0].reservation_status).toBe("unknown");
+  expect(saved.attachments).toHaveLength(1);
+  await expect(page.locator(".collection-editor")).toHaveCount(0);
 });

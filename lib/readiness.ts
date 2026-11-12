@@ -19,6 +19,7 @@ export const prepCandidateSchema = z.object({
 export type PrepCandidate = z.infer<typeof prepCandidateSchema>;
 export type ReadinessContext = {
   days: number;
+  theme?: string;
   destinations: string[];
   transportModes: string[];
   hasBookings: boolean;
@@ -70,6 +71,26 @@ export function packingStarter(
       quantity: 1,
       reason:
         "Choose what you want within reach; check the airline’s actual baggage and item rules separately.",
+    });
+  const themed: Record<string, { title: string; category: string }> = {
+    Tropical: { title: "Sun protection you use", category: "Personal care" },
+    Ski: {
+      title: "Layers for your planned ski activities",
+      category: "Clothing",
+    },
+    Mountain: {
+      title: "Footwear for your planned walks",
+      category: "Accessories",
+    },
+    "City Break": { title: "A comfortable day bag", category: "Accessories" },
+  };
+  const theme = context.theme ? themed[context.theme] : null;
+  if (theme)
+    suggestions.push({
+      ...theme,
+      quantity: 1,
+      reason:
+        "Optional idea for your saved trip theme. Adjust to your actual plans; weather and activity requirements are not verified.",
     });
   return suggestions;
 }
