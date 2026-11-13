@@ -127,20 +127,12 @@ it("manual location endpoint derives the zone and rejects an unknown map positio
   expect(resolveLocation(location.id)).toEqual(location);
   expect((await POST(req("Koh Phangan"))).status).toBe(400);
 });
-it("uses worldwide geographic layers only for destination inputs, retaining broad place search elsewhere", async () => {
+it("requests worldwide discovery without upstream geographic layer restrictions", async () => {
   const fetcher = vi.fn().mockResolvedValue(Response.json({ features: [] }));
   await searchWorldwideLocations("National Park", fetcher, "destination");
   const url = new URL(String(fetcher.mock.calls[0][0]));
   expect(url.searchParams.get("limit")).toBe("30");
-  expect(url.searchParams.getAll("layer")).toEqual([
-    "country",
-    "state",
-    "county",
-    "city",
-    "district",
-    "locality",
-    "other",
-  ]);
+  expect(url.searchParams.getAll("layer")).toEqual([]);
   for (const parameter of ["countrycode", "bbox", "lat", "lon", "osm_tag"])
     expect(url.searchParams.has(parameter)).toBe(false);
 });
@@ -183,7 +175,7 @@ it("promotes real geographic candidates beyond the old eight-result window and r
     1,
   );
 });
-it("ranks exact accented place names ahead of containing names and includes city/county/state/country context", async () => {
+it("ranks exact accented place names ahead of containing names with concise regional context", async () => {
   const same = (name: string, lon: number) => ({
     ...island(name, 0.34, lon),
     properties: {
@@ -256,7 +248,7 @@ it("does not let a failed alternate spelling hide successful original results", 
     fetcher,
     "destination",
   );
-  expect(result.worldwideAvailable).toBe(true);
+  expect(result.worldwideAvailable).toBe(false);
   expect(result.results).toHaveLength(1);
 });
 it("accepts short non-English names and normalizes input without making broad single-letter requests", async () => {
@@ -376,4 +368,280 @@ it("Ao Nang favors traveler destinations over streets/subdivisions and keeps nam
   expect(new Set(namesakes.results.map((r) => r.label)).size).toBe(
     namesakes.results.length,
   );
+});
+
+it.each([
+  [
+    "Koh Lanta, Thailand",
+    "Ko Lanta",
+    "island",
+    8.1,
+    98.95,
+    "Thailand",
+    "Krabi",
+  ],
+  ["Ao Nang, Thailand", "Ao Nang", "town", 8.03, 98.82, "Thailand", "Krabi"],
+  ["Bangkok, Thailand", "Bangkok", "city", 13.75, 100.5, "Thailand", "Bangkok"],
+  ["Phuket, Thailand", "Phuket", "island", 7.88, 98.39, "Thailand", "Phuket"],
+  ["Ubud, Indonesia", "Ubud", "village", -8.5, 115.26, "Indonesia", "Bali"],
+  ["Positano, Italy", "Positano", "town", 40.63, 14.48, "Italy", "Campania"],
+  [
+    "Santorini, Greece",
+    "Santorini",
+    "island",
+    36.39,
+    25.46,
+    "Greece",
+    "South Aegean",
+  ],
+  [
+    "Zermatt, Switzerland",
+    "Zermatt",
+    "village",
+    46.02,
+    7.75,
+    "Switzerland",
+    "Valais",
+  ],
+])(
+  "keeps supplied worldwide destination %s discoverable with clean metadata",
+  async (query, name, value, lat, lon, country, state) => {
+    const feature = {
+      geometry: { type: "Point", coordinates: [lon, lat] },
+      properties: {
+        name,
+        osm_key: "place",
+        osm_value: value,
+        type: "house",
+        state,
+        country,
+        osm_type: "R",
+        osm_id: 1234,
+      },
+    };
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(Response.json({ features: [feature] }));
+    const result = await searchWorldwideLocations(
+      String(query),
+      fetcher,
+      "destination",
+    );
+    expect(result.status).toBe("ok");
+    expect(result.results[0].city).toBe(name);
+    expect(result.results[0].providerId).toBe("osm:R:1234");
+    expect(
+      result.presentations[result.results[0].id].context.split(",").length,
+    ).toBeLessThanOrEqual(2);
+    expect(resolveLocation(result.results[0].id)).toEqual(result.results[0]);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(
+      new URL(String(fetcher.mock.calls[0][0])).searchParams.has("layer"),
+    ).toBe(false);
+  },
+);
+it("keeps administrative Koh Lanta and house-layer resorts, ranks name ahead of type", async () => {
+  const features = [
+    {
+      geometry: { type: "Point", coordinates: [98.95, 8.1] },
+      properties: {
+        name: "Ko Lanta",
+        type: "house",
+        osm_key: "boundary",
+        osm_value: "administrative",
+        country: "Thailand",
+        state: "Krabi",
+        osm_type: "R",
+        osm_id: 100,
+      },
+    },
+    {
+      geometry: { type: "Point", coordinates: [98.96, 8.2] },
+      properties: {
+        name: "Ko Lanta Beach",
+        type: "other",
+        osm_key: "natural",
+        osm_value: "beach",
+        country: "Thailand",
+        state: "Krabi",
+        osm_type: "N",
+        osm_id: 101,
+      },
+    },
+    {
+      geometry: { type: "Point", coordinates: [98.94, 8.1] },
+      properties: {
+        name: "Ko Lanta Resort",
+        type: "house",
+        osm_key: "tourism",
+        osm_value: "resort",
+        country: "Thailand",
+        state: "Krabi",
+        osm_type: "W",
+        osm_id: 102,
+      },
+    },
+  ];
+  const result = await searchWorldwideLocations(
+    "Koh Lanta",
+    vi.fn().mockResolvedValue(Response.json({ features })),
+    "destination",
+  );
+  expect(result.results[0].providerId).toBe("osm:R:100");
+  expect(result.results.map((r) => r.providerId)).toContain("osm:W:102");
+  expect(result.presentations[result.results[0].id].type).toBeUndefined(); // not falsely called an island
+});
+it("does not merge a city, island and district; merges only explicit equivalent identities", async () => {
+  const feature = (id: number, value: string, wikidata?: string) => ({
+    geometry: { type: "Point", coordinates: [25.46, 36.39] },
+    properties: {
+      name: "Same name",
+      type: value === "administrative" ? "district" : "other",
+      osm_key: value === "administrative" ? "boundary" : "place",
+      osm_value: value,
+      country: "Greece",
+      state: "Region",
+      osm_type: "R",
+      osm_id: id,
+      ...(wikidata ? { extra: { wikidata } } : {}),
+    },
+  });
+  const result = await searchWorldwideLocations(
+    "Same name",
+    vi.fn().mockResolvedValue(
+      Response.json({
+        features: [
+          feature(1, "city"),
+          feature(2, "island"),
+          feature(3, "administrative"),
+          feature(4, "village", "Q123"),
+          feature(5, "village", "Q123"),
+        ],
+      }),
+    ),
+    "destination",
+  );
+  expect(result.results).toHaveLength(4);
+  expect(new Set(result.results.map((r) => r.id)).size).toBe(4);
+  const anonymous = [feature(10, "city"), feature(11, "island")].map((f) => ({
+    ...f,
+    properties: { ...f.properties, osm_type: undefined, osm_id: undefined },
+  }));
+  const points = await searchWorldwideLocations(
+    "Same name",
+    vi.fn().mockResolvedValue(Response.json({ features: anonymous })),
+    "destination",
+  );
+  expect(new Set(points.results.map((r) => r.id)).size).toBe(2);
+  expect(points.results.map((r) => points.presentations[r.id].type)).toEqual([
+    "City",
+    "Island",
+  ]);
+  for (const location of points.results) {
+    expect(location.providerId).toBeUndefined();
+    expect(resolveLocation(location.id)).toEqual(location);
+  }
+});
+it("uses county context to distinguish genuinely different villages in one region", async () => {
+  const features = ["First county", "Second county"].map((county, i) => ({
+    geometry: { type: "Point", coordinates: [20 + i, 40] },
+    properties: {
+      name: "Namesake",
+      type: "city",
+      osm_key: "place",
+      osm_value: "village",
+      country: "Country",
+      state: "Same region",
+      county,
+      osm_type: "N",
+      osm_id: i + 1,
+    },
+  }));
+  const result = await searchWorldwideLocations(
+    "Namesake",
+    vi.fn().mockResolvedValue(Response.json({ features })),
+    "destination",
+  );
+  expect(result.results).toHaveLength(2);
+  expect(result.results[0].label).not.toBe(result.results[1].label);
+  expect(result.results.map((r) => r.label)).toContain(
+    "Namesake, First county, Country",
+  );
+});
+it("honors rate limiting without alternate-query storms and coalesces repeated searches", async () => {
+  const limited = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json(
+        { error: "busy" },
+        { status: 429, headers: { "Retry-After": "60" } },
+      ),
+    );
+  const first = await searchWorldwideLocations(
+    "Koh Lanta",
+    limited,
+    "destination",
+  );
+  const second = await searchWorldwideLocations(
+    "Ao Nang",
+    limited,
+    "destination",
+  );
+  expect(first.status).toBe("rate_limited");
+  expect(second.status).toBe("rate_limited");
+  expect(limited).toHaveBeenCalledOnce();
+  const available = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json({ features: [island("Ko Lanta", 8.1, 98.95)] }),
+    );
+  await Promise.all([
+    searchWorldwideLocations("Koh Lanta", available, "destination"),
+    searchWorldwideLocations("Koh Lanta", available, "destination"),
+  ]);
+  await searchWorldwideLocations("Koh Lanta", available, "destination");
+  expect(available).toHaveBeenCalledOnce();
+});
+it("distinguishes successful emptiness, malformed responses and timeouts", async () => {
+  const empty = await searchWorldwideLocations(
+    "Unlisted fictional cove",
+    vi.fn().mockResolvedValue(Response.json({ features: [] })),
+    "destination",
+  );
+  expect(empty.status).toBe("ok");
+  expect(empty.worldwideAvailable).toBe(true);
+  expect(empty.results).toHaveLength(0);
+  for (const fetcher of [
+    vi.fn().mockRejectedValue(new DOMException("timeout", "TimeoutError")),
+    vi.fn().mockResolvedValue(Response.json({ features: "bad" })),
+  ]) {
+    const result = await searchWorldwideLocations(
+      "Koh Lanta",
+      fetcher,
+      "destination",
+    );
+    expect(result.status).toBe("unavailable");
+    expect(result.worldwideAvailable).toBe(false);
+    expect(fetcher).toHaveBeenCalledOnce();
+  }
+});
+it("bounds provider concurrency while preserving coalesced requests", async () => {
+  const replies: ((value: Response) => void)[] = [];
+  const fetcher = vi
+    .fn()
+    .mockImplementation(
+      () => new Promise<Response>((resolve) => replies.push(resolve)),
+    );
+  const pending = Array.from({ length: 4 }, (_, i) =>
+    searchWorldwideLocations("Fixture cove " + i, fetcher, "destination"),
+  );
+  const busy = await searchWorldwideLocations(
+    "Fifth cove",
+    fetcher,
+    "destination",
+  );
+  expect(busy.status).toBe("rate_limited");
+  expect(fetcher).toHaveBeenCalledTimes(4);
+  replies.forEach((resolve) => resolve(Response.json({ features: [] })));
+  await Promise.all(pending);
 });

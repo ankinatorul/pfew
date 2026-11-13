@@ -36,12 +36,18 @@ export async function BookingBudget({
   ]);
   const rows = (bookings.data || []) as ManagedBooking[];
   if (view === "bookings") {
-    const [files, collection] = await Promise.all([
+    const [files, collection, deadline, managedDeadline] = await Promise.all([
       db
         .from("booking_attachments")
         .select("id,booking_id,intake_id,filename,size,state")
         .eq("trip_id", trip.id),
       owner ? loadBookingCollection(db, trip.id) : Promise.resolve(null),
+      db
+        .from("bookings")
+        .select("payment_due_date")
+        .eq("trip_id", trip.id)
+        .limit(0),
+      db.rpc("managed_booking_editor_version"),
     ]);
     const attachments = (files.data || []) as PrivateConfirmation[];
     const fileTools = Object.fromEntries(
@@ -65,6 +71,7 @@ export async function BookingBudget({
         attachments={attachments}
         canEdit={canEdit}
         ready={!capability.error}
+        paymentDueReady={!deadline.error && managedDeadline.data === 1}
         collectionReady={!!collection?.ready}
         owner={owner}
         initialEdit={rows.some((b) => b.id === edit) ? edit : undefined}
@@ -84,6 +91,7 @@ export async function BookingBudget({
               ready={collection.ready}
               setupError={collection.error}
               stepMode={false}
+              paymentDueReady={!deadline.error}
               live={
                 process.env.AI_MODE === "live" &&
                 Boolean(process.env.AI_API_KEY)

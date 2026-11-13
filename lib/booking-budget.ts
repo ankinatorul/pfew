@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Booking, Expense, Allocation } from "./essentials";
 import type { Trip } from "./domain";
 export type ManagedBooking = Booking & {
+  payment_due_date?: string | null;
   finance_revision?: number;
   updated_at?: string;
 };

@@ -1,21 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
-import {
-  FileUp,
-  PenLine,
-  MoreHorizontal,
-  BedDouble,
-  Plane,
-  Ticket,
-} from "lucide-react";
-import { BookingDrawer } from "./booking-drawer";
-import { SimpleBookingFields } from "./simple-booking-fields";
-import {
-  simplifiedBookingFields,
-  bookingSummary,
-  simpleBookingType,
-} from "../lib/simple-booking";
-import { BookingFields } from "./booking-fields";
+import { MoreHorizontal } from "lucide-react";
+import { BookingEditor, BookingOptions, BookingCard } from "./shared-booking";
 import { useCreationFocus } from "../lib/use-creation-focus";
 import { CreationProgress, CreationBack } from "./trip-basics";
 import {
@@ -23,11 +9,9 @@ import {
   reviewedBookingFields,
   emptyCollectionEntry,
   COLLECTION_LIMIT,
-  reservationStatuses,
   type CollectionEntry,
   type CollectionAttachment,
 } from "../lib/booking-collection";
-import type { Booking } from "../lib/essentials";
 import type { Trip, Segment } from "../lib/domain";
 
 export type CollectionReply = {
@@ -69,7 +53,6 @@ export async function requestCollection(
 }
 export function BookingCollection({
   trip,
-  segments = [],
   initialEntries,
   initialAttachments,
   ready = true,
@@ -98,9 +81,7 @@ export function BookingCollection({
     [attachments, setAttachments] = useState(initialAttachments);
   const [dirty, setDirty] = useState<string[]>([]),
     [busy, setBusy] = useState(""),
-    [error, setError] = useState(""),
-    [text, setText] = useState(""),
-    [textEntry, setTextEntry] = useState<string | null>(null);
+    [error, setError] = useState("");
   const [localFiles, setLocalFiles] = useState(() => new Map<string, File>());
   function rememberFile(id: string, file: File) {
     setLocalFiles((current) => new Map(current).set(id, file));
@@ -112,7 +93,6 @@ export function BookingCollection({
       return next;
     });
   }
-  const forms = useRef(new Map<string, HTMLFormElement>());
   const running = useRef(false);
   const [editor, setEditor] = useState<{
     id: string;
@@ -146,7 +126,9 @@ export function BookingCollection({
       !force &&
       dirty.includes(editor.id) &&
       !window.confirm(
-        "Close without saving? Your changes stay on this page and will be saved when you continue.",
+        stepMode
+          ? "Close without saving? Your changes stay on this page and will be saved when you continue."
+          : "Close without saving? Your changes stay on this page. Reopen this booking to save them.",
       )
     )
       return;
@@ -176,7 +158,7 @@ export function BookingCollection({
     }
   }, [entries, busy, error, stepMode, editor]);
   useEffect(() => {
-    if (!stepMode || !dirty.length) return;
+    if (!dirty.length) return;
     const protect = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
@@ -192,49 +174,13 @@ export function BookingCollection({
         : [...current, entry],
     );
   }
-  function changed(id: string, form: HTMLFormElement) {
-    const values = Object.fromEntries(new FormData(form));
-    const fields = Object.fromEntries(
-      Object.entries(values)
-        .filter(([key]) => key !== "reservation_status")
-        .map(([key, value]) => [key, typeof value === "string" ? value : ""]),
-    );
-    setEntries((current) =>
-      current.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              fields: stepMode
-                ? simplifiedBookingFields(e, values)
-                : { ...e.fields, ...fields },
-              review_status: "needs_review",
-              reservation_status: (values.reservation_status ||
-                e.reservation_status) as CollectionEntry["reservation_status"],
-            }
-          : e,
-      ),
-    );
-    setDirty((current) => [...new Set([...current, id])]);
-  }
-  async function save(entry: CollectionEntry, reviewed = false) {
-    const form = forms.current.get(entry.id),
-      snapshot = form ? Object.fromEntries(new FormData(form)) : null;
-    const fields = snapshot
-      ? stepMode
-        ? simplifiedBookingFields(entry, snapshot)
-        : {
-            ...entry.fields,
-            ...Object.fromEntries(
-              Object.entries(snapshot)
-                .filter(([key]) => key !== "reservation_status")
-                .map(([key, value]) => [
-                  key,
-                  typeof value === "string" ? value : "",
-                ]),
-            ),
-          }
-      : entry.fields;
-    if (stepMode && reviewed) {
+  async function save(
+    entry: CollectionEntry,
+    reviewed = false,
+    updated?: CollectionEntry["fields"],
+  ) {
+    const fields = updated || entry.fields;
+    if (reviewed) {
       if (!String(fields.title || "").trim()) {
         setError("Give this booking a name.");
         return null;
@@ -250,8 +196,7 @@ export function BookingCollection({
       revision: entry.revision,
       fields,
       review_status: reviewed ? "reviewed" : "needs_review",
-      reservation_status:
-        snapshot?.reservation_status || entry.reservation_status,
+      reservation_status: entry.reservation_status,
     });
     if (result.error) {
       setError(result.error);
@@ -261,7 +206,7 @@ export function BookingCollection({
       setError("Couldn’t confirm the save. Try again.");
       return null;
     }
-    if (stepMode && result.entry && editorRef.current === entry.id)
+    if ((result.entry || result.materialized) && editorRef.current === entry.id)
       closeEditor(true);
     if (result.materialized) {
       setEntries((current) => current.filter((e) => e.id !== entry.id));
@@ -410,123 +355,18 @@ export function BookingCollection({
               "Booking collection is temporarily unavailable. Your saved entries are unchanged."}
         </p>
       )}
-      <fieldset
-        className={
-          "collection-controls" + (stepMode ? " collection-options" : "")
-        }
+      <BookingOptions
         disabled={!ready || !!busy}
-      >
-        <label
-          className={
-            stepMode
-              ? "collection-dropzone"
-              : "button primary collection-upload"
-          }
-          onDragOver={(event) => {
-            event.preventDefault();
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            if (ready && !busy)
-              void addFiles(Array.from(event.dataTransfer.files));
-          }}
-        >
-          {stepMode ? (
-            <>
-              <FileUp size={30} aria-hidden="true" />
-              <strong>Drop your bookings here</strong>
-              <span>or browse files</span>
-              <small>PDF, JPEG, PNG · up to 3 MB each</small>
-            </>
-          ) : (
-            "Upload confirmations"
-          )}
-          <input
-            type="file"
-            multiple
-            accept="application/pdf,image/jpeg,image/png"
-            aria-label="Upload confirmations"
-            onChange={(event) => {
-              const files = Array.from(event.target.files || []);
-              event.target.value = "";
-              void addFiles(files);
-            }}
-          />
-        </label>
-        <button
-          aria-label="Add manually"
-          className={stepMode ? "collection-manual-option" : "button secondary"}
-          type="button"
-          disabled={entries.length >= COLLECTION_LIMIT}
-          onClick={() => {
-            if (stepMode) {
-              if (editorRef.current || running.current) return;
-              const entry = emptyCollectionEntry(crypto.randomUUID());
-              put(entry);
-              openEditor(entry, true);
-            } else
-              void perform("manual", async () => {
-                const entry = emptyCollectionEntry(crypto.randomUUID());
-                put(entry);
-                await save(entry);
-              });
-          }}
-        >
-          {stepMode && <PenLine size={30} aria-hidden="true" />}
-          <strong>Add manually</strong>
-          {stepMode && <span>Enter a few details.</span>}
-        </button>
-        {!stepMode && (
-          <p className="muted">
-            PDF, JPEG or PNG · up to 3 MB each. Uploading keeps an original; it
-            does not confirm a reservation.
-          </p>
-        )}
-      </fieldset>
-      {!stepMode && (
-        <details className="collection-text">
-          <summary>Paste confirmation text · no AI</summary>
-          <label>
-            Confirmation text
-            <textarea
-              maxLength={16000}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              disabled={!!busy || !ready}
-            />
-          </label>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={
-              !text.trim() ||
-              !!busy ||
-              !ready ||
-              entries.length >= COLLECTION_LIMIT
-            }
-            onClick={() =>
-              void perform("text", async () => {
-                let entry = entries.find((e) => e.id === textEntry);
-                if (!entry) {
-                  entry = emptyCollectionEntry(crypto.randomUUID());
-                  put(entry);
-                  setTextEntry(entry.id);
-                  entry = (await save(entry)) || undefined;
-                }
-                if (entry) await extract(entry, "text", text);
-              })
-            }
-          >
-            Read labeled text
-          </button>
-        </details>
-      )}
-      <p
-        ref={countsRef}
-        tabIndex={-1}
-        className={stepMode ? "sr-only" : "collection-counts"}
-        role="status"
-      >
+        manualDisabled={entries.length >= COLLECTION_LIMIT}
+        onFiles={addFiles}
+        onManual={() => {
+          if (editorRef.current || running.current) return;
+          const entry = emptyCollectionEntry(crypto.randomUUID());
+          put(entry);
+          openEditor(entry, true);
+        }}
+      />
+      <p ref={countsRef} tabIndex={-1} className="sr-only" role="status">
         {counts.total} added · {counts.reviewed} reviewed · {counts.unfinished}{" "}
         need review
         {dirty.length ? ` · ${dirty.length} with unsaved changes` : ""}
@@ -541,11 +381,6 @@ export function BookingCollection({
           {busy === "uploads"
             ? "Saving your files one at a time…"
             : "Saving or checking your collection…"}
-        </p>
-      )}
-      {!entries.length && !stepMode && (
-        <p className="collection-empty">
-          No bookings added. You can continue without any.
         </p>
       )}
       <div className="collection-review" aria-label="Grouped booking review">
@@ -564,95 +399,14 @@ export function BookingCollection({
             entry.source?.filename ||
             localFiles.get(entry.id)?.name ||
             (stepMode ? "New booking" : "Booking details");
-          const uiType = simpleBookingType(entry.fields.category);
-          const Icon =
-            uiType === "Stay"
-              ? BedDouble
-              : uiType === "Transport"
-                ? Plane
-                : uiType === "Experience"
-                  ? Ticket
-                  : MoreHorizontal;
           return (
-            <article
-              className={
-                "create-card collection-entry" +
-                (stepMode ? " compact-booking-card" : "")
-              }
+            <BookingCard
               key={entry.id}
+              entry={entry}
+              title={title}
+              disabled={!!busy || !ready}
+              onOpen={() => openEditor(entry)}
             >
-              <div className="section-top">
-                <div>
-                  <span className="eyebrow">
-                    {stepMode ? (
-                      <Icon size={20} aria-hidden="true" />
-                    ) : (
-                      known("category") || "Booking"
-                    )}
-                  </span>
-                  <h2>
-                    {stepMode ? (
-                      <button
-                        type="button"
-                        className="booking-card-open"
-                        data-booking-open={entry.id}
-                        disabled={!!busy || !ready}
-                        onClick={() => openEditor(entry)}
-                      >
-                        {title}
-                      </button>
-                    ) : (
-                      title
-                    )}
-                  </h2>
-                </div>
-                {(!stepMode || entry.review_status === "needs_review") && (
-                  <span
-                    className="pill"
-                    data-review-status={entry.review_status}
-                  >
-                    {entry.review_status === "reviewed"
-                      ? "Reviewed"
-                      : "Needs review"}
-                  </span>
-                )}
-              </div>
-              {stepMode ? (
-                <>
-                  <p>
-                    {uiType}
-                    {bookingSummary(entry).detail
-                      ? " · " + bookingSummary(entry).detail
-                      : ""}
-                  </p>
-                  {bookingSummary(entry).payment && (
-                    <p>{bookingSummary(entry).payment}</p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p>
-                    {known("provider") || "Provider not entered"}
-                    {known("destination")
-                      ? ` · ${known("destination")}`
-                      : known("location_label")
-                        ? ` · ${known("location_label")}`
-                        : ""}
-                  </p>
-                  <p>
-                    {known("start_date")
-                      ? `From ${known("start_date")} ${known("local_time")}`
-                      : "Start date not entered"}
-                    {known("end_date")
-                      ? ` · Until ${known("end_date")} ${known("end_local_time")}`
-                      : " · End date not entered"}
-                  </p>
-                  <p className="muted">
-                    Reservation: {entry.reservation_status}. Reviewing details
-                    does not confirm a reservation.
-                  </p>
-                </>
-              )}
               {!saved && editor?.id !== entry.id && (
                 <p role="status">Not saved yet. Retry saving before leaving.</p>
               )}
@@ -719,26 +473,12 @@ export function BookingCollection({
                     </label>
                   )}
               </div>
-              <CollectionCardActions compact={stepMode} title={title}>
+              <CollectionCardActions compact={true} title={title}>
                 <button
                   type="button"
                   className="button secondary"
                   disabled={!!busy || !ready}
-                  onClick={() => {
-                    if (stepMode) {
-                      openEditor(entry);
-                      return;
-                    }
-                    const details = document.getElementById(
-                      "review-" + entry.id,
-                    ) as HTMLDetailsElement | null;
-                    if (details) {
-                      details.open = true;
-                      details
-                        .querySelector<HTMLInputElement>('input[name="title"]')
-                        ?.focus();
-                    }
-                  }}
+                  onClick={() => openEditor(entry)}
                 >
                   {entry.review_status === "reviewed"
                     ? "Edit"
@@ -795,12 +535,11 @@ export function BookingCollection({
                   manually or retry.
                 </p>
               )}
-              {!stepMode &&
-                entry.extraction.warnings.map((warning, index) => (
-                  <p className="muted" key={index}>
-                    {warning}
-                  </p>
-                ))}
+              {entry.extraction.warnings.map((warning, index) => (
+                <p className="muted" key={index}>
+                  {warning}
+                </p>
+              ))}
               {Object.keys(entry.extraction.evidence).length > 0 && (
                 <details>
                   <summary>Source evidence</summary>
@@ -839,154 +578,45 @@ export function BookingCollection({
                   ) : (
                     <p>
                       AI document reading is not configured. The original is
-                      saved; enter details manually or paste labeled text above.
-                      No paid request was made.
+                      saved; enter details manually. No paid request was made.
                     </p>
                   )}
                 </details>
               )}
-              <CollectionEditorFrame
-                id={"review-" + entry.id}
-                legacyTitle={
-                  entry.review_status === "reviewed"
-                    ? "Edit booking details"
-                    : "Review and correct details"
-                }
-                stepMode={stepMode}
-                open={editor?.id === entry.id}
-                title={
-                  editor?.isNew
-                    ? "Add a booking"
-                    : entry.source && entry.review_status === "needs_review"
-                      ? "Review booking"
-                      : "Edit booking"
-                }
-                busy={!!busy}
-                onClose={() => closeEditor()}
-                returnFocus={editor?.returnFocus || null}
-              >
-                <form
-                  key={entry.revision}
-                  ref={(node) => {
-                    if (node) forms.current.set(entry.id, node);
-                    else forms.current.delete(entry.id);
+              {editor?.id === entry.id && (
+                <BookingEditor
+                  entry={entry}
+                  trip={trip}
+                  paymentDueReady={paymentDueReady}
+                  title={
+                    editor.isNew
+                      ? "Add a booking"
+                      : entry.source && entry.review_status === "needs_review"
+                        ? "Review booking"
+                        : "Edit booking"
+                  }
+                  busy={!!busy}
+                  disabled={!ready || !!entry.removing}
+                  error={error}
+                  returnFocus={editor.returnFocus}
+                  onClose={() => closeEditor()}
+                  confirmationHref={
+                    entry.source && attachment?.state === "ready"
+                      ? `/api/attachments/${entry.source.attachment_id}`
+                      : undefined
+                  }
+                  onChange={(fields) => {
+                    put({ ...entry, fields, review_status: "needs_review" });
+                    setDirty((current) => [...new Set([...current, entry.id])]);
                   }}
-                  noValidate
-                  onChange={(event) => changed(entry.id, event.currentTarget)}
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const reviewed =
-                      (
-                        event.nativeEvent as SubmitEvent
-                      ).submitter?.getAttribute("value") === "reviewed";
-                    void perform(entry.id, async () => {
-                      await save(entry, reviewed);
-                    });
-                  }}
-                >
-                  {stepMode && error && editor?.id === entry.id && (
-                    <p
-                      ref={errorRef}
-                      tabIndex={-1}
-                      className="booking-drawer-error"
-                      role="alert"
-                    >
-                      {error}
-                    </p>
-                  )}
-                  <fieldset disabled={!ready || entry.removing} inert={!!busy}>
-                    {stepMode ? (
-                      <SimpleBookingFields
-                        entry={entry}
-                        trip={trip}
-                        paymentDueReady={paymentDueReady}
-                        confirmationHref={
-                          entry.source && attachment?.state === "ready"
-                            ? `/api/attachments/${entry.source.attachment_id}`
-                            : undefined
-                        }
-                        onLocationChange={(place, end) => {
-                          const prefix = end ? "end_" : "";
-                          setEntries((current) =>
-                            current.map((e) =>
-                              e.id !== entry.id
-                                ? e
-                                : {
-                                    ...e,
-                                    review_status: "needs_review",
-                                    fields: {
-                                      ...e.fields,
-                                      [prefix + "location_id"]:
-                                        place?.id || null,
-                                      [prefix + "location_label"]:
-                                        place?.label || null,
-                                      [prefix + "latitude"]:
-                                        place?.latitude ?? null,
-                                      [prefix + "longitude"]:
-                                        place?.longitude ?? null,
-                                      ...(place
-                                        ? {
-                                            [end ? "end_timezone" : "timezone"]:
-                                              place.timezone,
-                                          }
-                                        : {}),
-                                    },
-                                  },
-                            ),
-                          );
-                          setDirty((current) => [
-                            ...new Set([...current, entry.id]),
-                          ]);
-                        }}
-                      />
-                    ) : (
-                      <>
-                        <BookingFields
-                          trip={trip}
-                          segments={segments}
-                          draft={entry.fields as Partial<Booking>}
-                          collection
-                        />
-                        <label>
-                          Reservation status
-                          <select
-                            name="reservation_status"
-                            defaultValue={entry.reservation_status}
-                          >
-                            {reservationStatuses.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <p className="muted">
-                          Leave unknown unless you know the actual reservation
-                          status.
-                        </p>
-                      </>
-                    )}
-                    <div className="actions">
-                      {!stepMode && (
-                        <button
-                          className="button secondary"
-                          value="needs_review"
-                        >
-                          Save unfinished
-                        </button>
-                      )}
-                      <button className="button primary" value="reviewed">
-                        {stepMode
-                          ? editor?.isNew
-                            ? "Save booking"
-                            : "Save changes"
-                          : "Mark details reviewed"}
-                      </button>
-                    </div>
-                  </fieldset>
-                </form>
-              </CollectionEditorFrame>
-            </article>
+                  onSave={(fields) =>
+                    perform(entry.id, async () => {
+                      await save(entry, true, fields);
+                    })
+                  }
+                />
+              )}
+            </BookingCard>
           );
         })}
       </div>
@@ -1024,43 +654,4 @@ function CollectionCardActions({
   ) : (
     <div className="actions">{children}</div>
   );
-}
-function CollectionEditorFrame({
-  stepMode,
-  open,
-  id,
-  title,
-  legacyTitle,
-  busy,
-  onClose,
-  returnFocus,
-  children,
-}: {
-  legacyTitle: string;
-  stepMode: boolean;
-  open: boolean;
-  id: string;
-  title: string;
-  busy: boolean;
-  onClose: () => void;
-  returnFocus: HTMLElement | null;
-  children: import("react").ReactNode;
-}) {
-  if (!stepMode)
-    return (
-      <details id={id} className="collection-editor">
-        <summary>{legacyTitle}</summary>
-        {children}
-      </details>
-    );
-  return open ? (
-    <BookingDrawer
-      title={title}
-      busy={busy}
-      onClose={onClose}
-      returnFocus={returnFocus}
-    >
-      {children}
-    </BookingDrawer>
-  ) : null;
 }

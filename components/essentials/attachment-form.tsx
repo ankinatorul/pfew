@@ -1,4 +1,5 @@
 "use client";
+import { BookingUploadArea } from "../shared-booking";
 import { useOnline } from "./online";
 import { uploadAttachment, deleteAttachment } from "../../app/file-actions";
 import { Submit } from "../forms";
@@ -16,19 +17,7 @@ export function UploadForm({
       <input type="hidden" name="trip_id" value={trip} />
       <input type="hidden" name="booking_id" value={booking} />
       <fieldset disabled={!online}>
-        <label>
-          Attach a PDF or image · max 3 MB
-          <input
-            name="file"
-            type="file"
-            accept="application/pdf,image/jpeg,image/png"
-            required
-          />
-        </label>
-        <p className="muted">
-          Private to your account. Download links expire after 60 seconds. Keep
-          personal identity documents out of shared booking notes.
-        </p>
+        <BookingUploadArea disabled={!online} multiple={false} />
         {!online && <p role="status">Reconnect to upload documents.</p>}
         <Submit>Upload document</Submit>
       </fieldset>

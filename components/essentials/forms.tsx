@@ -25,7 +25,6 @@ import {
   type Expense,
 } from "../../lib/essentials";
 import { Fields } from "./fields";
-import { BookingFields } from "../booking-fields";
 const schemas = {
   bookings: bookingSchema,
   prep_tasks: taskSchema,
@@ -149,16 +148,15 @@ export function BookingForm(props: {
   segments: Segment[];
 }) {
   return (
-    <Form
-      table="bookings"
-      trip={props.trip.id}
-      id={props.item?.id}
-      reviewed={!!props.review}
+    <a
+      className="button primary"
+      href={`/trips/${props.trip.id}?view=bookings${props.item ? "&edit=" + props.item.id : ""}`}
     >
-      <BookingFields {...props} />
-    </Form>
+      Open booking editor
+    </a>
   );
 }
+
 export function TaskForm({ trip, item }: { trip: Trip; item?: Task }) {
   return (
     <Form table="prep_tasks" trip={trip.id} id={item?.id}>

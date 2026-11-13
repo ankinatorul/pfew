@@ -9,22 +9,67 @@
   letter-spacing: -0.055em;
   margin: 4px 0 8px;
 }
-.money-page h2 {
+.money-page
+  h2:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   font-size: 1.2rem;
   letter-spacing: -0.03em;
   margin: 0 0 10px;
 }
-.money-page h3 {
+.money-page
+  h3:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   font-size: 1rem;
   letter-spacing: -0.02em;
   margin: 6px 0 8px;
 }
-.money-page p {
+.money-page
+  p:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   line-height: 1.6;
   margin: 7px 0 12px;
 }
-.money-page button,
-.money-page a.button {
+.money-page
+  button:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ),
+.money-page
+  a.button:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,13 +220,31 @@
   gap: 12px;
   margin: 22px 0;
 }
-.money-page label {
+.money-page
+  label:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 0.85rem;
 }
-.money-page :is(input, select, textarea) {
+.money-page
+  :is(input, select, textarea):not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   width: 100%;
   min-width: 0;
   min-height: 44px;
@@ -196,7 +259,16 @@
   width: 22px;
   min-height: 22px;
 }
-.money-page fieldset {
+.money-page
+  fieldset:not(
+    :where(
+      .booking-collection *,
+      .booking-drawer *,
+      .compact-booking-card *,
+      .collection-options *,
+      .collection-options
+    )
+  ) {
   padding: 0;
   margin: 0;
   border: 0;
@@ -504,4 +576,29 @@
     animation: none !important;
     transition: none !important;
   }
+}
+/* Shared Create Trip / existing-trip booking surfaces. */
+.trip-bookings .money-collection {
+  margin-block: 20px;
+}
+.trip-bookings .collection-options {
+  width: 100%;
+}
+.trip-bookings .collection-review {
+  margin-block: 16px;
+}
+.trip-bookings .money-booking-grid .compact-booking-card {
+  min-width: 0;
+}
+.booking-review-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  flex: none;
+  font-size: 0.85rem;
+}
+.booking-review-check input {
+  width: 20px;
+  height: 20px;
 }

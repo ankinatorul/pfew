@@ -50,7 +50,12 @@ async function budget(page: Page) {
 async function shot(page: Page, info: TestInfo, name: string) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
-    path: "tests/screenshots/phase9/" + info.project.name + "/" + name + ".png",
+    path:
+      "tests/screenshots/phase11a-unified/" +
+      info.project.name +
+      "/" +
+      name +
+      ".png",
     fullPage: true,
   });
 }
@@ -74,6 +79,7 @@ test("bookings overview and details keep review distinct, protect confirmations 
   }
   await page.setViewportSize(info.project.use.viewport!);
   await shot(page, info, "bookings");
+  await card.getByLabel("More actions for Museum reservation").click();
   await card.getByRole("button", { name: "View details", exact: true }).click();
   const details = page.getByRole("region", {
     name: "Booking details",
@@ -88,53 +94,102 @@ test("bookings overview and details keep review distinct, protect confirmations 
   ).toBeVisible();
   await shot(page, info, "booking-details");
 });
-test("manual booking saves, edits independent review/status, filters, refreshes and cancels removal", async ({
+test("shared manual creation, saved booking editing, deadline persistence and safe removal", async ({
   page,
-}) => {
+}, info) => {
   await mount(page, "empty");
-  await page.getByRole("button", { name: "Add booking", exact: true }).click();
-  const form = page.getByRole("form", { name: "Booking editor" });
-  await form
-    .getByLabel("Booking name", { exact: true })
-    .fill("A new reservation");
-  await form.getByLabel("Start date", { exact: true }).fill("2027-05-02");
-  await form.getByLabel("End date", { exact: true }).fill("2027-05-02");
-  await form
-    .getByLabel("Review status", { exact: true })
-    .selectOption("user confirmed");
-  await form
-    .getByLabel("Reservation status", { exact: true })
-    .selectOption("pending");
-  await form.getByRole("button", { name: "Save booking", exact: true }).click();
+  await expect(page.locator(".collection-options")).toHaveCount(1);
+  if (info.project.name === "desktop") {
+    const size = await page
+      .getByRole("button", { name: "Add manually", exact: true })
+      .boundingBox();
+    expect(size!.height).toBeGreaterThanOrEqual(180);
+  }
+  await shot(page, info, "bookings-empty");
+  await page.getByRole("button", { name: "Add manually", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByLabel("Name", { exact: true }).fill("A new reservation");
+  await drawer.getByRole("radio", { name: "Experience", exact: true }).check();
+  await drawer.getByLabel("Date", { exact: true }).fill("2027-05-02");
+  await drawer.getByRole("radio", { name: "Pay later", exact: true }).check();
+  await drawer.getByLabel("Payment due").fill("2027-04-01");
+  await drawer
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(drawer).toHaveCount(0);
   const card = page.getByRole("article", {
     name: "A new reservation",
     exact: true,
   });
-  await expect(card.getByText("Reviewed", { exact: true })).toBeVisible();
-  await expect(card.getByText("pending", { exact: true })).toBeVisible();
-  await card.getByRole("button", { name: "Edit", exact: true }).click();
-  await form
-    .getByLabel("Reservation status", { exact: true })
-    .selectOption("cancelled");
-  await form.getByRole("button", { name: "Save booking", exact: true }).click();
-  await expect(card.getByText("cancelled", { exact: true })).toBeVisible();
+  await expect(card).toBeVisible();
+  await expect(page.locator(".collection-options")).toBeVisible();
+  await card
+    .getByRole("button", { name: "A new reservation", exact: true })
+    .click();
+  await expect(drawer.getByLabel("Payment due")).toHaveValue("2027-04-01");
+  await drawer.getByLabel("Name", { exact: true }).fill("Updated reservation");
+  await drawer
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await expect(drawer).toHaveCount(0);
+  const updated = page.getByRole("article", {
+    name: "Updated reservation",
+    exact: true,
+  });
+  await expect(updated).toBeVisible();
+  await shot(page, info, "saved-cards");
   await mount(page, "empty");
-  await expect(card).toBeVisible();
-  await page
-    .getByLabel("Filter reservation status", { exact: true })
-    .selectOption("pending");
-  await expect(card).toHaveCount(0);
-  await page
-    .getByLabel("Filter reservation status", { exact: true })
-    .selectOption("cancelled");
-  await expect(card).toBeVisible();
-
+  await expect(updated).toBeVisible();
+  await updated.getByLabel("More actions for Updated reservation").click();
   page.once("dialog", (d) => d.dismiss());
-  await card.getByRole("button", { name: "Remove", exact: true }).click();
-  await expect(card).toBeVisible();
+  await updated.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(updated).toBeVisible();
   page.once("dialog", (d) => d.accept());
-  await card.getByRole("button", { name: "Remove", exact: true }).click();
-  await expect(card).toHaveCount(0);
+  await updated.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(updated).toHaveCount(0);
+});
+test("existing booking drawers share Stay/Transport fields, preserve status and protect unsaved changes", async ({
+  page,
+}, info) => {
+  await mount(page);
+  const card = page.getByRole("article", {
+    name: "Museum reservation",
+    exact: true,
+  });
+  await card
+    .getByRole("button", { name: "Museum reservation", exact: true })
+    .click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer.getByLabel("Name", { exact: true })).toHaveValue(
+    "Museum reservation",
+  );
+  await expect(drawer.locator(".booking-review-check")).toHaveCSS(
+    "flex-direction",
+    "row",
+  );
+  await expect(drawer.getByRole("combobox", { name: "Category" })).toHaveCount(
+    0,
+  );
+  await drawer.getByRole("radio", { name: "Stay", exact: true }).check();
+  await expect(
+    drawer.getByLabel("Check-out date", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `tests/screenshots/phase11a-unified/${info.project.name}/stay-drawer.png`,
+  });
+  await drawer.getByRole("radio", { name: "Transport", exact: true }).check();
+  await expect(drawer.getByText("Pickup & drop-off (optional)")).toBeVisible();
+  await page.screenshot({
+    path: `tests/screenshots/phase11a-unified/${info.project.name}/transport-drawer.png`,
+  });
+  page.once("dialog", (d) => d.dismiss());
+  await drawer.getByRole("button", { name: "Close booking editor" }).click();
+  await expect(drawer).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await drawer.getByRole("button", { name: "Close booking editor" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(card.getByText("confirmed", { exact: true })).toBeVisible();
+  await expect(card.getByText("Needs review", { exact: true })).toBeVisible();
 });
 test("budget uses expense-only remaining, separates currencies, saves target without style changes and supports expense CRUD", async ({
   page,
@@ -194,9 +249,6 @@ test("multiple uploads retain originals on extraction failure and keep grouped r
   page,
 }, info) => {
   await mount(page);
-  await page
-    .getByRole("button", { name: "Upload confirmation / review", exact: true })
-    .click();
   await page.locator("input[type=file][multiple]").setInputFiles([
     {
       name: "first.pdf",
@@ -209,8 +261,10 @@ test("multiple uploads retain originals on extraction failure and keep grouped r
       buffer: Buffer.from("%PDF-1.4\nfixture2"),
     },
   ]);
-  await expect(page.locator(".collection-entry")).toHaveCount(2);
-  const first = page.locator(".collection-entry").first();
+  await expect(page.locator(".money-collection .collection-entry")).toHaveCount(
+    2,
+  );
+  const first = page.locator(".money-collection .collection-entry").first();
   await first
     .getByText("Read or retry reading this saved file", { exact: false })
     .click();
@@ -224,11 +278,35 @@ test("multiple uploads retain originals on extraction failure and keep grouped r
   await expect(
     first.getByRole("link", { name: /Open saved file/ }),
   ).toHaveAttribute("href", /^\/api\/attachments\//);
+  await first.getByLabel("More actions for first.pdf").click();
   await first
     .getByRole("button", { name: "Review / edit", exact: true })
     .click();
-  await expect(first.getByLabel("Booking name", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("dialog").getByLabel("Name", { exact: true }),
+  ).toBeVisible();
   await shot(page, info, "booking-review");
+});
+test("existing-trip drag and drop uses the shared upload area and retains both originals", async ({
+  page,
+}) => {
+  await mount(page, "empty");
+  await page.locator(".collection-dropzone").dispatchEvent("drop", {
+    dataTransfer: await page.evaluateHandle(() => {
+      const data = new DataTransfer();
+      data.items.add(
+        new File(["fixture-a"], "drop-a.pdf", { type: "application/pdf" }),
+      );
+      data.items.add(
+        new File(["fixture-b"], "drop-b.png", { type: "image/png" }),
+      );
+      return data;
+    }),
+  });
+  await expect(
+    page.getByRole("link", { name: /Open saved file:/ }),
+  ).toHaveCount(2);
+  await expect(page.locator(".collection-options")).toBeVisible();
 });
 test("failed saves preserve inputs and viewer/missing-migration states prohibit new writes", async ({
   page,
@@ -252,7 +330,7 @@ test("failed saves preserve inputs and viewer/missing-migration states prohibit 
   ).toBeVisible();
   await mount(page, "viewer");
   await expect(
-    page.getByRole("button", { name: "Add booking", exact: true }),
+    page.getByRole("button", { name: "Add manually", exact: true }),
   ).toHaveCount(0);
   await budget(page);
   await expect(
@@ -260,7 +338,7 @@ test("failed saves preserve inputs and viewer/missing-migration states prohibit 
   ).toHaveCount(0);
   await mount(page, "pending");
   await expect(
-    page.getByRole("button", { name: "Add booking", exact: true }),
+    page.getByRole("button", { name: "Add manually", exact: true }),
   ).toBeDisabled();
   await budget(page);
   await expect(

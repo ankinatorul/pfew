@@ -42,32 +42,14 @@ const trip = {
   currency: "EUR",
   budget: 1000,
 };
-it("saves an entered booking without fabricating confirmation details", async () => {
-  const user = userEvent.setup();
+it("routes retired booking forms to the shared editor without a competing inline form", () => {
   render(<BookingForm trip={trip} segments={[]} />);
-  await user.type(screen.getByLabelText("Booking name"), "Hotel I booked");
-  await user.selectOptions(screen.getByLabelText("Category"), "accommodation");
-  await user.click(screen.getByRole("button", { name: "Add item" }));
-  await waitFor(() => expect(saveEssential).toHaveBeenCalledTimes(1));
-  const data = vi.mocked(saveEssential).mock.calls[0][0];
-  expect(data.get("verification")).toBe("unverified");
-  expect(data.get("reference")).toBe("");
-  expect(data.get("paid_amount")).toBe("");
-});
-it("preserves a booking when prepaid input is invalid", async () => {
-  const user = userEvent.setup();
-  render(<BookingForm trip={trip} segments={[]} />);
-  await user.type(screen.getByLabelText("Booking name"), "Hotel");
-  fireEvent.change(screen.getByLabelText("Known total price · optional"), {
-    target: { value: "10" },
-  });
-  fireEvent.change(
-    screen.getByLabelText("Known amount already paid · optional"),
-    { target: { value: "20" } },
-  );
-  await user.click(screen.getByRole("button", { name: "Add item" }));
-  expect(screen.getByRole("alert").textContent).toContain("Paid amount");
-  expect(saveEssential).not.toHaveBeenCalled();
+  expect(
+    screen
+      .getByRole("link", { name: "Open booking editor" })
+      .getAttribute("href"),
+  ).toBe(`/trips/${trip.id}?view=bookings`);
+  expect(document.querySelector("form")).toBeNull();
 });
 it("records a cash expense in its entered currency", async () => {
   const user = userEvent.setup();

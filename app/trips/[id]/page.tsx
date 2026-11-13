@@ -13,7 +13,6 @@ import { DayPlanControls } from "../../../components/day-plan-controls";
 import { DayOverview } from "../../../components/day-overview";
 import { TravelNotes } from "../../../components/travel-notes";
 import { ResearchView } from "../../../components/research-view";
-import { BookingImport } from "../../../components/booking-import";
 import { OfflineView } from "../../../components/offline-view";
 import { CollaborationView } from "../../../components/collaboration-view";
 import { displayTrip } from "../../../lib/finalized-trips";
@@ -74,6 +73,7 @@ export default async function Hub({
   if (itemError || prefError)
     throw new Error("Trip details could not be loaded");
   const segments = (items || []) as Segment[];
+  if (q.view === "import") redirect(`/trips/${id}?view=bookings`);
   const view = q.view || "hub";
   const overviewNow = new Date();
   if (view === "hub")
@@ -270,15 +270,6 @@ export default async function Hub({
       {view === "research" && (
         <ResearchView trip={trip} segments={segments} canEdit={canEdit} />
       )}
-      {view === "import" && canEdit && (
-        <BookingImport
-          trip={trip}
-          segments={segments}
-          live={
-            process.env.AI_MODE === "live" && Boolean(process.env.AI_API_KEY)
-          }
-        />
-      )}
       {view === "offline" && <OfflineView tripId={id} />}
       {view === "people" && <CollaborationView trip={trip} role={role} />}
       {view === "customize" && canEdit && (
@@ -347,7 +338,7 @@ export default async function Hub({
           </p>
           {!selected && (
             <div className="actions">
-              <Link className="button secondary" href={base + "?view=import"}>
+              <Link className="button secondary" href={base + "?view=bookings"}>
                 Import a booking confirmation
               </Link>
               <Link className="button secondary" href={base + "?view=map"}>

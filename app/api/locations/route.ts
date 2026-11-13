@@ -28,7 +28,9 @@ export async function GET(request: Request) {
   return NextResponse.json(result, {
     headers: {
       "Cache-Control": result.worldwideAvailable
-        ? "public, max-age=3600"
+        ? result.results.length
+          ? "public, max-age=300"
+          : "public, max-age=30"
         : "no-store",
     },
   });

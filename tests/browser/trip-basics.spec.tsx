@@ -226,3 +226,215 @@ test("retains incomplete local input through reload, reports save failures, and 
     page.getByRole("link", { name: "Resume Another independent trip" }),
   ).toBeVisible();
 });
+
+const curatedChoices = [
+  { name: "Ko Lanta", type: "Island", lat: 8.1, lon: 98.95, id: 100 },
+  { name: "Ko Lanta", type: "District", lat: 8.15, lon: 98.96, id: 101 },
+  { name: "Ko Lanta Noi", type: "Island", lat: 8.12, lon: 99.02, id: 102 },
+  { name: "Saladan", type: "Village", lat: 7.65, lon: 99.04, id: 103 },
+  { name: "Klong Dao", type: "Beach", lat: 7.64, lon: 99.03, id: 104 },
+  { name: "Ko Lanta Yai", type: "Island", lat: 7.56, lon: 99.06, id: 105 },
+  { name: "Ko Lanta", type: "Island", lat: 8.101, lon: 98.951, id: 106 },
+].map((p) => ({
+  location: geographicLocation(
+    p.name,
+    "Krabi, Thailand",
+    p.lat,
+    p.lon,
+    "TH",
+    `osm:R:${p.id}`,
+  ),
+  type: p.type,
+}));
+function curatedReply() {
+  return {
+    results: curatedChoices.map((c) => c.location),
+    presentations: Object.fromEntries(
+      curatedChoices.map((c) => [
+        c.location.id,
+        { context: "Krabi, Thailand", type: c.type },
+      ]),
+    ),
+    worldwideAvailable: true,
+    status: "ok",
+  };
+}
+async function searchCapture(page: Page, name: string, project: string) {
+  await page.screenshot({
+    path: resolve(
+      "tests/screenshots/destination-search-correction",
+      project,
+      name + ".png",
+    ),
+    fullPage: true,
+  });
+}
+test("curated destinations show five clean choices, expand without another request and preserve ordered draft IDs", async ({
+  page,
+}, info) => {
+  await mount(page);
+  let requests = 0;
+  const ao = geographicLocation(
+    "Ao Nang",
+    "Krabi, Thailand",
+    8.03,
+    98.82,
+    "TH",
+    "osm:R:200",
+  );
+  await page.route("**/api/locations?**", (route) => {
+    requests++;
+    const q = new URL(route.request().url()).searchParams.get("q");
+    return route.fulfill({
+      json: q?.startsWith("Ao")
+        ? {
+            results: [ao],
+            presentations: {
+              [ao.id]: { context: "Krabi, Thailand", type: "Town" },
+            },
+            worldwideAvailable: true,
+            status: "ok",
+          }
+        : curatedReply(),
+    });
+  });
+  await page.getByRole("textbox", { name: /Trip name/ }).fill("Island escape");
+  const field = page.getByRole("combobox", {
+    name: "Destination",
+    exact: true,
+  });
+  await field.fill("Koh Lanta, Thailand");
+  await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(5);
+  await expect(
+    page.getByText("Krabi, Thailand · Island", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/nearby town|Coordinates or map link|map position/),
+  ).toHaveCount(0);
+  await searchCapture(page, "five-suggestions", info.project.name);
+  for (const width of [320, 375, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+  await page.setViewportSize(info.project.use.viewport!);
+  const more = page.getByRole("button", { name: "Show more results" });
+  await more.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(7);
+  expect(requests).toBe(1);
+  await searchCapture(page, "expanded-suggestions", info.project.name);
+  await page
+    .getByRole("option", {
+      name: "Ko Lanta, Krabi, Thailand · Island",
+      exact: true,
+    })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Add destination", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Destination 2", exact: true })
+    .fill("Ao Nang");
+  await page
+    .getByRole("option", {
+      name: "Ao Nang, Krabi, Thailand · Town",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("button", { name: "Move destination 2 up" }).click();
+  await page.locator('[name="start_date"]').fill("2027-06-01");
+  await page.locator('[name="end_date"]').fill("2027-06-08");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your basics are safely saved." }),
+  ).toBeVisible();
+  const rows = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("fixture:private-trip-drafts") || "[]"),
+  );
+  expect(
+    rows[0].draft_data.destinations.map((d: { id: string }) => d.id),
+  ).toEqual([ao.id, curatedChoices[0].location.id]);
+  await mount(page, `?draft=${rows[0].id}&step=1`);
+  await expect(
+    page.getByRole("combobox", { name: "Destination 1", exact: true }),
+  ).toHaveValue(ao.label);
+  await expect(
+    page.getByRole("combobox", { name: "Destination 2", exact: true }),
+  ).toHaveValue(curatedChoices[0].location.label);
+});
+test("provider rate limits and outages show one recoverable message instead of no matches", async ({
+  page,
+}, info) => {
+  await mount(page);
+  let requests = 0;
+  await page.route("**/api/locations?**", (route) => {
+    requests++;
+    return route.fulfill({
+      json:
+        requests === 1
+          ? {
+              results: [],
+              worldwideAvailable: false,
+              status: "rate_limited",
+              retryAfterSeconds: 1,
+            }
+          : curatedReply(),
+    });
+  });
+  const field = page.getByRole("combobox", {
+    name: "Destination",
+    exact: true,
+  });
+  await field.fill("Koh Lanta");
+  await expect(
+    page.getByText("Search is busy. Try again shortly.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/No matches/)).toHaveCount(0);
+  await searchCapture(page, "rate-limit", info.project.name);
+  const retry = page.getByRole("button", { name: "Retry", exact: true });
+  await expect(retry).toBeEnabled();
+  expect(requests).toBe(1);
+  await retry.click();
+  await expect(page.getByRole("listbox").getByRole("option")).toHaveCount(5);
+  expect(requests).toBe(2);
+  await page.route("**/api/locations?**", (route) =>
+    route.fulfill({
+      json: {
+        results: [],
+        worldwideAvailable: true,
+        status: "ok",
+        presentations: {},
+      },
+    }),
+  );
+  await field.fill("Unlisted cove");
+  await expect(
+    page.getByText("No matches. Try another spelling or add the country.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await searchCapture(page, "empty-search", info.project.name);
+  await page.route("**/api/locations?**", (route) =>
+    route.fulfill({
+      json: {
+        results: [],
+        worldwideAvailable: false,
+        status: "unavailable",
+        retryAfterSeconds: 1,
+      },
+    }),
+  );
+  await field.fill("Koh Lanta again");
+  await expect(
+    page.getByText("Search is temporarily unavailable. Try again.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/No matches/)).toHaveCount(0);
+  await searchCapture(page, "provider-unavailable", info.project.name);
+});

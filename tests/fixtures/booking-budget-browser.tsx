@@ -10,6 +10,7 @@ import {
 import {
   emptyCollectionEntry,
   mergeExtraction,
+  reviewedBookingFields,
   type CollectionEntry,
   type CollectionAttachment,
 } from "../../lib/booking-collection";
@@ -172,6 +173,30 @@ function Fixture() {
       return { entry, attachment };
     }
     if (v.action === "save") {
+      const parsed = reviewedBookingFields(
+        v.fields as CollectionEntry["fields"],
+        trip.id,
+      );
+      if (v.review_status === "reviewed" && parsed.success) {
+        commit({
+          ...state,
+          bookings: [
+            ...state.bookings,
+            {
+              ...parsed.data,
+              payment_due_date: (v.fields as CollectionEntry["fields"])
+                .payment_due_date as string | null,
+              id,
+              finance_revision: 0,
+              reservation_status: "unknown",
+            },
+          ],
+        });
+        saved.entries = saved.entries.filter((e) => e.id !== id);
+        sessionStorage.setItem(key + ":collection", JSON.stringify(saved));
+        setEntries(saved.entries);
+        return { materialized: true };
+      }
       persist({
         ...entry,
         fields: v.fields as CollectionEntry["fields"],
@@ -248,7 +273,8 @@ function Fixture() {
           canEdit={mode !== "viewer"}
           owner={mode !== "viewer"}
           ready={mode !== "pending"}
-          collectionReady={true}
+          paymentDueReady={true}
+          collectionReady={mode !== "pending"}
           collection={
             <BookingCollection
               key="collection"
@@ -257,6 +283,8 @@ function Fixture() {
               initialEntries={entries}
               initialAttachments={attachments}
               stepMode={false}
+              paymentDueReady={true}
+              ready={mode !== "pending"}
               live
               request={collectionRequest}
             />

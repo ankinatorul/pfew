@@ -16,7 +16,6 @@ import {
   type Expense,
 } from "../../lib/essentials";
 import {
-  BookingForm,
   TaskForm,
   PackingListForm,
   PackingItemForm,
@@ -32,8 +31,7 @@ import {
   savePackingTemplate,
   applyPackingTemplate,
 } from "../../app/essentials-actions";
-import { Attachments } from "./attachments";
-import { PendingBookingCollection } from "../pending-booking-collection";
+import { redirect } from "next/navigation";
 export function MigrationNotice() {
   return (
     <section className="card">
@@ -50,7 +48,6 @@ export async function EssentialsView({
   segments,
   view,
   edit,
-  group,
 }: {
   trip: Trip;
   segments: Segment[];
@@ -58,7 +55,8 @@ export async function EssentialsView({
   edit?: string;
   group?: string;
 }) {
-  const { db, user } = await access();
+  if (view === "bookings") redirect(`/trips/${trip.id}?view=bookings`);
+  const { db } = await access();
   const context = {
     days:
       Math.round(
@@ -116,131 +114,6 @@ export async function EssentialsView({
       ]),
     ],
   };
-  if (view === "bookings") {
-    const bookings = (rows.bookings as Booking[]).sort(
-      (a, b) =>
-        a.start_date.localeCompare(b.start_date) ||
-        a.local_time.localeCompare(b.local_time),
-    );
-    const selected = bookings.find((b) => b.id === edit);
-    const groups =
-      group === "category"
-        ? [...new Set(bookings.map((b) => b.category))]
-        : ["timeline"];
-    return (
-      <>
-        {trip.owner_id === user.id && (
-          <PendingBookingCollection trip={trip} segments={segments} />
-        )}
-        <div className="row">
-          <div>
-            <span className="eyebrow">Smart Travel Wallet</span>
-            <h2>Your reservations, all together.</h2>
-          </div>
-          <Link
-            className="button secondary"
-            href={
-              base +
-              "&group=" +
-              (group === "category" ? "timeline" : "category")
-            }
-          >
-            {group === "category" ? "Timeline view" : "Group by category"}
-          </Link>
-        </div>
-        {groups.map((g) => (
-          <section key={g}>
-            {g !== "timeline" && <h3>{g}</h3>}
-            <div className="timeline">
-              {bookings
-                .filter((b) => g === "timeline" || b.category === g)
-                .map((b) => (
-                  <article key={b.id} className="card">
-                    <div className="row">
-                      <span className="eyebrow">{b.category}</span>
-                      <span className="pill">
-                        {b.verification === "user confirmed"
-                          ? "Details reviewed"
-                          : "Needs review"}
-                      </span>
-                    </div>
-                    <h3>{b.title}</h3>
-                    <p className="muted">
-                      Reservation: {b.reservation_status || "unknown"}
-                    </p>
-                    {b.import_method && b.import_method !== "manual" && (
-                      <p className="muted">
-                        {b.import_method === "ai"
-                          ? "AI-extracted"
-                          : "Text-imported"}{" "}
-                        · reviewed before saving
-                      </p>
-                    )}
-                    <p>
-                      {b.start_date} {b.local_time} {b.timezone} → {b.end_date}{" "}
-                      {b.end_local_time}{" "}
-                      {b.end_timezone || "(end location not specified)"}
-                    </p>
-                    <p>
-                      {b.provider || "Provider not entered"} · Reference:{" "}
-                      {b.reference || "Not entered"}
-                    </p>
-                    <p>
-                      {b.origin}
-                      {b.destination ? " → " + b.destination : ""}
-                    </p>
-                    {b.travelers && <p>Travelers: {b.travelers}</p>}
-                    <p>
-                      Price:{" "}
-                      {b.price === null
-                        ? "Unknown"
-                        : `${b.currency} ${b.price}`}{" "}
-                      · Paid:{" "}
-                      {b.paid_amount === null
-                        ? "Unknown"
-                        : `${b.currency} ${b.paid_amount}`}{" "}
-                      · {b.payment_status}
-                    </p>
-                    {b.notes && <p className="notes">{b.notes}</p>}
-                    <Attachments trip={trip.id} booking={b.id} />
-                    <div className="actions">
-                      <Link
-                        data-edit-action
-                        className="button secondary"
-                        href={base + "&edit=" + b.id}
-                      >
-                        Edit booking
-                      </Link>
-                      <Remove table="bookings" trip={trip.id} id={b.id} />
-                    </div>
-                  </article>
-                ))}
-            </div>
-          </section>
-        ))}
-        {!bookings.length && (
-          <div className="empty">
-            No reservations saved yet. Add one you already have.
-          </div>
-        )}
-        <p>
-          <Link
-            data-edit-action
-            className="button secondary"
-            href={"/trips/" + trip.id + "?view=import"}
-          >
-            Import a booking confirmation ↗
-          </Link>
-        </p>
-        <BookingForm
-          key={selected?.id || "new"}
-          trip={trip}
-          item={selected}
-          segments={segments}
-        />
-      </>
-    );
-  }
   if (view === "prep") {
     const tasks = rows.prep_tasks as Task[];
     const completed = tasks.filter((t) => t.done).length;

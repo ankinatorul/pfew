@@ -5,17 +5,8 @@ import {
   useEffect,
   type ReactNode,
   type ElementType,
-  type FormEvent,
 } from "react";
-import {
-  Plus,
-  Upload,
-  Ticket,
-  FileText,
-  CalendarDays,
-  MapPin,
-  ArrowLeft,
-} from "lucide-react";
+import { Ticket, FileText, ArrowLeft, MoreHorizontal } from "lucide-react";
 import type { Trip, Segment } from "../lib/domain";
 import { categories, bookingSchema } from "../lib/essentials";
 import {
@@ -27,7 +18,12 @@ import {
   type PrivateConfirmation,
   type MoneyResult,
 } from "../lib/booking-budget";
-import { BookingFields } from "./booking-fields";
+import { BookingEditor, BookingOptions, BookingCard } from "./shared-booking";
+import {
+  emptyCollectionEntry,
+  type CollectionEntry,
+} from "../lib/booking-collection";
+import { managedBookingEntry } from "../lib/simple-booking";
 import { tripSectionUrl } from "../lib/trip-navigation";
 export function MoneyHeader({
   trip,
@@ -96,6 +92,7 @@ export type BookingsProps = {
   attachments: PrivateConfirmation[];
   canEdit: boolean;
   ready: boolean;
+  paymentDueReady?: boolean;
   collectionReady: boolean;
   owner: boolean;
   initialEdit?: string;
@@ -110,6 +107,7 @@ export function BookingManager({
   attachments,
   canEdit,
   ready,
+  paymentDueReady = false,
   owner,
   collectionReady,
   initialEdit,
@@ -137,25 +135,24 @@ export function BookingManager({
         ? { id: initialEdit, item: bookings.find((b) => b.id === initialEdit) }
         : null,
     ),
-    [collect, setCollect] = useState(false),
+    [dirty, setDirty] = useState(false),
     [pending, setPending] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
+  const [returnFocus, setReturnFocus] = useState<HTMLElement | null>(null);
   const guard = useRef(false),
-    editorRef = useRef<HTMLFormElement>(null),
     detailRef = useRef<HTMLElement>(null),
     feedback = useRef<HTMLParagraphElement>(null),
-    addRef = useRef<HTMLButtonElement>(null),
     collectionRef = useRef<HTMLDivElement>(null);
-  const editorId = editor?.id;
   useEffect(() => {
-    if (editorId) {
-      const field =
-        editorRef.current?.querySelector<HTMLInputElement>("[name=title]");
-      field?.focus();
-      editorRef.current?.scrollIntoView({ block: "start" });
-    }
-  }, [editorId]);
+    if (!dirty) return;
+    const protect = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", protect);
+    return () => window.removeEventListener("beforeunload", protect);
+  }, [dirty]);
   useEffect(() => {
     if (details) {
       detailRef.current?.focus();
@@ -197,6 +194,12 @@ export function BookingManager({
     );
   function edit(item?: ManagedBooking) {
     setError("");
+    setDirty(false);
+    setReturnFocus(
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null,
+    );
     setDetails(null);
     setEditor({ id: item?.id || crypto.randomUUID(), item });
   }
@@ -215,9 +218,9 @@ export function BookingManager({
       }
       setMessage(r.message || "Saved.");
       if (close) {
+        setDirty(false);
         setEditor(null);
         setDetails(null);
-        requestAnimationFrame(() => addRef.current?.focus());
       }
     } catch {
       setError(
@@ -228,17 +231,41 @@ export function BookingManager({
       setPending(false);
     }
   }
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
+  async function submit(fields: CollectionEntry["fields"], reviewed = false) {
+    if (!editor) return;
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields))
+      form.set(key, value == null ? "" : String(value));
     form.set("trip_id", trip.id);
-    const parsed = bookingSchema.safeParse(Object.fromEntries(form));
+    form.set("id", editor.id);
+    form.set("revision", String(editor.item?.finance_revision || 0));
+    form.set("simplified", "1");
+    if (!paymentDueReady) form.delete("payment_due_date");
+    form.set(
+      "verification",
+      reviewed ? "user confirmed" : editor.item?.verification || "unverified",
+    );
+    const parsed = bookingSchema.safeParse({
+      ...fields,
+      trip_id: trip.id,
+      verification: form.get("verification"),
+    });
     if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
-      feedback.current?.focus();
+      setError(
+        !fields.start_date || !fields.end_date
+          ? "Add the booking dates before saving this scheduled reservation. Your changes are still here."
+          : parsed.error.issues[0].message,
+      );
       return;
     }
     await execute(() => save(form), true);
+  }
+  function closeEditor() {
+    if (guard.current) return;
+    if (dirty && !window.confirm("Discard unsaved booking changes?")) return;
+    setEditor(null);
+    setDirty(false);
+    setError("");
   }
   const totals = currencyTotals(
     bookings.filter((b) => b.reservation_status !== "cancelled"),
@@ -305,43 +332,31 @@ export function BookingManager({
           <p>Cancelled bookings excluded. These are not recorded expenses.</p>
         </article>
       </div>
-      <div className="money-toolbar">
-        {canEdit && (
-          <button
-            ref={addRef}
-            className="button primary"
+      {owner ? (
+        <div ref={collectionRef} className="money-collection">
+          {collection}
+        </div>
+      ) : (
+        canEdit && (
+          <BookingOptions
             disabled={!allowed || pending}
-            onClick={() => edit()}
-          >
-            <Plus size={17} /> Add booking
-          </button>
-        )}
-        {owner && (
-          <button
-            className="button"
-            disabled={!collectionReady || !!loadError}
-            aria-expanded={collect}
-            onClick={() => {
-              setCollect(!collect);
-              requestAnimationFrame(() =>
-                collectionRef.current?.scrollIntoView({ block: "start" }),
-              );
-            }}
-          >
-            <Upload size={17} /> Upload confirmation / review
-          </button>
-        )}
+            uploadDisabled
+            onFiles={() => {}}
+            onManual={() => edit()}
+          />
+        )
+      )}
+      {owner && !collectionReady && (
+        <p className="money-notice">
+          Booking collection is temporarily unavailable. Existing bookings stay
+          available.
+        </p>
+      )}
+      <div className="money-toolbar">
         <LinkComponent href={tripSectionUrl(trip.id, "itinerary")}>
           Open itinerary →
         </LinkComponent>
       </div>
-      {owner && !collectionReady && (
-        <p className="money-notice">
-          Confirmation collection is unavailable. Check the saved collection and
-          reviewed database updates before uploading. Existing bookings stay
-          available.
-        </p>
-      )}
       <p
         ref={feedback}
         tabIndex={-1}
@@ -350,71 +365,44 @@ export function BookingManager({
       >
         {error || message}
       </p>
-      {collect && (
-        <div ref={collectionRef} className="money-collection">
-          {collection}
-        </div>
-      )}
       {editor && allowed && (
-        <form
-          ref={editorRef}
+        <ManagedBookingEditor
           key={editor.id}
-          onSubmit={submit}
-          className="money-card money-editor"
-          aria-label="Booking editor"
-        >
-          <div className="money-section-heading">
-            <h2>
-              {editor.item
-                ? "Update your booking"
-                : "Save a booking you already have"}
-            </h2>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                setEditor(null);
-                addRef.current?.focus();
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-          <input type="hidden" name="id" value={editor.id} />
-          <input
-            type="hidden"
-            name="revision"
-            value={editor.item?.finance_revision || 0}
-          />
-          <fieldset disabled={pending}>
-            <div className="money-booking-fields">
-              <BookingFields
-                trip={trip}
-                segments={segments}
-                item={editor.item}
-                draft={
-                  editor.item
-                    ? undefined
-                    : {
-                        start_date: "",
-                        end_date: "",
-                        currency: trip.currency,
-                        timezone: trip.timezone,
-                      }
+          entry={
+            editor.item
+              ? managedBookingEntry(editor.item)
+              : {
+                  ...emptyCollectionEntry(editor.id),
+                  fields: {
+                    ...emptyCollectionEntry(editor.id).fields,
+                    currency: trip.currency,
+                    timezone: trip.timezone,
+                  },
                 }
-                managed
-              />
-            </div>
-            <p className="money-muted">
-              Save only dates and amounts you know. “Reviewed” refers to checked
-              details, not a confirmed reservation. Linking a saved activity
-              does not create a second itinerary entry.
-            </p>
-            <button className="button primary" disabled={pending}>
-              {pending ? "Saving…" : "Save booking"}
-            </button>
-          </fieldset>
-        </form>
+          }
+          trip={trip}
+          title={
+            editor.item
+              ? editor.item.verification === "user confirmed"
+                ? "Edit booking"
+                : "Review booking"
+              : "Add a booking"
+          }
+          busy={pending}
+          error={error}
+          paymentDueReady={paymentDueReady}
+          returnFocus={returnFocus}
+          onClose={closeEditor}
+          onDirty={() => setDirty(true)}
+          onSave={submit}
+          confirmationHref={
+            editor.item &&
+            files(editor.item.id).find((f) => f.state === "ready")
+              ? "/api/attachments/" +
+                files(editor.item.id).find((f) => f.state === "ready")!.id
+              : undefined
+          }
+        />
       )}
       {selected && (
         <section
@@ -612,107 +600,117 @@ export function BookingManager({
                 {filtered
                   .filter((b) => b.category === c)
                   .map((b) => (
-                    <article
-                      className="money-card money-booking"
-                      aria-label={b.title}
+                    <BookingCard
+                      entry={managedBookingEntry(b)}
+                      title={b.title}
+                      disabled={pending || !allowed}
+                      onOpen={() => edit(b)}
                       key={b.id}
                     >
                       <div className="money-badges">
-                        <span
-                          className={
-                            "money-badge" +
-                            (b.verification === "user confirmed"
-                              ? " reviewed"
-                              : "")
-                          }
-                        >
-                          {b.verification === "user confirmed"
-                            ? "Reviewed"
-                            : "Needs review"}
-                        </span>
+                        {b.verification === "user confirmed" && (
+                          <span className="money-badge reviewed">Reviewed</span>
+                        )}
                         <span className="money-reservation">
                           {b.reservation_status || "unknown"}
                         </span>
                       </div>
-                      <h3>{b.title}</h3>
-                      {b.provider && <p>{b.provider}</p>}
-                      <p>
-                        <CalendarDays size={15} /> {b.start_date}
-                        {b.end_date !== b.start_date ? " – " + b.end_date : ""}
-                        {b.local_time
-                          ? " · " + b.local_time + " " + b.timezone
-                          : " · Time not supplied"}
-                      </p>
-                      {(b.location_label || b.origin) && (
-                        <p>
-                          <MapPin size={15} /> {b.location_label || b.origin}
-                        </p>
-                      )}
-                      {b.reference && (
-                        <p className="money-muted">Reference: {b.reference}</p>
-                      )}
-                      <strong className="money-booking-price">
-                        {b.price === null
-                          ? "Price not supplied"
-                          : displayMoney(b.currency, b.price)}
-                      </strong>
-                      <p className="money-muted">{bookingPriceLabel(b)}</p>
-                      <p className="money-muted">
-                        {files(b.id).length} private{" "}
-                        {files(b.id).length === 1 ? "file" : "files"} in your
-                        account{b.segment_id ? " · Linked to itinerary" : ""}
-                      </p>
-                      <div className="money-card-actions">
-                        <button
-                          onClick={() => {
-                            setError("");
-                            setDetails(b.id);
-                          }}
-                        >
-                          View details
-                        </button>
-                        {files(b.id).find((f) => f.state === "ready") && (
-                          <a
-                            className="button"
-                            href={
-                              "/api/attachments/" +
-                              files(b.id).find((f) => f.state === "ready")!.id
-                            }
+                      <details className="booking-card-menu">
+                        <summary aria-label={`More actions for ${b.title}`}>
+                          <MoreHorizontal size={20} />
+                        </summary>
+                        <div className="actions">
+                          <button
+                            onClick={() => {
+                              setError("");
+                              setDetails(b.id);
+                            }}
                           >
-                            Open confirmation
-                          </a>
-                        )}
-                        {allowed && (
-                          <>
-                            <button disabled={pending} onClick={() => edit(b)}>
-                              {b.verification === "user confirmed"
-                                ? "Edit"
-                                : "Review / edit"}
-                            </button>
-                            <button
-                              disabled={pending}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    "Remove “" +
-                                      b.title +
-                                      "”? This deletes this booking and its private confirmation files from your account. Other travelers’ files must be removed by them first. Linked itinerary activities and recorded expenses stay saved; their booking links are cleared.",
-                                  )
-                                )
-                                  void execute(() => remove(b), true);
-                              }}
+                            View details
+                          </button>
+                          {files(b.id).find((f) => f.state === "ready") && (
+                            <a
+                              className="button"
+                              href={
+                                "/api/attachments/" +
+                                files(b.id).find((f) => f.state === "ready")!.id
+                              }
                             >
-                              Remove
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </article>
+                              Open confirmation
+                            </a>
+                          )}
+                          {allowed && (
+                            <>
+                              <button
+                                disabled={pending}
+                                onClick={() => edit(b)}
+                              >
+                                {b.verification === "user confirmed"
+                                  ? "Edit"
+                                  : "Review"}
+                              </button>
+                              <button
+                                disabled={pending}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      "Remove “" +
+                                        b.title +
+                                        "”? This deletes this booking and its private confirmation files from your account. Other travelers’ files must be removed by them first. Linked itinerary activities and recorded expenses stay saved; their booking links are cleared.",
+                                    )
+                                  )
+                                    void execute(() => remove(b), true);
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </details>
+                    </BookingCard>
                   ))}
               </div>
             </section>
           ))
       )}
     </div>
+  );
+}
+
+function ManagedBookingEditor({
+  entry,
+  onDirty,
+  onSave,
+  ...props
+}: Omit<
+  import("react").ComponentProps<typeof BookingEditor>,
+  "onChange" | "onSave"
+> & {
+  onDirty: () => void;
+  onSave: (
+    fields: CollectionEntry["fields"],
+    reviewed?: boolean,
+  ) => Promise<void>;
+}) {
+  const [reviewed, setReviewed] = useState(false);
+  return (
+    <BookingEditor
+      {...props}
+      entry={entry}
+      onChange={onDirty}
+      onSave={(fields) => onSave(fields, reviewed)}
+    >
+      {entry.review_status === "needs_review" && (
+        <label className="booking-review-check">
+          <input
+            type="checkbox"
+            checked={reviewed}
+            onChange={(event) => setReviewed(event.target.checked)}
+          />
+          I’ve reviewed these details
+        </label>
+      )}
+    </BookingEditor>
   );
 }

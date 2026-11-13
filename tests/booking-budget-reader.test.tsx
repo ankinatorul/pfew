@@ -20,6 +20,7 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({
     user: { id: "owner" },
     db: {
+      rpc: async () => ({ data: 1, error: null }),
       from: (table: string) => {
         let columns = "";
         const result = () => ({

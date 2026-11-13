@@ -1182,3 +1182,100 @@
   font-size: 0.84rem;
   color: #435bc9;
 }
+.location-results .location-result-name {
+  display: block;
+  font-weight: 650;
+  font-size: 0.9rem;
+}
+.location-results .location-result-context {
+  display: block;
+  font-size: 0.77rem;
+  font-weight: 400;
+  color: #666b76;
+  margin-top: 3px;
+}
+.location-more,
+.location-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: #435bc9;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+.location-more:focus-visible,
+.location-retry:focus-visible {
+  outline: 2px solid #435bc9;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.location-retry:disabled {
+  color: #666b76;
+  cursor: wait;
+}
+.location-popup {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  border: 1px solid #e3dfeb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 22px #20202312;
+  overflow: hidden;
+}
+.location-popup .location-results {
+  position: static;
+  border: 0;
+  box-shadow: none;
+  margin: 0;
+}
+.location-popup .location-more {
+  display: flex;
+  width: 100%;
+  border-top: 1px solid #eeeaf3;
+  background: #fff;
+}
+.location-popup {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0;
+}
+.location-popup .location-results {
+  min-height: 0;
+  flex: 1;
+}
+.location-popup .location-more {
+  flex: none;
+}
+.location-results li:has(.location-result-name) {
+  padding: 9px 12px;
+  min-height: 48px;
+}
+.location-results .location-result-name,
+.location-results .location-result-context {
+  line-height: 1.25;
+}
+.location-results .location-result-context {
+  margin-top: 2px;
+}
+.location-results li:has(.location-result-name) {
+  padding: 7px 12px;
+}
+/* Keep the native radio itself over the whole shared pill touch target. */
+.booking-drawer .booking-choice-pills input {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  z-index: 1;
+  cursor: pointer;
+}

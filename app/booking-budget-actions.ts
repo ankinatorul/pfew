@@ -41,7 +41,66 @@ export async function saveManagedBooking(
   form.set("trip_id", trip);
   let fields;
   try {
-    const values = await bookingLocationValues(db, form);
+    let previous: Record<string, unknown> | null = null;
+    const simple = form.get("simplified") === "1";
+    if (simple) {
+      const current = await db
+        .from("bookings")
+        .select("*")
+        .eq("trip_id", trip)
+        .eq("id", meta.data.id)
+        .maybeSingle();
+      if (current.error)
+        return {
+          error: "Couldn’t load the saved booking. Your input is preserved.",
+        };
+      previous = current.data;
+      if (previous && previous.finance_revision !== meta.data.revision)
+        return { error: "Booking changed. Reload before saving." };
+    }
+    const normalized = new FormData();
+    for (const [key, value] of form) normalized.set(key, value);
+    // Unchanged legacy locations must not be re-resolved or silently cleared.
+    for (const prefix of ["", "end_"]) {
+      if (
+        previous &&
+        String(previous[prefix + "location_id"] || "") ===
+          String(form.get(prefix + "location_id") || "")
+      )
+        normalized.delete(prefix + "location_id");
+    }
+    const values = await bookingLocationValues(db, normalized);
+    if (previous) {
+      for (const prefix of ["", "end_"]) {
+        if (
+          String(previous[prefix + "location_id"] || "") ===
+          String(form.get(prefix + "location_id") || "")
+        ) {
+          for (const key of [
+            "location_id",
+            "location_label",
+            "latitude",
+            "longitude",
+            "timezone",
+          ])
+            values[prefix + key] = previous[prefix + key];
+        }
+      }
+      // Simplified edits have no controls for these saved relationships/statuses.
+      for (const key of [
+        "segment_id",
+        "provider",
+        "travelers",
+        "notes",
+        "paid_amount",
+        "reservation_status",
+      ])
+        values[key] = previous[key];
+      values.verification =
+        form.get("verification") === "user confirmed"
+          ? "user confirmed"
+          : previous.verification;
+    }
     const parsed = bookingSchema.safeParse(values);
     if (!parsed.success) return { error: parsed.error.issues[0].message };
     for (const amount of [parsed.data.price, parsed.data.paid_amount]) {
@@ -52,6 +111,21 @@ export async function saveManagedBooking(
         };
     }
     fields = parsed.data;
+    if (simple && form.has("payment_due_date")) {
+      const deadline = String(form.get("payment_due_date") || "");
+      if (deadline && !z.iso.date().safeParse(deadline).success)
+        return { error: "Choose a valid payment due date." };
+      const capability = await db.rpc("managed_booking_editor_version");
+      if (capability.error || capability.data !== 1)
+        return {
+          error:
+            "Payment deadline editing needs reviewed database update 018. Your other details are still here.",
+        };
+      fields = {
+        ...fields,
+        payment_due_date: deadline || null,
+      } as typeof fields;
+    }
   } catch {
     return {
       error:

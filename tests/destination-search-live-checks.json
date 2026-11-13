@@ -1,0 +1,54 @@
+{
+  "utc": "2026-11-12T17:11:40.907848+00:00",
+  "checks": [
+    {
+      "query": "Koh Lanta, Thailand",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6011 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Ao Nang, Thailand",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6010 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Bangkok, Thailand",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6005 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Phuket, Thailand",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6001 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Ubud, Indonesia",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6005 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Positano, Italy",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6007 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Santorini, Greece",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6004 milliseconds with 0 bytes received",
+      "features": []
+    },
+    {
+      "query": "Zermatt, Switzerland",
+      "http_status": "000",
+      "error": "curl: (28) Operation timed out after 6002 milliseconds with 0 bytes received",
+      "features": []
+    }
+  ],
+  "interpretation": "All attempts timed out from this environment without HTTP responses. This does not establish a global Photon outage or its current destination inventory."
+}
