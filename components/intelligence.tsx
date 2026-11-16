@@ -252,7 +252,7 @@ export async function Intelligence({
               <Link data-edit-action href={base + "?view=add&edit=" + idea.id}>
                 Edit idea
               </Link>
-              <Delete id={idea.id} tripId={trip.id} />
+              <Delete id={idea.id} tripId={trip.id} revision={idea.itinerary_revision ?? 0} />
             </div>
           </article>
         ))}

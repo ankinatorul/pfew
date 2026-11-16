@@ -100,7 +100,7 @@ it("shows at most three avatars plus the correct extra count", () => {
     document.querySelectorAll(".trip-people-avatars .account-avatar"),
   ).toHaveLength(3);
   expect(screen.getByText("+3")).toBeTruthy();
-  expect(screen.getByText("You + 5")).toBeTruthy();
+  expect(screen.getByText("6 people")).toBeTruthy();
 });
 it("copy success appears only after acknowledgement, resets at two seconds and does not change button width class", async () => {
   vi.useFakeTimers();

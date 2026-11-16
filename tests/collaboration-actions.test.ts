@@ -33,21 +33,39 @@ beforeEach(() => {
 });
 const trip = "11111111-1111-4111-8111-111111111111",
   id = "22222222-2222-4222-8222-222222222222";
-it("generates distinct high-entropy links and sends only hashes to the existing database boundary", async () => {
+it("enables or resets the owner’s stable trip link through a revision-protected RPC", async () => {
   const form = new FormData();
   form.set("trip_id", trip);
-  form.set("email", "Editor@Example.com");
-  const a = await createInvitation({}, form),
-    b = await createInvitation({}, form);
-  expect(a.url).toMatch(/^\/invites\/[a-f0-9]{64}$/);
-  expect(b.url).not.toBe(a.url);
-  expect(mocks.rpc.mock.calls[0][0]).toBe("create_trip_invitation");
-  expect(mocks.rpc.mock.calls[0][1]).toMatchObject({
-    target: trip,
-    recipient: "editor@example.com",
+  form.set("revision", "2");
+  form.set("operation", "reset");
+  mocks.rpc.mockResolvedValue({
+    data: { enabled: true, revision: 3, secret: "a".repeat(64) },
+    error: null,
   });
-  expect(mocks.rpc.mock.calls[0][1].invite_hash).toMatch(/^[a-f0-9]{64}$/);
-  expect(a.url).not.toContain(mocks.rpc.mock.calls[0][1].invite_hash);
+  const result = await createInvitation({}, form);
+  expect(result.url).toBe("/join/" + "a".repeat(64));
+  expect(mocks.rpc).toHaveBeenCalledWith("manage_trip_share_link", {
+    target: trip,
+    operation: "reset",
+    expected_revision: 2,
+    candidate: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  expect(mocks.rpc.mock.calls[0][1]).not.toHaveProperty("recipient");
+});
+it("hashes the reusable bearer secret when explicitly joining and reports failures", async () => {
+  const { joinSharedTrip } = await import("../app/collaboration-actions");
+  const form = new FormData();
+  form.set("token", "b".repeat(64));
+  expect(await joinSharedTrip(form)).toEqual({
+    status: "accepted",
+    tripId: trip,
+  });
+  expect(mocks.rpc).toHaveBeenCalledWith("join_trip_share_link", {
+    link_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+  });
+  expect(mocks.rpc.mock.calls[0][1].link_hash).not.toBe("b".repeat(64));
+  mocks.rpc.mockResolvedValue({ error: { message: "disabled" } });
+  expect((await joinSharedTrip(form)).error).toContain("current sharing link");
 });
 it("fails closed for absent infrastructure and does not pretend an invitation/email was created", async () => {
   mocks.rpc.mockResolvedValue({
@@ -55,10 +73,9 @@ it("fails closed for absent infrastructure and does not pretend an invitation/em
   });
   const form = new FormData();
   form.set("trip_id", trip);
-  form.set("email", "editor@example.com");
   const result = await createInvitation({}, form);
   expect(result.url).toBeUndefined();
-  expect(result.error).toContain("not available");
+  expect(result.error).toMatch(/not available|aren’t available/);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
 it("passes identity-bound in-app decisions, owner revocations and optimistic revisions through authorized RPCs", async () => {
@@ -114,16 +131,16 @@ it("missing infrastructure and wrong-account RPC failures do not acknowledge acc
   form.set("id", id);
   form.set("decision", "accept");
   mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST202" } });
-  expect((await respondInvitationState(form)).error).toContain("not available");
+  expect((await respondInvitationState(form)).error).toMatch(
+    /not available|aren’t available/,
+  );
   expect(mocks.rpc).toHaveBeenCalledTimes(1);
   mocks.rpc.mockImplementation(async (name: string) =>
     name === "collaboration_version"
       ? { data: 1, error: null }
       : { data: null, error: { message: "unavailable" } },
   );
-  expect((await respondInvitationState(form)).error).toContain(
-    "signed-in email",
-  );
+  expect((await respondInvitationState(form)).error).toContain("new link");
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
 it("stale file revisions return friendly inline failures without weakening the operation", async () => {

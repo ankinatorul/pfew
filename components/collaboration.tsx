@@ -1,71 +1,7 @@
 "use client";
-import { useActionState, useState } from "react";
-import {
-  createInvitation,
-  removeCollaborator,
-  updateMember,
-} from "../app/collaboration-actions";
+import { removeCollaborator, updateMember } from "../app/collaboration-actions";
 import { Button } from "./button";
 import { Submit } from "./forms";
-export function InviteForm({ trip }: { trip: string }) {
-  const [state, action, pending] = useActionState(createInvitation, {});
-  const [copied, setCopied] = useState(false);
-  return (
-    <section className="card">
-      <h3>Bring your people along.</h3>
-      <form action={action}>
-        <input type="hidden" name="trip_id" value={trip} />
-        <label>
-          Invited email
-          <input name="email" type="email" required maxLength={254} />
-        </label>
-        <input type="hidden" name="role" value="editor" />
-        <p className="muted">
-          The invitation expires in seven days and requires that exact verified
-          email. Files stay private unless their uploader explicitly shares
-          them.
-        </p>
-        <Button disabled={pending}>
-          {pending ? "Creating…" : "Create invitation link"}
-        </Button>
-      </form>
-      {state.error && <p role="alert">{state.error}</p>}
-      {state.url && (
-        <div className="invite-result">
-          <label>
-            Share this invitation link
-            <input
-              readOnly
-              value={
-                typeof window !== "undefined"
-                  ? new URL(state.url, window.location.origin).href
-                  : state.url
-              }
-            />
-          </label>
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  new URL(state.url!, window.location.origin).href,
-                );
-                setCopied(true);
-              } catch {
-                setCopied(false);
-              }
-            }}
-          >
-            {copied ? "Copied" : "Copy invitation link"}
-          </Button>
-          <p className="muted">
-            Share the link yourself. Pfew has not sent an email.
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
 export function RemoveCollaborator({
   trip,
   id,

@@ -24,6 +24,9 @@ it("only permits local invitation return paths", () => {
   expect(safeReturnPath("/invites/" + "a".repeat(64))).toBe(
     "/invites/" + "a".repeat(64),
   );
+  expect(safeReturnPath("/join/" + "b".repeat(64))).toBe(
+    "/join/" + "b".repeat(64),
+  );
   for (const value of [
     "//evil.example",
     "https://evil.example",

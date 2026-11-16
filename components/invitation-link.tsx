@@ -1,7 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Copy, Check } from "lucide-react";
-export function InvitationLink({ url }: { url: string }) {
+export function InvitationLink({
+  url,
+  reusable = false,
+}: {
+  url: string;
+  reusable?: boolean;
+}) {
   const [copied, setCopied] = useState(false),
     [copying, setCopying] = useState(false),
     [error, setError] = useState("");
@@ -39,12 +45,15 @@ export function InvitationLink({ url }: { url: string }) {
     }
   }
   return (
-    <section className="sharing-link" aria-label="Invitation link ready">
-      <strong>Invitation link ready</strong>
+    <section
+      className="sharing-link"
+      aria-label={reusable ? "Trip sharing link" : "Invitation link ready"}
+    >
+      {!reusable && <strong>Invitation link ready</strong>}
       <div className="sharing-link-controls">
         <input
           ref={input}
-          aria-label="Invitation URL"
+          aria-label={reusable ? "Sharing URL" : "Invitation URL"}
           type="text"
           readOnly
           spellCheck={false}
@@ -65,9 +74,13 @@ export function InvitationLink({ url }: { url: string }) {
           {copied ? "Copied!" : "Copy link"}
         </button>
       </div>
-      <small>Send this link to your collaborator.</small>
+      {!reusable && <small>Send this link to your collaborator.</small>}
       <span className="sr-only" role="status" aria-live="polite">
-        {copied ? "Invitation link copied." : ""}
+        {copied
+          ? reusable
+            ? "Sharing link copied."
+            : "Invitation link copied."
+          : ""}
       </span>
       {error && (
         <small className="sharing-error" role="alert">

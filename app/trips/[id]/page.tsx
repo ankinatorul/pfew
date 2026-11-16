@@ -502,7 +502,7 @@ export default async function Hub({
                     >
                       Edit / move
                     </Link>
-                    <Delete id={s.id} tripId={id} />
+                    <Delete id={s.id} tripId={id} revision={s.itinerary_revision ?? 0} />
                   </div>
                 </article>
               ))}

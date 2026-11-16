@@ -2,10 +2,7 @@ import React, { useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { AppShellView } from "../../components/app-shell-view";
 import { ShareTripPanel } from "../../components/share-trip-panel";
-import {
-  InvitationExperience,
-  InvitationInbox,
-} from "../../components/invitation-experience";
+import { InvitationExperience } from "../../components/invitation-experience";
 import { FilePrivacyControl } from "../../components/file-privacy-control";
 import type { SharingData, InvitationStatus } from "../../lib/collaboration";
 import type { TripFile } from "../../lib/packing-documents";
@@ -33,6 +30,7 @@ function Fixture() {
   const mode = new URL(location.href).searchParams.get("mode") || "owner";
   const [data, setData] = useState<SharingData>({
     ready: mode !== "unavailable",
+    linkReady: mode !== "unavailable",
     tripId: trip.id,
     tripName: trip.name,
     owner: mode !== "editor",
@@ -90,13 +88,8 @@ function Fixture() {
         role: "editor",
       },
     ],
-    pending: [
-      {
-        id: "pending",
-        email: "pending@example.com",
-        expires_at: "2027-01-01T00:00:00Z",
-      },
-    ],
+    pending: [],
+    sharingLink: { enabled: false, revision: 0 },
   });
   const saved = useRef(data);
   const commit = (next: SharingData) => {
@@ -118,6 +111,7 @@ function Fixture() {
       {mode.startsWith("invite-") ? (
         <InvitationExperience
           initialStatus={status}
+          linkBased
           tripName={status === "valid" ? trip.name : undefined}
           userId="editor"
           signInHref="/login?next=%2Finvites%2Fexample"
@@ -138,24 +132,20 @@ function Fixture() {
               data={data}
               onRefresh={() => {}}
               invite={async (f) => {
-                const email = String(f.get("email"));
-                if (saved.current.pending.some((p) => p.email === email))
-                  return {
-                    error:
-                      "An invitation is already pending. Cancel it before creating another.",
-                  };
-                commit({
-                  ...saved.current,
-                  pending: [
-                    ...saved.current.pending,
-                    {
-                      id: crypto.randomUUID(),
-                      email,
-                      expires_at: "2027-01-01",
-                    },
-                  ],
-                });
-                return { url: "/invites/" + "a".repeat(64) };
+                if (f.has("email"))
+                  throw new Error("Unexpected recipient field");
+                const previous = saved.current.sharingLink;
+                const enabled = f.get("operation") !== "disable";
+                const result = {
+                  enabled,
+                  revision: (previous?.revision || 0) + 1,
+                  url: enabled
+                    ? "/join/" +
+                      (f.get("operation") === "reset" ? "b" : "a").repeat(64)
+                    : undefined,
+                };
+                commit({ ...saved.current, sharingLink: result });
+                return result;
               }}
               manage={async (f) => {
                 const d = saved.current;
@@ -178,22 +168,6 @@ function Fixture() {
               }}
             />
           </header>
-          <InvitationInbox
-            initialInvitations={[
-              {
-                id: "inbox",
-                trip_name: "A shared weekend",
-                role: "editor",
-                expires_at: "2027-01-01",
-              },
-            ]}
-            userId="editor"
-            onRefresh={() => {}}
-            respond={async (_id, decision) => ({
-              status: decision === "accept" ? "accepted" : "declined",
-              ...(decision === "accept" ? { tripId: trip.id } : {}),
-            })}
-          />
           <section className="invitation-inbox">
             <h2>Your documents</h2>
             <article>

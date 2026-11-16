@@ -28,7 +28,7 @@ export function Submit({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
   return <Button disabled={pending}>{pending ? "Saving…" : children}</Button>;
 }
-export function Delete({ id, tripId }: { id: string; tripId?: string }) {
+export function Delete({ id, tripId, revision = 0 }: { id: string; tripId?: string; revision?: number }) {
   const [notice, setNotice] = useState("");
   const [state, action, pending] = useActionState(
     async (_previous: { error: string } | null, form: FormData) => {
@@ -64,7 +64,7 @@ export function Delete({ id, tripId }: { id: string; tripId?: string }) {
       }}
     >
       <input type="hidden" name="id" value={id} />
-      {tripId && <input type="hidden" name="trip_id" value={tripId} />}
+      {tripId && <><input type="hidden" name="trip_id" value={tripId} /><input type="hidden" name="itinerary_revision" value={revision}/></>}
       <Button variant="danger" disabled={pending}>
         {pending ? "Deleting…" : "Delete " + (tripId ? "item" : "trip")}
       </Button>
@@ -407,7 +407,7 @@ export function SegmentForm({
         </p>
       )}
       <input type="hidden" name="trip_id" value={trip.id} />
-      {item && <input type="hidden" name="id" value={item.id} />}
+      {item && <><input type="hidden" name="id" value={item.id}/><input type="hidden" name="itinerary_revision" value={item.itinerary_revision ?? 0}/></>}
       <label>
         Type
         <select

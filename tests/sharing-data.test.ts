@@ -27,7 +27,12 @@ function client(owner = true) {
           ],
           error: null,
         }
-      : { data: 1, error: null },
+      : name === "manage_trip_share_link"
+        ? {
+            data: { enabled: true, revision: 2, secret: "a".repeat(64) },
+            error: null,
+          }
+        : { data: 1, error: null },
   );
   const from = vi.fn((table: string) => {
     reads.push(table);
@@ -81,9 +86,13 @@ it("owner receives friendly member labels and pending records without selecting 
   expect(result.members[0].label).toBe("current");
   expect(result.people?.[1].email).toBe("current@example.com");
   expect(result.peopleReady).toBe(true);
-  expect(result.pending).toEqual([
-    { id: "pending", email: "friend@example.com", expires_at: "2099-01-01" },
-  ]);
+  expect(result.pending).toEqual([]);
+  expect(c.reads).toEqual(["trip_members"]);
+  expect(result.sharingLink).toEqual({
+    enabled: true,
+    revision: 2,
+    url: "/join/" + "a".repeat(64),
+  });
   for (const r of c.from.mock.results) {
     expect(r.value.select.mock.calls[0][0]).not.toContain("token");
   }

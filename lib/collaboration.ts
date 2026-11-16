@@ -8,7 +8,9 @@ export type InvitationStatus =
   | "wrong_account"
   | "invalid"
   | "unavailable"
-  | "signed_out";
+  | "signed_out"
+  | "used"
+  | "already_member";
 export type InvitationSummary = {
   id: string;
   trip_name: string;
@@ -22,7 +24,11 @@ export type SharedMember = {
   member_revision: number;
   self?: boolean;
 };
-export type PendingInvite = { id: string; email: string; expires_at: string };
+export type PendingInvite = {
+  id: string;
+  kind?: "email" | "link";
+  expires_at: string;
+};
 export type TripPerson = AccountProfile & {
   userId: string;
   membershipId: string | null;
@@ -32,6 +38,8 @@ export type SharingData = {
   people?: TripPerson[];
   peopleReady?: boolean;
   ready: boolean;
+  linkReady?: boolean;
+  sharingLink?: { enabled: boolean; revision: number; url?: string };
   error?: string;
   tripId: string;
   tripName: string;

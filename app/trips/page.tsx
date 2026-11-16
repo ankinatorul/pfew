@@ -1,4 +1,3 @@
-import { PendingInvitations } from "../../components/pending-invitations";
 import { TripCollection } from "../../components/trip-collection";
 import { access } from "../../lib/access";
 import { shellTrips } from "../../lib/shell-data";
@@ -13,7 +12,6 @@ export default async function Trips() {
     <>
       <span className="eyebrow">All your adventures</span>
       <h1>My Trips</h1>
-      <PendingInvitations />
       <TripCollection trips={trips} />
     </>
   );

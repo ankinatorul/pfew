@@ -6,7 +6,8 @@ export function rootOAuthCallback(code: unknown) {
     : null;
 }
 export function safeReturnPath(value: unknown) {
-  return typeof value === "string" && /^\/invites\/[a-f0-9]{64}$/.test(value)
+  return typeof value === "string" &&
+    /^\/(?:invites|join)\/[a-f0-9]{64}$/.test(value)
     ? value
     : null;
 }

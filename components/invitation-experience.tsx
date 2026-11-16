@@ -30,8 +30,8 @@ export function InvitationExperience({
   initialStatus,
   tripName,
   tripId,
-  email,
   userId,
+  linkBased = false,
   signInHref,
   accountAction,
   LinkComponent = "a",
@@ -40,7 +40,7 @@ export function InvitationExperience({
   initialStatus: InvitationStatus;
   tripName?: string;
   tripId?: string;
-  email?: string;
+  linkBased?: boolean;
   userId: string;
   signInHref?: string;
   accountAction?: ReactNode;
@@ -71,8 +71,8 @@ export function InvitationExperience({
       "Ask the trip owner if you need access.",
     ],
     wrong_account: [
-      "Check your invitation email",
-      "This link isn’t available for this account. It may be invalid or intended for a different email.",
+      "This invitation isn’t available for this account",
+      "Try another account or ask the owner for a new link.",
     ],
     invalid: [
       "This invitation link isn’t valid",
@@ -82,9 +82,17 @@ export function InvitationExperience({
       "Sharing isn’t available yet",
       "Your invitation hasn’t been accepted or changed. Try again after the project’s next update.",
     ],
+    used: [
+      "This invitation has already been used",
+      "Ask the owner for a new link.",
+    ],
+    already_member: [
+      "You’re already on this trip",
+      "Open your shared trip to keep planning.",
+    ],
     signed_out: [
       "An adventure together",
-      "Sign in with the email that received this invitation.",
+      "Sign in to view this invitation and join the trip.",
     ],
   };
   async function decide(decision: "accept" | "decline") {
@@ -120,9 +128,6 @@ export function InvitationExperience({
       <p className="eyebrow">An adventure together</p>
       <h1 id="invitation-title">{copy[state][0]}</h1>
       <p>{copy[state][1]}</p>
-      {email && (state === "valid" || state === "wrong_account") && (
-        <p className="sharing-muted">Signed in as {email}</p>
-      )}
       {state === "valid" && (
         <div className="sharing-actions">
           <button
@@ -130,20 +135,27 @@ export function InvitationExperience({
             disabled={busy}
             onClick={() => void decide("accept")}
           >
-            {busy ? "Saving…" : "Accept invitation"}
+            {busy ? "Saving…" : "Join trip"}
           </button>
-          <button
-            className="button"
-            disabled={busy}
-            onClick={() => void decide("decline")}
-          >
-            Decline
-          </button>
+          {linkBased ? (
+            <LinkComponent className="button" href="/trips">
+              Not now
+            </LinkComponent>
+          ) : (
+            <button
+              className="button"
+              disabled={busy}
+              onClick={() => void decide("decline")}
+            >
+              Decline
+            </button>
+          )}
         </div>
       )}
-      {state === "accepted" && (reply.tripId || tripId) && (
-        <OpenSharedTrip tripId={(reply.tripId || tripId)!} userId={userId} />
-      )}
+      {(state === "accepted" || state === "already_member") &&
+        (reply.tripId || tripId) && (
+          <OpenSharedTrip tripId={(reply.tripId || tripId)!} userId={userId} />
+        )}
       {state === "signed_out" && (
         <a className="button primary" href={signInHref}>
           Sign in to continue

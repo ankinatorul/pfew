@@ -21,13 +21,18 @@ export function ShareTripPanel({
 }) {
   const [open, setOpen] = useState(defaultOpen),
     [opener, setOpener] = useState<HTMLElement | null>(null),
-    [email, setEmail] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
-    [link, setLink] = useState<{ email: string; url: string } | null>(null);
-  const running = useRef(false),
-    pendingTitle = useRef<HTMLHeadingElement>(null);
+    [localLink, setLink] = useState<
+      (NonNullable<SharingData["sharingLink"]> & { tripId: string }) | undefined
+    >();
+  const link =
+    localLink?.tripId === data.tripId &&
+    localLink.revision >= (data.sharingLink?.revision || 0)
+      ? localLink
+      : data.sharingLink;
+  const running = useRef(false);
   async function run(task: () => Promise<void>) {
     if (running.current) return;
     running.current = true;
@@ -43,7 +48,7 @@ export function ShareTripPanel({
       setBusy(false);
     }
   }
-  function request(operation: "remove" | "revoke", id: string, revision = 0) {
+  function request(operation: "remove", id: string, revision = 0) {
     const form = new FormData();
     form.set("trip_id", data.tripId);
     form.set("id", id);
@@ -51,31 +56,38 @@ export function ShareTripPanel({
     form.set("operation", operation);
     return manage(form);
   }
-  async function send(recipient: string) {
+  async function change(operation: "enable" | "disable" | "reset") {
     const form = new FormData();
     form.set("trip_id", data.tripId);
-    form.set("email", recipient);
-    const reply = await invite(form);
-    if (reply.error) {
-      setError(reply.error);
+    form.set("operation", operation);
+    form.set("revision", String(link?.revision || 0));
+    const result = await invite(form);
+    if (result.error) {
+      setError(result.error);
       onRefresh();
-      if (/pending/i.test(reply.error)) pendingTitle.current?.focus();
-      return false;
+      return;
     }
-    if (!reply.url) {
-      setError(
-        "We couldn’t confirm the invitation. Refresh to check before retrying.",
-      );
-      return false;
+    if (
+      typeof result.enabled !== "boolean" ||
+      typeof result.revision !== "number"
+    ) {
+      setError("Couldn’t confirm sharing. Refresh before trying again.");
+      return;
     }
     setLink({
-      email: recipient,
-      url: new URL(reply.url, window.location.origin).href,
+      tripId: data.tripId,
+      enabled: result.enabled,
+      revision: result.revision,
+      url: result.url,
     });
-    setEmail("");
-    setMessage("Your link is ready. Send it to your collaborator.");
+    setMessage(
+      operation === "disable"
+        ? "Link sharing disabled. Existing members keep access."
+        : operation === "reset"
+          ? "Link reset. Previously shared links no longer work."
+          : "Sharing enabled.",
+    );
     onRefresh();
-    return true;
   }
   return (
     <>
@@ -102,9 +114,9 @@ export function ShareTripPanel({
       </button>
       {open && (
         <BookingDrawer
-          title="Share trip"
+          title="Share this trip"
           closeLabel="Close sharing"
-          initialFocus='input[name="email"]'
+          initialFocus="button"
           busy={busy}
           onClose={() => setOpen(false)}
           returnFocus={opener}
@@ -129,126 +141,77 @@ export function ShareTripPanel({
                   {data.owner ? "You own this trip" : "Shared with you"}
                 </p>
                 {data.owner ? (
-                  <form
+                  <section
                     className="sharing-invite-form"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void run(async () => {
-                        setLink(null);
-                        await send(email.trim());
-                      });
-                    }}
+                    aria-label="Trip sharing link"
                   >
-                    <h3>Invite someone</h3>
-                    <label htmlFor="collaborator-email">Email address</label>
-                    <input
-                      id="collaborator-email"
-                      name="email"
-                      type="email"
-                      required
-                      maxLength={254}
-                      autoComplete="email"
-                      placeholder="Enter collaborator’s email"
-                      value={email}
-                      disabled={busy}
-                      onChange={(event) => setEmail(event.target.value)}
-                    />
-                    <button className="button primary" disabled={busy}>
-                      {busy ? "Working…" : "Create invite link"}
-                    </button>
+                    <p>Anyone with this link can join and edit your trip.</p>
+                    {!data.linkReady ? (
+                      <p role="status">Sharing links aren’t available yet.</p>
+                    ) : link?.enabled && link.url ? (
+                      <>
+                        <InvitationLink
+                          key={link.url}
+                          url={
+                            typeof window !== "undefined"
+                              ? new URL(link.url, window.location.origin).href
+                              : link.url
+                          }
+                          reusable
+                        />
+                        <div className="sharing-actions">
+                          <button
+                            type="button"
+                            className="button"
+                            disabled={busy}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Reset this link? Previously shared links will stop working. Existing members keep access.",
+                                )
+                              )
+                                void run(() => change("reset"));
+                            }}
+                          >
+                            Reset link
+                          </button>
+                          <button
+                            type="button"
+                            className="button"
+                            disabled={busy}
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Disable sharing? This link will stop working. Existing members keep access.",
+                                )
+                              )
+                                void run(() => change("disable"));
+                            }}
+                          >
+                            Disable sharing
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="button primary"
+                        disabled={busy}
+                        onClick={() => void run(() => change("enable"))}
+                      >
+                        {busy ? "Working…" : "Enable sharing"}
+                      </button>
+                    )}
                     <small>
-                      We won’t send an email. You can share the link yourself.
+                      Removed collaborators can rejoin with the active link.
+                      Reset the link to invalidate old copies.
                     </small>
-                  </form>
+                  </section>
                 ) : (
                   <p className="sharing-muted">
-                    Only the trip owner can invite or remove collaborators.
+                    Only the trip owner can manage sharing or remove
+                    collaborators.
                   </p>
-                )}
-                {link && <InvitationLink key={link.url} url={link.url} />}
-                {data.owner && (
-                  <section className="sharing-section">
-                    <h3 ref={pendingTitle} tabIndex={-1}>
-                      Pending invitations
-                      {data.pending.length ? ` · ${data.pending.length}` : ""}
-                    </h3>
-                    {!data.pending.length ? (
-                      <p className="sharing-muted">No pending invitations.</p>
-                    ) : (
-                      data.pending.map((p) => (
-                        <article className="sharing-person" key={p.id}>
-                          <strong>{p.email}</strong>
-                          <span className="sharing-tag">Pending</span>
-                          <small>
-                            Expires{" "}
-                            {new Intl.DateTimeFormat("en", {
-                              day: "numeric",
-                              month: "short",
-                              timeZone: "UTC",
-                            }).format(new Date(p.expires_at))}
-                          </small>
-                          <div className="sharing-actions">
-                            <button
-                              type="button"
-                              className="button"
-                              disabled={busy}
-                              onClick={() => {
-                                if (
-                                  !window.confirm(
-                                    `Revoke the invitation for ${p.email}? The old link will stop working.`,
-                                  )
-                                )
-                                  return;
-                                void run(async () => {
-                                  const result = await request("revoke", p.id);
-                                  if (result.error) {
-                                    setError(result.error);
-                                    return;
-                                  }
-                                  if (
-                                    link?.email.toLowerCase() ===
-                                    p.email.toLowerCase()
-                                  )
-                                    setLink(null);
-                                  setMessage("Invitation link revoked.");
-                                  onRefresh();
-                                });
-                              }}
-                            >
-                              Revoke invitation
-                            </button>
-                            <button
-                              type="button"
-                              className="button"
-                              disabled={busy}
-                              onClick={() => {
-                                if (
-                                  !window.confirm(
-                                    `Replace the invitation for ${p.email}? The old link will stop working.`,
-                                  )
-                                )
-                                  return;
-                                void run(async () => {
-                                  const result = await request("revoke", p.id);
-                                  if (result.error) {
-                                    setError(result.error);
-                                    return;
-                                  }
-                                  setLink(null);
-                                  if (!(await send(p.email)))
-                                    setMessage(
-                                      "The old link was revoked. Invite again if a replacement wasn’t created.",
-                                    );
-                                });
-                              }}
-                            >
-                              Create new link
-                            </button>
-                          </div>
-                        </article>
-                      ))
-                    )}
-                  </section>
                 )}
                 <section className="sharing-section">
                   <h3>People on this trip</h3>
@@ -261,6 +224,7 @@ export function ShareTripPanel({
                     {data.peopleReady &&
                     data.people?.find((p) => p.role === "owner") ? (
                       <PersonDetails
+                        showEmail={false}
                         person={data.people.find((p) => p.role === "owner")!}
                       />
                     ) : (
@@ -275,6 +239,7 @@ export function ShareTripPanel({
                       {data.peopleReady &&
                       data.people?.find((p) => p.membershipId === m.id) ? (
                         <PersonDetails
+                          showEmail={false}
                           person={data.people.find(
                             (p) => p.membershipId === m.id,
                           )!}
@@ -295,7 +260,7 @@ export function ShareTripPanel({
                           onClick={() => {
                             if (
                               !window.confirm(
-                                `Remove ${m.label} from this trip? Shared plans stay saved. Their private files are unchanged.`,
+                                `Remove ${m.label} from this trip? Shared plans stay saved. Their private files are unchanged. They can rejoin with the active sharing link; reset it to invalidate old copies.`,
                               )
                             )
                               return;

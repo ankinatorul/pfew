@@ -4,13 +4,21 @@ import { ChevronDown } from "lucide-react";
 import type { TripPerson } from "../lib/collaboration";
 import { AccountAvatar } from "./account-avatar";
 import { BookingDrawer } from "./booking-drawer";
-export function PersonDetails({ person }: { person: TripPerson }) {
+export function PersonDetails({
+  person,
+  showEmail = true,
+}: {
+  person: TripPerson;
+  showEmail?: boolean;
+}) {
   return (
     <div className="trip-person">
       <AccountAvatar key={person.avatarUrl} profile={person} />
       <div className="trip-person-identity">
         <strong>{person.name}</strong>
-        {person.email && <a href={"mailto:" + person.email}>{person.email}</a>}
+        {showEmail && person.email && (
+          <a href={"mailto:" + person.email}>{person.email}</a>
+        )}
         <span className="sharing-tag">
           {person.role === "owner"
             ? "Owner"
@@ -60,7 +68,7 @@ export function TripPeople({
         </span>
         <span className="trip-people-label">
           <small>Shared with</small>
-          <strong>You + {people.length - 1}</strong>
+          <strong>{people.length} people</strong>
         </span>
         <ChevronDown size={14} aria-hidden="true" />
       </button>

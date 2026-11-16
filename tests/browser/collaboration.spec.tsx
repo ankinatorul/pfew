@@ -44,75 +44,49 @@ async function mount(page: Page, mode = "owner") {
 }
 async function shot(page: Page, info: TestInfo, name: string) {
   await page.screenshot({
-    path: `tests/screenshots/collaboration-link-people/${info.project.name}/${name}.png`,
+    path: `tests/screenshots/reusable-trip-sharing/${info.project.name}/${name}.png`,
     fullPage: true,
+    animations: "disabled",
   });
 }
-test("owner invites, copies, safely replaces/revokes links and removes collaborators in a keyboard-accessible drawer", async ({
+test("owner enables one reusable link, copies, resets, disables and removes a member", async ({
   page,
 }, info) => {
   await mount(page);
   await page.getByRole("button", { name: "Share", exact: true }).click();
   const drawer = page.getByRole("dialog");
-  await expect(drawer).toBeVisible();
-  await expect(drawer.getByLabel("Email address")).toBeFocused();
-  await drawer.getByLabel("Email address").fill("newfriend@example.com");
-  await drawer.getByRole("button", { name: "Create invite link" }).click();
+  await expect(drawer.getByLabel("Email address")).toHaveCount(0);
   await expect(
-    drawer.getByText(
-      "We won’t send an email. You can share the link yourself.",
-    ),
-  ).toBeVisible();
-  await page.evaluate(() => {
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: async (text: string) => {
-          sessionStorage.setItem("fixture:copied", text);
-        },
-      },
-    });
-  });
-  await drawer.getByRole("button", { name: "Copy link" }).click();
-  expect(
-    await page.evaluate(() => sessionStorage.getItem("fixture:copied")),
-  ).toMatch(/\/invites\/[a-f0-9]{64}$/);
-  await shot(page, info, "owner-sharing");
-  page.once("dialog", (d) => d.dismiss());
-  await drawer.getByRole("button", { name: "Remove collaborator" }).click();
-  await expect(
-    drawer.getByText("friend@example.com", { exact: true }),
-  ).toBeVisible();
-  page.once("dialog", (d) => d.accept());
-  await drawer.getByRole("button", { name: "Remove collaborator" }).click();
-  await expect(
-    drawer.getByText("friend@example.com", { exact: true }),
+    page.getByRole("region", { name: "Pending invitations" }),
   ).toHaveCount(0);
-  const pending = drawer
-    .getByRole("article")
-    .filter({ hasText: "pending@example.com" });
-  page.once("dialog", (d) => d.accept());
-  await pending.getByRole("button", { name: "Create new link" }).click();
-  await expect(drawer.getByLabel("Invitation URL")).toBeVisible();
-  const replacement = drawer
-    .getByRole("article")
-    .filter({ hasText: "pending@example.com" });
-  page.once("dialog", (d) => d.accept());
-  await replacement.getByRole("button", { name: "Revoke invitation" }).click();
-  await expect(
-    drawer.getByRole("region", { name: "Invitation link ready" }),
-  ).toHaveCount(0);
+  await drawer.getByRole("button", { name: "Enable sharing" }).click();
+  const original = await drawer.getByLabel("Sharing URL").inputValue();
   await drawer.press("Escape");
-  await expect(drawer).toHaveCount(0);
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await expect(drawer.getByLabel("Sharing URL")).toHaveValue(original);
+  await shot(page, info, "owner-sharing");
+  page.once("dialog", (d) => d.accept());
+  await drawer.getByRole("button", { name: "Reset link" }).click();
+  await expect(drawer.getByLabel("Sharing URL")).not.toHaveValue(original);
+  await expect(drawer.getByText("Mark", { exact: true })).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await drawer.getByRole("button", { name: "Remove collaborator" }).click();
+  await expect(drawer.getByText("Mark", { exact: true })).toHaveCount(0);
+  page.once("dialog", (d) => d.accept());
+  await drawer.getByRole("button", { name: "Disable sharing" }).click();
+  await expect(drawer.getByRole("button", { name: "Copy link" })).toHaveCount(
+    0,
+  );
   await expect(
-    page.getByRole("button", { name: "Share", exact: true }),
-  ).toBeFocused();
+    drawer.getByRole("button", { name: "Enable sharing" }),
+  ).toBeVisible();
 });
+
 test("valid invitation accepts with explicit Open trip and activates the shared trip", async ({
   page,
 }, info) => {
   await mount(page, "invite-valid");
-  await page.getByRole("button", { name: "Accept invitation" }).click();
+  await page.getByRole("button", { name: "Join trip" }).click();
   await expect(page.getByText("You’re in!")).toBeVisible();
   const open = page.getByRole("link", { name: "Open trip", exact: true });
   await expect(open).toHaveAttribute("href", /\/trips\//);
@@ -125,16 +99,14 @@ test("valid invitation accepts with explicit Open trip and activates the shared 
     await page.evaluate(() => localStorage.getItem("pfew:active-trip:editor")),
   ).toBe("11111111-1111-4111-8111-111111111111");
 });
-test("recipient inbox declines cleanly and document sharing stays explicit and uploader-controlled", async ({
+test("no invitation inbox and document sharing stays explicit and uploader-controlled", async ({
   page,
 }, info) => {
   await mount(page);
-  const inbox = page.getByRole("region", { name: "Pending invitations" });
-  await shot(page, info, "inbox-and-privacy");
-  await inbox.getByRole("button", { name: "Decline", exact: true }).click();
-  await expect(inbox).toContainText("Invitation declined");
-  await inbox.getByRole("button", { name: "Dismiss" }).click();
-  await expect(inbox).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Pending invitations" }),
+  ).toHaveCount(0);
+  await shot(page, info, "privacy");
   page.once("dialog", (d) => d.dismiss());
   await page
     .getByRole("button", { name: "Share with trip", exact: true })
@@ -199,9 +171,9 @@ test("wrong-account, expired, revoked and signed-out invitations offer safe reco
     "signed_out",
   ]) {
     await mount(page, "invite-" + status);
-    await expect(
-      page.getByRole("button", { name: "Accept invitation" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Join trip" })).toHaveCount(
+      0,
+    );
     await expect(page.locator(".invitation-page")).not.toContainText(
       "A spring escape",
     );
@@ -256,7 +228,7 @@ test("shared avatars open a compact people panel with accurate identities, role-
   await expect(trigger).toBeFocused();
   await trigger.click();
   await panel.getByRole("button", { name: "Manage sharing" }).click();
-  const sharing = page.getByRole("dialog", { name: "Share trip" });
+  const sharing = page.getByRole("dialog", { name: "Share this trip" });
   await expect(sharing).toBeVisible();
   await sharing.press("Escape");
   await expect(trigger).toBeFocused();
@@ -279,8 +251,7 @@ test("copy feedback resets without layout movement and clipboard failure selects
   await mount(page);
   await page.getByRole("button", { name: "Share", exact: true }).click();
   const drawer = page.getByRole("dialog");
-  await drawer.getByLabel("Email address").fill("copy@example.com");
-  await drawer.getByRole("button", { name: "Create invite link" }).click();
+  await drawer.getByRole("button", { name: "Enable sharing" }).click();
   await page.evaluate(() =>
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -315,7 +286,7 @@ test("copy feedback resets without layout movement and clipboard failure selects
   await expect(
     drawer.getByRole("button", { name: "Copied!", exact: true }),
   ).toHaveCount(0);
-  const url = drawer.getByLabel("Invitation URL");
+  const url = drawer.getByLabel("Sharing URL");
   await expect(url).toBeFocused();
   expect(await url.evaluate((e) => (e as HTMLInputElement).selectionEnd)).toBe(
     (await url.inputValue()).length,

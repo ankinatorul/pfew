@@ -216,15 +216,23 @@ export async function saveSegment(form: FormData) {
     fail("Item dates must be within the trip.");
   const id = form.get("id");
   if (id && !z.uuid().safeParse(id).success) fail("Invalid item");
+  const revision = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .safeParse(form.get("itinerary_revision"));
+  if (id && (!form.has("itinerary_revision") || !revision.success))
+    fail("Reload this item before saving.");
   const query = id
     ? db
         .from("trip_segments")
         .update(parsed.data)
         .eq("id", id)
         .eq("trip_id", parsed.data.trip_id)
+        .eq("itinerary_revision", revision.success ? revision.data : 0)
     : db.from("trip_segments").insert(parsed.data);
   const { error } = await query.select("id").single();
-  if (error) fail("Could not save itinerary item");
+  if (error) fail("This item changed or is unavailable. Reload before saving.");
   revalidatePath("/trips/" + parsed.data.trip_id);
   redirect(
     "/trips/" +
@@ -237,12 +245,23 @@ export async function deleteSegment(form: FormData) {
   const { db } = await client();
   const trip = z.uuid().parse(form.get("trip_id"));
   const id = z.uuid().parse(form.get("id"));
+  const revision = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .safeParse(form.get("itinerary_revision"));
+  if (!form.has("itinerary_revision") || !revision.success)
+    fail("Reload this item before removing it.");
   const { error } = await db
     .from("trip_segments")
     .delete()
     .eq("id", id)
-    .eq("trip_id", trip);
-  if (error) fail("Could not remove item");
+    .eq("trip_id", trip)
+    .eq("itinerary_revision", revision.data)
+    .select("id")
+    .single();
+  if (error)
+    fail("This item changed or is unavailable. Reload before removing it.");
   revalidatePath("/trips/" + trip);
   redirect("/trips/" + trip + "?view=itinerary");
 }

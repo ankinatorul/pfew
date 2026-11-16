@@ -5,7 +5,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { access } from "../lib/access";
 import type { CollaborationReply } from "../lib/collaboration";
-export type InviteState = { url?: string; error?: string };
+export type InviteState = {
+  url?: string;
+  id?: string;
+  enabled?: boolean;
+  revision?: number;
+  error?: string;
+};
 function refresh(trip?: string) {
   revalidatePath("/", "layout");
   revalidatePath("/trips");
@@ -23,30 +29,75 @@ export async function createInvitation(
   form: FormData,
 ): Promise<InviteState> {
   const parsed = z
-    .object({ trip_id: z.uuid(), email: z.string().trim().email().max(254) })
+    .object({ trip_id: z.uuid() })
     .safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: "Enter a valid invitation email." };
+  if (!parsed.success)
+    return { error: "Reload this trip before creating a link." };
   const { db } = await access();
-  const token = randomBytes(32).toString("hex");
-  const { error } = await db.rpc("create_trip_invitation", {
+  const operation = z
+    .enum(["enable", "disable", "reset"])
+    .safeParse(form.get("operation") || "enable");
+  const revision = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .safeParse(form.get("revision") || 0);
+  if (!operation.success || !revision.success)
+    return { error: "Refresh sharing before trying again." };
+  const { data, error } = await db.rpc("manage_trip_share_link", {
     target: parsed.data.trip_id,
-    recipient: parsed.data.email.toLowerCase(),
-    invite_hash: tokenHash(token),
+    operation: operation.data,
+    expected_revision: revision.data,
+    candidate:
+      operation.data === "disable" ? null : randomBytes(32).toString("hex"),
   });
   if (error)
     return {
-      error: /pending/i.test(error.message)
-        ? "An invitation is already pending. Cancel it before creating another."
-        : /already.*access/i.test(error.message)
-          ? "Already a collaborator. Refresh to see their access."
-          : error.code === "PGRST202"
-            ? unavailable
-            : "Only the owner of a finalized trip can create this invitation. Check access and retry.",
+      error:
+        error.code === "PGRST202"
+          ? "Sharing links aren’t available yet. Your saved trip is unchanged."
+          : "Couldn’t update sharing. Check owner access and refresh before retrying.",
     };
+  const result = z
+    .object({
+      enabled: z.boolean(),
+      revision: z.number().int().nonnegative(),
+      secret: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .nullable(),
+    })
+    .safeParse(data);
+  if (!result.success || (result.data.enabled && !result.data.secret))
+    return { error: "Couldn’t confirm sharing. Refresh before trying again." };
   refresh(parsed.data.trip_id);
-  // Relative copy links stay on the current app origin, including localhost.
-  return { url: "/invites/" + token };
+  return {
+    enabled: result.data.enabled,
+    revision: result.data.revision,
+    ...(result.data.secret ? { url: "/join/" + result.data.secret } : {}),
+  };
 }
+export async function joinSharedTrip(
+  form: FormData,
+): Promise<CollaborationReply> {
+  const token = z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .safeParse(form.get("token"));
+  if (!token.success) return { error: "This sharing link isn’t available." };
+  const { db } = await access();
+  const { data, error } = await db.rpc("join_trip_share_link", {
+    link_hash: tokenHash(token.data),
+  });
+  if (error || !z.uuid().safeParse(data).success)
+    return {
+      error:
+        "This link is no longer available. Ask the owner for the current sharing link.",
+    };
+  refresh(data);
+  return { status: "accepted", tripId: data };
+}
+
 export async function respondInvitationState(
   form: FormData,
 ): Promise<CollaborationReply> {
@@ -81,7 +132,7 @@ export async function respondInvitationState(
   if (result.error || (decision.data === "accept" && !result.data))
     return {
       error:
-        "This invitation is no longer available. Check your signed-in email or ask the owner for a new link.",
+        "This invitation is no longer available. Ask the owner for a new link, or try the account the original invitation was reserved for.",
     };
   refresh();
   return {
