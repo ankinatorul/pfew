@@ -39,7 +39,7 @@ export async function BookingBudget({
     const [files, collection, deadline, managedDeadline] = await Promise.all([
       db
         .from("booking_attachments")
-        .select("id,booking_id,intake_id,filename,size,state")
+        .select("id,owner_id,booking_id,intake_id,filename,size,state")
         .eq("trip_id", trip.id),
       owner ? loadBookingCollection(db, trip.id) : Promise.resolve(null),
       db
@@ -55,7 +55,7 @@ export async function BookingBudget({
         b.id,
         <div key={b.id}>
           {attachments
-            .filter((f) => f.booking_id === b.id)
+            .filter((f) => f.booking_id === b.id && f.owner_id === user.id)
             .map((f) => (
               <RemoveAttachment key={f.id} trip={trip.id} id={f.id} />
             ))}

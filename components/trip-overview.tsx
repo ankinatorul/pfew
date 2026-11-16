@@ -1,3 +1,4 @@
+import { ShareTrip } from "./share-trip";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { access } from "../lib/access";
@@ -86,6 +87,7 @@ export async function TripDashboard({
   return (
     <TripOverviewView
       model={model}
+      shareAction={<ShareTrip trip={trip} role={role} />}
       role={role}
       LinkComponent={Link}
       taskActions={taskActions}

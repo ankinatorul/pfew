@@ -1,3 +1,4 @@
+import { EmailSignIn } from "./email-sign-in";
 import Link from "next/link";
 import { google } from "../app/actions";
 import type { AuthProviders } from "../lib/auth-providers";
@@ -16,7 +17,10 @@ export function AuthOptions({
           Continue with Google
         </button>
       </form>
-      {providers.state === "ready" && !providers.google && (
+      {providers.state === "ready" && providers.email && (
+        <EmailSignIn returnTo={returnTo} />
+      )}
+      {providers.state === "ready" && !providers.google && !providers.email && (
         <p role="status" className="muted">
           Google sign-in isn’t enabled yet. The project owner needs to enable
           Google authentication before you can continue.

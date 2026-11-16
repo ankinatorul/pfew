@@ -53,15 +53,20 @@ export async function PackingDocuments({
     />
   );
   if (view === "documents") {
+    const sharing = await db.rpc("collaboration_version");
+    const sharingReady = !sharing.error && sharing.data === 1;
+    const fileQuery = db
+      .from("booking_attachments")
+      .select(
+        "id,trip_id,owner_id,booking_id,intake_id,filename,content_type,size,created_at,state,document_kind,display_name,document_category,documents_hidden,document_revision" +
+          (sharingReady ? ",file_scope" : ""),
+      )
+      .eq("trip_id", trip.id);
     const [files, capability, bookings] = await Promise.all([
-      db
-        .from("booking_attachments")
-        .select(
-          "id,trip_id,booking_id,intake_id,filename,content_type,size,created_at,state,document_kind,display_name,document_category,documents_hidden,document_revision",
-        )
-        .eq("trip_id", trip.id)
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false }),
+      (sharing.data === 1
+        ? fileQuery
+        : fileQuery.eq("owner_id", user.id)
+      ).order("created_at", { ascending: false }),
       db
         .from("booking_attachments")
         .select(
@@ -89,11 +94,13 @@ export async function PackingDocuments({
     return (
       <DocumentsClient
         trip={trip}
-        files={(data || []) as TripFile[]}
+        files={(data || []) as unknown as TripFile[]}
         bookingNames={Object.fromEntries(
           (bookings.data || []).map((b) => [b.id, b.title]),
         )}
         canEdit={canEdit}
+        currentUserId={user.id}
+        sharingReady={sharingReady}
         ready={!capability.error}
         loadError={
           error || bookings.error || tasks.error

@@ -134,6 +134,7 @@ export type Trip = {
   id: string;
   name: string;
   owner_id?: string;
+  trip_revision?: number;
   creation_state?: "draft" | "finalized";
   theme?: string;
   draft_data?: Record<string, unknown>;

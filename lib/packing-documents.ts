@@ -31,6 +31,8 @@ export type ManagedPackingItem = PackingItem & {
 export type ManagedPackingList = PackingList & { packing_revision?: number };
 export type ReadinessTask = Task & { readiness_revision?: number };
 export type TripFile = {
+  owner_id?: string;
+  file_scope?: "private" | "shared";
   id: string;
   trip_id: string;
   booking_id: string | null;

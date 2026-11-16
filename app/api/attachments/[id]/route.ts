@@ -1,4 +1,4 @@
-import { isGoogleUser } from "../../../../lib/auth-user";
+import { isPfewUser } from "../../../../lib/auth-user";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabase, configured } from "../../../../lib/supabase";
@@ -14,7 +14,7 @@ export async function GET(
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user || !isGoogleUser(user))
+  if (!user || !isPfewUser(user))
     return new NextResponse("Sign in required", { status: 401 });
   const { data: record } = await db
     .from("booking_attachments")

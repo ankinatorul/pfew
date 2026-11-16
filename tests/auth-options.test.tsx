@@ -32,3 +32,24 @@ it("enables Google when Supabase reports it enabled", () => {
   ).toBe(false);
   expect(screen.queryByRole("textbox")).toBeNull();
 });
+it("offers email only when explicitly enabled while preserving Google and the invitation return path", () => {
+  render(
+    <AuthOptions
+      providers={{ state: "ready", google: true, email: true }}
+      returnTo="/invites/example"
+    />,
+  );
+  expect(screen.getByLabelText("Email address")).toBeTruthy();
+  expect(
+    (
+      screen.getByRole("button", {
+        name: "Continue with Google",
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(false);
+  const hidden =
+    document.querySelectorAll<HTMLInputElement>('input[name="next"]');
+  expect([...hidden].every((input) => input.value === "/invites/example")).toBe(
+    true,
+  );
+});

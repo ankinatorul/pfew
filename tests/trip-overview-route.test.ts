@@ -27,6 +27,7 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({
     user: { id: "owner" },
     db: {
+      rpc: async () => ({ data: 1, error: null }),
       from: (table: string) => {
         const query = {
           select: () => query,
@@ -97,15 +98,21 @@ it("reuses the existing owner settings route for trip editing", async () => {
   expect(page.type).toBe(TripEdit);
   expect(page.props).toMatchObject({ trip, day: "2027-05-03" });
 });
-it("does not expose trip editing or deletion through direct links to editors or viewers", async () => {
-  for (const role of ["editor", "viewer"]) {
-    mocks.role.mockResolvedValue(role);
-    await expect(route({ view: "settings" })).rejects.toThrow();
-  }
+it("permits editor details through the reviewed capability without exposing owner deletion", async () => {
+  mocks.role.mockResolvedValue("editor");
+  const page = await route({ view: "settings" });
+  expect(page.type).toBe(TripEdit);
+  expect(page.props.canDelete).toBe(false);
+  mocks.role.mockResolvedValue("viewer");
+  await expect(route({ view: "settings" })).rejects.toThrow();
 });
 it("handles missing/open-ended dates without falling into the legacy completed-trip hub", async () => {
   vi.setSystemTime(new Date("2027-05-03"));
-  for (const change of [{ start_date: "" }, { end_date: "" }, { timezone: "Invalid/Zone" }]) {
+  for (const change of [
+    { start_date: "" },
+    { end_date: "" },
+    { timezone: "Invalid/Zone" },
+  ]) {
     current = { ...trip, ...change };
     expect((await route()).type).toBe(mocks.dashboard);
   }
@@ -117,7 +124,10 @@ it("preserves owner trip settings and editor itinerary editing after the trip en
   const page = await route({ view: "add", edit: overviewSegment().id });
   function findForm(node: ReactNode): boolean {
     if (!isValidElement<{ children?: ReactNode }>(node)) return false;
-    return node.type === SegmentForm || Children.toArray(node.props.children).some(findForm);
+    return (
+      node.type === SegmentForm ||
+      Children.toArray(node.props.children).some(findForm)
+    );
   }
   expect(findForm(page)).toBe(true);
 });

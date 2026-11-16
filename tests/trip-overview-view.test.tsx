@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   toggle: vi.fn<(form: FormData) => Promise<void>>(async () => {}),
   decide: vi.fn<(form: FormData) => Promise<void>>(async () => {}),
 }));
+vi.mock("../components/share-trip", () => ({ ShareTrip: () => <button>Share</button> }));
 vi.mock("../lib/access", () => ({ access: mocks.access }));
 vi.mock("../app/essentials-actions", () => ({
   toggleEssential: mocks.toggle,

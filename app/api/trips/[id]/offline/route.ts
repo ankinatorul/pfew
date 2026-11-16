@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabase } from "../../../../../lib/supabase";
-import { isGoogleUser } from "../../../../../lib/auth-user";
+import { isPfewUser } from "../../../../../lib/auth-user";
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -13,7 +13,7 @@ export async function GET(
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user || !isGoogleUser(user))
+  if (!user || !isPfewUser(user))
     return new NextResponse("Sign in required", { status: 401 });
   const { data: trip, error } = await db
     .from("trips")
@@ -40,7 +40,15 @@ export async function GET(
     {
       version: 1,
       userId: user.id,
-      trip: { id: trip.id, name: trip.name, start_date: trip.start_date, end_date: trip.end_date, timezone: trip.timezone, currency: trip.currency, budget: trip.budget },
+      trip: {
+        id: trip.id,
+        name: trip.name,
+        start_date: trip.start_date,
+        end_date: trip.end_date,
+        timezone: trip.timezone,
+        currency: trip.currency,
+        budget: trip.budget,
+      },
       downloadedAt: new Date().toISOString(),
       ...Object.fromEntries(
         tables.map((table, index) => [table, results[index].data]),

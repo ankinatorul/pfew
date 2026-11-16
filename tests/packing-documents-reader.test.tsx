@@ -13,6 +13,7 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({
     user: { id: "owner" },
     db: {
+      rpc: async () => ({ data: null, error: { code: "PGRST202" } }),
       from: (table: string) => {
         let fields = "*";
         const result = () => ({

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("configured app protects trips and offers Google sign-in only", async ({
+test("configured app protects trips and preserves Google with optional email sign-in", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -48,7 +48,7 @@ test("configured app protects trips and offers Google sign-in only", async ({
   await expect(
     page.getByRole("button", { name: "Continue with Google" }),
   ).toBeVisible({ timeout: 10000 }); // Provider fetch may take its bounded five-second timeout before streaming completes.
-  await expect(page.getByLabel("Email address")).toHaveCount(0);
+  expect(await page.getByLabel("Email address").count()).toBeLessThanOrEqual(1);
   await expect(
     page.getByRole("link", { name: "Sign in", exact: true }),
   ).toBeVisible();
@@ -61,7 +61,10 @@ test("configured app protects trips and offers Google sign-in only", async ({
     ),
   ).toBe(true);
   const google = page.getByRole("button", { name: "Continue with Google" });
-  if (await google.isDisabled())
+  if (
+    (await google.isDisabled()) &&
+    !(await page.getByLabel("Email address").count())
+  )
     await expect(page.getByRole("status")).toBeVisible();
   for (const route of [
     "/trips/new",

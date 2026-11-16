@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { supabase, configured } from "./supabase";
-import { isGoogleUser } from "./auth-user";
+import { isPfewUser } from "./auth-user";
 // React cache is request-scoped: the header and protected page share verification.
 export const currentGoogleUser = cache(async () => {
   if (!configured()) return null;
@@ -9,5 +9,5 @@ export const currentGoogleUser = cache(async () => {
     data: { user },
     error,
   } = await db.auth.getUser();
-  return !error && user && isGoogleUser(user) ? user : null;
+  return !error && user && isPfewUser(user) ? user : null;
 });

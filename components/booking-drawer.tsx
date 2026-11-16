@@ -8,12 +8,16 @@ export function BookingDrawer({
   onClose,
   children,
   returnFocus,
+  closeLabel = "Close booking editor",
+  initialFocus = 'input[name="title"]',
 }: {
   title: string;
   busy: boolean;
   onClose: () => void;
   children: ReactNode;
   returnFocus: HTMLElement | null;
+  closeLabel?: string;
+  initialFocus?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -22,7 +26,7 @@ export function BookingDrawer({
     const previous = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     node.showModal();
-    node.querySelector<HTMLInputElement>('input[name="title"]')?.focus();
+    node.querySelector<HTMLElement>(initialFocus)?.focus();
     const viewport = window.visualViewport;
     const resize = () => {
       if (viewport) {
@@ -42,7 +46,7 @@ export function BookingDrawer({
       document.documentElement.style.overflow = previous;
       if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     };
-  }, [returnFocus]);
+  }, [returnFocus, initialFocus]);
   return (
     <dialog
       ref={dialog}
@@ -96,7 +100,7 @@ export function BookingDrawer({
         <button
           type="button"
           className="booking-drawer-close"
-          aria-label="Close booking editor"
+          aria-label={closeLabel}
           disabled={busy}
           onClick={onClose}
         >

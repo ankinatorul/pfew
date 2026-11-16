@@ -1,4 +1,6 @@
 "use client";
+import { FilePrivacyControl } from "./file-privacy-control";
+import type { CollaborationReply } from "../lib/collaboration";
 import { useState, useRef, type ReactNode, type ElementType } from "react";
 import { FileText, Upload, FolderOpen } from "lucide-react";
 import type { Trip } from "../lib/domain";
@@ -34,6 +36,9 @@ export type DocumentsProps = {
   files: TripFile[];
   bookingNames: Record<string, string>;
   canEdit: boolean;
+  currentUserId?: string;
+  sharingReady?: boolean;
+  sharingRequest?: (form: FormData) => Promise<CollaborationReply>;
   ready: boolean;
   loadError?: string;
   reminders: ReactNode;
@@ -43,6 +48,9 @@ export function DocumentManager({
   files,
   bookingNames,
   canEdit,
+  currentUserId,
+  sharingReady = false,
+  sharingRequest,
   ready,
   loadError,
   reminders,
@@ -139,7 +147,9 @@ export function DocumentManager({
   return (
     <div className="trip-documents money-page readiness-page">
       <MoneyHeader trip={trip} view="documents" LinkComponent={LinkComponent} />
-      <p className="money-muted">Only you can access your uploaded files.</p>
+      <p className="money-muted">
+        Files stay private unless their uploader shares them with this trip.
+      </p>
       {!ready && (
         <p className="money-notice">
           Existing confirmations are available. New uploads and organization
@@ -387,6 +397,16 @@ export function DocumentManager({
                 {f.documents_hidden ? " · Hidden shortcut" : ""}
               </span>
               <h2>{fileLabel(f)}</h2>
+              <FilePrivacyControl
+                key={f.id + ":" + f.document_revision}
+                file={f}
+                tripId={trip.id}
+                userId={currentUserId}
+                canEdit={canEdit}
+                ready={sharingReady}
+                request={sharingRequest}
+                onRefresh={onRefresh}
+              />
               <p className="money-muted">
                 {f.document_category || "Other"} ·{" "}
                 {f.content_type === "application/pdf"
@@ -416,7 +436,7 @@ export function DocumentManager({
                     Open / download
                   </a>
                 )}
-                {ready && (
+                {ready && (!f.owner_id || f.owner_id === currentUserId) && (
                   <>
                     <button
                       disabled={pending}
@@ -439,7 +459,7 @@ export function DocumentManager({
                           onClick={() => {
                             if (
                               window.confirm(
-                                "Delete this private document and its stored file? Bookings, reminders and other files stay saved.",
+                                "Delete this document and its stored file? Bookings, reminders and other files stay saved.",
                               )
                             )
                               void run(fileAction(f, "delete"));

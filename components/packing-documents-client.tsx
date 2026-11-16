@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { manageSharing } from "../app/collaboration-actions";
 import { useRouter } from "next/navigation";
 import { PackingManager, type PackingProps } from "./packing-manager";
 import { DocumentManager, type DocumentsProps } from "./document-manager";
@@ -25,6 +26,7 @@ export function DocumentsClient(props: DocumentsProps) {
   return (
     <DocumentManager
       {...props}
+      sharingRequest={manageSharing}
       LinkComponent={Link}
       onRefresh={() => router.refresh()}
     />

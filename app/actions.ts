@@ -49,13 +49,14 @@ export async function google(form: FormData) {
   if (error || !data.url) fail("Google sign-in is unavailable.");
   redirect(data.url);
 }
-export async function logout() {
+export async function logout(form?: FormData) {
+  const returnTo = safeReturnPath(form?.get("next"));
   const db = await supabase();
   const { error } = await db.auth.signOut({ scope: "local" });
   if (error) fail("We couldn’t sign you out. Please try again.");
   (await cookies()).delete("pfew_return_to");
   revalidatePath("/", "layout");
-  redirect("/login");
+  redirect(returnTo ? "/login?next=" + encodeURIComponent(returnTo) : "/login");
 }
 export async function saveTrip(form: FormData) {
   const { db, user } = await client();
@@ -74,14 +75,36 @@ export async function saveTrip(form: FormData) {
   const id = form.get("id");
   if (id) {
     if (!z.uuid().safeParse(id).success) fail("Invalid trip");
-    const { error } = await db
-      .from("trips")
-      .update(parsed.data)
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .select("id")
-      .single();
-    if (error) fail("Trip could not be updated.");
+    const capability = await db.rpc("collaboration_version");
+    if (!capability.error && capability.data === 1) {
+      const revision = z.coerce
+        .number()
+        .int()
+        .nonnegative()
+        .safeParse(form.get("trip_revision"));
+      if (!form.has("trip_revision") || !revision.success)
+        fail("Reload the trip before saving its current details.");
+      const { error } = await db.rpc("save_shared_trip_details", {
+        target: id,
+        expected_revision: revision.data,
+        details: parsed.data,
+      });
+      if (error)
+        fail(
+          /changed/i.test(error.message)
+            ? "Trip changed. Reload before saving."
+            : "Trip could not be updated. Check your editing access.",
+        );
+    } else {
+      const { error } = await db
+        .from("trips")
+        .update(parsed.data)
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .select("id")
+        .single();
+      if (error) fail("Trip could not be updated.");
+    }
   } else {
     let destinations;
     try {
@@ -133,18 +156,27 @@ export async function deleteTrip(form: FormData) {
     .eq("owner_id", user.id)
     .single();
   if (ownerError && ownerError.code !== "PGRST116")
-    return { error: "Could not verify trip ownership. Nothing was deleted. Try again." };
-  if (!owned) return { error: "Only the trip owner can delete this trip. Nothing was deleted." };
+    return {
+      error: "Could not verify trip ownership. Nothing was deleted. Try again.",
+    };
+  if (!owned)
+    return {
+      error: "Only the trip owner can delete this trip. Nothing was deleted.",
+    };
   const { data: hasOther, error: privateError } = await db.rpc(
     "has_other_private_files",
     { target: id },
   );
   if (hasOther)
     return {
-      error: "Other travelers have private documents attached. They need to remove those files from their own account before this trip can be deleted. Your trip is still saved.",
+      error:
+        "Other travelers have private documents attached. They need to remove those files from their own account before this trip can be deleted. Your trip is still saved.",
     };
   if (privateError && privateError.code !== "PGRST202")
-    return { error: "Could not check private document ownership. Your trip is still saved. Try again." };
+    return {
+      error:
+        "Could not check private document ownership. Your trip is still saved. Try again.",
+    };
   const fileError = await removeBookingFiles(db, id);
   if (fileError) return { error: fileError + " Your trip is still saved." };
   const { error } = await db
@@ -152,7 +184,11 @@ export async function deleteTrip(form: FormData) {
     .delete()
     .eq("id", id)
     .eq("owner_id", user.id);
-  if (error) return { error: "Could not delete the trip. Your trip is still saved, but attached files may already have been removed. Retry deletion to finish." };
+  if (error)
+    return {
+      error:
+        "Could not delete the trip. Your trip is still saved, but attached files may already have been removed. Retry deletion to finish.",
+    };
   revalidatePath("/", "layout");
   redirect("/trips");
 }

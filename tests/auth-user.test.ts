@@ -10,3 +10,21 @@ it("requires a Google identity for access to the application", () => {
   expect(isGoogleUser(null)).toBe(false);
   expect(isGoogleUser({ identities: [] })).toBe(false);
 });
+import { isPfewUser } from "../lib/auth-user";
+it("accepts existing verified email sessions without treating unverified/unsupported identities as members", () => {
+  expect(
+    isPfewUser({
+      identities: [{ provider: "email" }],
+      email_confirmed_at: "2026-01-01",
+    } as User),
+  ).toBe(true);
+  expect(isPfewUser({ identities: [{ provider: "email" }] } as User)).toBe(
+    false,
+  );
+  expect(
+    isPfewUser({
+      identities: [{ provider: "github" }],
+      email_confirmed_at: "2026-01-01",
+    } as User),
+  ).toBe(false);
+});

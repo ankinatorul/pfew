@@ -24,10 +24,12 @@ export function TripOverviewView({
   role,
   taskActions = {},
   findingActions = {},
+  shareAction,
   LinkComponent = "a",
 }: {
   model: TripOverview;
   role: TripRole;
+  shareAction?: ReactNode;
   taskActions?: Record<string, ReactNode>;
   findingActions?: Record<string, ReactNode>;
   LinkComponent?: ElementType;
@@ -149,6 +151,7 @@ export function TripOverviewView({
                 Edit trip
               </LinkComponent>
             )}
+            {shareAction}
           </div>
           <p className="overview-destination">
             <MapPin size={15} aria-hidden="true" />

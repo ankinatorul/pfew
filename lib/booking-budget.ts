@@ -13,6 +13,7 @@ export type ManagedExpense = Expense & {
 };
 export type PrivateConfirmation = {
   id: string;
+  owner_id?: string;
   booking_id: string | null;
   filename: string;
   size: number;

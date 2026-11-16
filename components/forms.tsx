@@ -125,7 +125,7 @@ export function TripForm({ trip }: { trip?: Trip }) {
           ),
         )}
       </div>
-      {trip && <input type="hidden" name="id" value={trip.id} />}
+      {trip && <><input type="hidden" name="id" value={trip.id} /><input type="hidden" name="trip_revision" value={trip.trip_revision ?? 0} /></>}
       <fieldset hidden={step !== 0}>
         <legend>Where does your next chapter begin?</legend>
         <label>

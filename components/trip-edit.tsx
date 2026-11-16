@@ -8,10 +8,12 @@ import { TripForm, Delete } from "./forms";
 export function TripEdit({
   trip,
   day,
+  canDelete = true,
   LinkComponent = "a",
 }: {
   trip: Trip;
   day?: string;
+  canDelete?: boolean;
   LinkComponent?: ElementType;
 }) {
   return (
@@ -28,13 +30,18 @@ export function TripEdit({
         <p>{trip.name}</p>
       </header>
       <TripForm trip={trip} />
-      <section className="trip-edit-danger" aria-labelledby="trip-delete-title">
-        <div>
-          <h2 id="trip-delete-title">Delete trip</h2>
-          <p>{tripDeletionDescription}</p>
-        </div>
-        <Delete id={trip.id} />
-      </section>
+      {canDelete && (
+        <section
+          className="trip-edit-danger"
+          aria-labelledby="trip-delete-title"
+        >
+          <div>
+            <h2 id="trip-delete-title">Delete trip</h2>
+            <p>{tripDeletionDescription}</p>
+          </div>
+          <Delete id={trip.id} />
+        </section>
+      )}
     </section>
   );
 }

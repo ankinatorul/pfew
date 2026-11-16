@@ -13,7 +13,7 @@ it("does not treat enabled email as enabled Google", async () => {
       "test-public-key",
       fake,
     ),
-  ).toEqual({ state: "ready", google: false });
+  ).toEqual({ state: "ready", google: false, email: true });
   expect(fake.mock.calls[0][1]?.cache).toBe("no-store");
 });
 it("allows Google only when Supabase explicitly enables it", async () => {

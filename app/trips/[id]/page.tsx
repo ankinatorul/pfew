@@ -165,8 +165,19 @@ export default async function Hub({
     ? q.day!
     : trip.start_date;
   if (view === "settings") {
-    if (role !== "owner") notFound();
-    return <TripEdit trip={trip} day={day} LinkComponent={Link} />;
+    if (!canEdit) notFound();
+    if (role !== "owner") {
+      const capability = await db.rpc("collaboration_version");
+      if (capability.error || capability.data !== 1) notFound();
+    }
+    return (
+      <TripEdit
+        trip={trip}
+        day={day}
+        canDelete={role === "owner"}
+        LinkComponent={Link}
+      />
+    );
   }
   const modules = [
     { key: "itinerary", label: "Your days, your way", kind: "activity" },

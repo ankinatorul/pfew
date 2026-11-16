@@ -16,21 +16,14 @@ export function InviteForm({ trip }: { trip: string }) {
       <form action={action}>
         <input type="hidden" name="trip_id" value={trip} />
         <label>
-          Invited Google email
+          Invited email
           <input name="email" type="email" required maxLength={254} />
         </label>
-        <label>
-          Role
-          <select name="role" defaultValue="viewer">
-            <option value="viewer">Viewer · read shared trip content</option>
-            <option value="editor">
-              Editor · add and change shared content
-            </option>
-          </select>
-        </label>
+        <input type="hidden" name="role" value="editor" />
         <p className="muted">
           The invitation expires in seven days and requires that exact verified
-          Google email. Personal documents remain private to their uploader.
+          email. Files stay private unless their uploader explicitly shares
+          them.
         </p>
         <Button disabled={pending}>
           {pending ? "Creating…" : "Create invitation link"}
@@ -41,13 +34,22 @@ export function InviteForm({ trip }: { trip: string }) {
         <div className="invite-result">
           <label>
             Share this invitation link
-            <input readOnly value={state.url} />
+            <input
+              readOnly
+              value={
+                typeof window !== "undefined"
+                  ? new URL(state.url, window.location.origin).href
+                  : state.url
+              }
+            />
           </label>
           <Button
             variant="secondary"
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(state.url!);
+                await navigator.clipboard.writeText(
+                  new URL(state.url!, window.location.origin).href,
+                );
                 setCopied(true);
               } catch {
                 setCopied(false);
@@ -68,10 +70,12 @@ export function RemoveCollaborator({
   trip,
   id,
   invitation = false,
+  revision = 0,
 }: {
   trip: string;
   id: string;
   invitation?: boolean;
+  revision?: number;
 }) {
   return (
     <form
@@ -89,6 +93,7 @@ export function RemoveCollaborator({
     >
       <input type="hidden" name="trip_id" value={trip} />
       <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="revision" value={revision} />
       <input
         type="hidden"
         name="table"
@@ -104,19 +109,26 @@ export function MemberRoleForm({
   trip,
   id,
   role,
+  revision = 0,
 }: {
   trip: string;
   id: string;
   role: string;
+  revision?: number;
 }) {
   return (
     <form action={updateMember}>
       <input type="hidden" name="trip_id" value={trip} />
       <input type="hidden" name="member_id" value={id} />
+      <input type="hidden" name="revision" value={revision} />
       <label>
         Role
         <select name="role" defaultValue={role}>
-          <option value="viewer">Viewer</option>
+          {role === "viewer" && (
+            <option value="viewer" disabled>
+              Legacy viewer
+            </option>
+          )}
           <option value="editor">Editor</option>
         </select>
       </label>

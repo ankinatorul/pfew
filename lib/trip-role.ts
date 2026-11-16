@@ -7,11 +7,19 @@ export async function tripRole(
   userId: string,
 ): Promise<TripRole> {
   if (trip.owner_id === userId) return "owner";
-  const { data } = await db
+  let { data, error } = await db
     .from("trip_members")
-    .select("role")
+    .select("role,revoked_at")
     .eq("trip_id", trip.id)
     .eq("user_id", userId)
     .maybeSingle();
+  if (error && ["42703", "PGRST204"].includes(error.code))
+    ({ data, error } = await db
+      .from("trip_members")
+      .select("role")
+      .eq("trip_id", trip.id)
+      .eq("user_id", userId)
+      .maybeSingle());
+  if (error || data?.revoked_at) return "viewer";
   return data?.role === "editor" ? "editor" : "viewer";
 }

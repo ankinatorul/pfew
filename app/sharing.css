@@ -1,0 +1,197 @@
+.share-trip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid var(--border-subtle);
+  background: #fff;
+  color: #435bc9;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.sharing-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px;
+  color: #22252b;
+}
+.sharing-trip-name {
+  font-weight: 750;
+  font-size: 1.15rem;
+  margin: 0 0 10px;
+}
+.sharing-role,
+.sharing-muted,
+.sharing-body small {
+  color: #666b76;
+  font-size: 0.83rem;
+}
+.sharing-body small {
+  display: block;
+}
+.sharing-invite-form {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+.sharing-invite-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #dcdce5;
+  border-radius: 12px;
+  font: inherit;
+}
+.sharing-invite-form label {
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.sharing-link {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(130deg, #f4e9fb, #faf8fd);
+  border-radius: 16px;
+  margin: 16px 0;
+  overflow-wrap: anywhere;
+}
+.sharing-section {
+  margin-top: 24px;
+}
+.sharing-section h3,
+.invitation-inbox h2 {
+  font-size: 1.05rem;
+}
+.sharing-person {
+  padding: 14px 0;
+  border-bottom: 1px solid #eeeaf3;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 9px;
+  overflow-wrap: anywhere;
+}
+.sharing-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  background: #f0ebf6;
+}
+.sharing-tag-shared {
+  background: #e0f57b;
+}
+.sharing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.sharing-remove {
+  border: 0;
+  padding: 7px 0;
+  background: transparent;
+  color: #ae3922;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  min-height: 40px;
+}
+.sharing-error {
+  color: #962d1b;
+  font-size: 0.86rem;
+}
+.sharing-feedback {
+  min-height: 1.5em;
+  font-size: 0.86rem;
+}
+.sharing-empty {
+  margin-top: 24px;
+  background: #f8f4fb;
+  padding: 20px;
+  border-radius: 16px;
+}
+.invitation-page {
+  margin: 40px auto;
+  max-width: 540px;
+  padding: 24px 8px;
+}
+.invitation-page h1 {
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  letter-spacing: -0.04em;
+}
+.invitation-page p {
+  line-height: 1.6;
+}
+.invitation-symbol {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(130deg, #d9b4ef, #f0c7e9);
+  margin-bottom: 20px;
+}
+.sharing-secondary-link {
+  display: block;
+  margin-top: 18px;
+  color: #435bc9;
+  font-weight: 650;
+}
+.invitation-inbox {
+  border: 1px solid #e9e3f1;
+  border-radius: 18px;
+  padding: 18px;
+  margin: 20px 0;
+  background: linear-gradient(130deg, #faf6fe, #fff);
+}
+.file-privacy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.file-privacy small {
+  flex-basis: 100%;
+  color: #666b76;
+  font-size: 0.75rem;
+}
+.email-sign-in {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid #e9e3f1;
+  padding-top: 18px;
+  margin-top: 16px;
+}
+.sharing-body :is(button, input, a):focus-visible,
+.invitation-page :is(button, a):focus-visible,
+.file-privacy button:focus-visible {
+  outline: 3px solid #435bc9;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .sharing-body {
+    padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+  }
+  .sharing-actions .button {
+    min-height: 44px;
+  }
+  .invitation-page {
+    margin: 16px 0;
+    width: 100%;
+  }
+}
+/* Scope actions to collaboration; existing page button styles stay unchanged. */
+.sharing-body .button.primary,
+.invitation-page .button.primary,
+.invitation-inbox .button.primary {
+  background: var(--color-lime);
+  color: var(--text-primary);
+}

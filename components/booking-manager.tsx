@@ -498,10 +498,9 @@ export function BookingManager({
             </div>
           </dl>
           {selected.notes && <p className="money-notes">{selected.notes}</p>}
-          <h3>Your private confirmations</h3>
+          <h3>Available confirmations</h3>
           <p className="money-muted">
-            Files are private to your account. Downloads use existing
-            authorized, expiring links.
+            Files stay private unless their uploader shares them in Documents.
           </p>
           {files(selected.id).length ? (
             files(selected.id).map((f) => (
@@ -519,7 +518,7 @@ export function BookingManager({
               </div>
             ))
           ) : (
-            <p>No private confirmation files are available in this account.</p>
+            <p>No confirmation files are available to your account.</p>
           )}
           {fileTools[selected.id]}
           {allowed && (

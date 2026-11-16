@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { safeReturnPath, authRedirectOrigin } from "../../../lib/auth-redirect";
-import { isGoogleUser } from "../../../lib/auth-user";
+import { isPfewUser } from "../../../lib/auth-user";
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase";
 export async function GET(request: NextRequest) {
@@ -15,13 +15,13 @@ export async function GET(request: NextRequest) {
   if (code) {
     const db = await supabase();
     const { data, error } = await db.auth.exchangeCodeForSession(code);
-    if (!error && isGoogleUser(data.user))
+    if (!error && isPfewUser(data.user))
       return NextResponse.redirect(new URL(returnTo || "/", origin));
     if (!error) await db.auth.signOut();
   }
   return NextResponse.redirect(
     new URL(
-      "/error?message=Google%20sign-in%20could%20not%20be%20completed.%20Please%20try%20again.",
+      "/error?message=Sign-in%20could%20not%20be%20completed.%20Please%20try%20again.",
       origin,
     ),
   );

@@ -1,9 +1,10 @@
 import { z } from "zod";
 const settingsSchema = z.object({
-  external: z.object({ google: z.boolean() }),
+  external: z.object({ google: z.boolean(), email: z.boolean().optional() }),
 });
 export type AuthProviders =
-  { state: "ready"; google: boolean } | { state: "unavailable"; google: false };
+  | { state: "ready"; google: boolean; email?: boolean }
+  | { state: "unavailable"; google: false; email?: false };
 type Inspection = AuthProviders & {
   httpStatus: number | null;
   reason:
@@ -46,6 +47,9 @@ export async function inspectAuthProviders(
     return {
       state: "ready",
       google: parsed.data.external.google,
+      ...(typeof parsed.data.external.email === "boolean"
+        ? { email: parsed.data.external.email }
+        : {}),
       httpStatus: response.status,
       reason: null,
     };
@@ -58,9 +62,13 @@ export async function fetchAuthProviders(
   key: string,
   fetcher: typeof fetch = fetch,
 ): Promise<AuthProviders> {
-  const { state, google } = await inspectAuthProviders(url, key, fetcher);
+  const { state, google, email } = await inspectAuthProviders(
+    url,
+    key,
+    fetcher,
+  );
   return state === "ready"
-    ? { state, google }
+    ? { state, google, ...(typeof email === "boolean" ? { email } : {}) }
     : { state: "unavailable", google: false };
 }
 export async function authProviders() {

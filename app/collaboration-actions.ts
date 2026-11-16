@@ -4,63 +4,107 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { access } from "../lib/access";
+import type { CollaborationReply } from "../lib/collaboration";
 export type InviteState = { url?: string; error?: string };
+function refresh(trip?: string) {
+  revalidatePath("/", "layout");
+  revalidatePath("/trips");
+  if (trip) revalidatePath("/trips/" + trip);
+}
+function fail(message: string): never {
+  redirect("/error?message=" + encodeURIComponent(message));
+}
+const unavailable =
+  "Collaboration is not available yet. Your saved trips are unchanged.";
+const tokenHash = (token: string) =>
+  createHash("sha256").update(token).digest("hex");
 export async function createInvitation(
   _state: InviteState,
   form: FormData,
 ): Promise<InviteState> {
-  const { db, user } = await access();
   const parsed = z
-    .object({
-      trip_id: z.uuid(),
-      email: z.email().max(254),
-      role: z.enum(["editor", "viewer"]),
-    })
+    .object({ trip_id: z.uuid(), email: z.string().trim().email().max(254) })
     .safeParse(Object.fromEntries(form));
-  if (!parsed.success)
-    return { error: "Enter an email address and choose an invitation role." };
-  const { data: trip } = await db
-    .from("trips")
-    .select("id")
-    .eq("id", parsed.data.trip_id)
-    .eq("owner_id", user.id)
-    .single();
-  if (!trip) return { error: "Only the trip owner can invite collaborators." };
+  if (!parsed.success) return { error: "Enter a valid invitation email." };
+  const { db } = await access();
   const token = randomBytes(32).toString("hex");
-  const { error } = await db.from("trip_invitations").insert({
-    ...parsed.data,
-    email: parsed.data.email.toLowerCase(),
-    token_hash: createHash("sha256").update(token).digest("hex"),
-    expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+  const { error } = await db.rpc("create_trip_invitation", {
+    target: parsed.data.trip_id,
+    recipient: parsed.data.email.toLowerCase(),
+    invite_hash: tokenHash(token),
   });
   if (error)
     return {
-      error:
-        "Invitation could not be created. Apply the collaboration migration.",
+      error: /pending/i.test(error.message)
+        ? "An invitation is already pending. Cancel it before creating another."
+        : /already.*access/i.test(error.message)
+          ? "Already a collaborator. Refresh to see their access."
+          : error.code === "PGRST202"
+            ? unavailable
+            : "Only the owner of a finalized trip can create this invitation. Check access and retry.",
     };
-  revalidatePath("/trips/" + trip.id);
+  refresh(parsed.data.trip_id);
+  // Relative copy links stay on the current app origin, including localhost.
+  return { url: "/invites/" + token };
+}
+export async function respondInvitationState(
+  form: FormData,
+): Promise<CollaborationReply> {
+  const { db } = await access();
+  const decision = z
+    .enum(["accept", "decline"])
+    .safeParse(form.get("decision"));
+  if (!decision.success) return { error: "Choose Accept or Decline." };
+  const capability = await db.rpc("collaboration_version");
+  if (capability.error || capability.data !== 1) return { error: unavailable };
+  let result;
+  if (form.has("token")) {
+    const token = z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .safeParse(form.get("token"));
+    if (!token.success) return { error: "This invitation is not available." };
+    result = await db.rpc(
+      decision.data === "accept"
+        ? "accept_trip_invitation"
+        : "decline_trip_invitation",
+      { invite_hash: tokenHash(token.data) },
+    );
+  } else {
+    const id = z.uuid().safeParse(form.get("id"));
+    if (!id.success) return { error: "This invitation is not available." };
+    result = await db.rpc("respond_trip_invitation", {
+      invitation_id: id.data,
+      accept: decision.data === "accept",
+    });
+  }
+  if (result.error || (decision.data === "accept" && !result.data))
+    return {
+      error:
+        "This invitation is no longer available. Check your signed-in email or ask the owner for a new link.",
+    };
+  refresh();
   return {
-    url: new URL(
-      "/invites/" + token,
-      process.env.NEXT_PUBLIC_SITE_URL || "https://pfew.vercel.app",
-    ).href,
+    status: decision.data === "accept" ? "accepted" : "declined",
+    ...(decision.data === "accept" ? { tripId: result.data } : {}),
   };
 }
 export async function acceptInvitation(form: FormData) {
-  const { db } = await access();
-  const token = z
-    .string()
-    .regex(/^[a-f0-9]{64}$/)
-    .parse(form.get("token"));
-  const { data, error } = await db.rpc("accept_trip_invitation", {
-    invite_hash: createHash("sha256").update(token).digest("hex"),
-  });
-  if (error || !data)
-    redirect(
-      "/error?message=Invitation%20unavailable%20or%20expired.%20Use%20the%20invited%20Google%20account.",
-    );
-  revalidatePath("/");
-  redirect("/trips/" + data);
+  form.set("decision", "accept");
+  const result = await respondInvitationState(form);
+  if (result.error) fail(result.error);
+  redirect("/trips/" + result.tripId);
+}
+export async function declineInvitation(form: FormData) {
+  form.set("decision", "decline");
+  const result = await respondInvitationState(form);
+  if (result.error) fail(result.error);
+  redirect("/trips");
+}
+export async function respondInvitation(form: FormData) {
+  const result = await respondInvitationState(form);
+  if (result.error) fail(result.error);
+  redirect(result.tripId ? "/trips/" + result.tripId : "/trips");
 }
 export async function updateMember(form: FormData) {
   const { db } = await access();
@@ -68,37 +112,91 @@ export async function updateMember(form: FormData) {
     .object({
       trip_id: z.uuid(),
       member_id: z.uuid(),
-      role: z.enum(["editor", "viewer"]),
+      role: z.literal("editor"),
+      revision: z.coerce.number().int().nonnegative(),
     })
-    .parse(Object.fromEntries(form));
-  const { error } = await db
-    .from("trip_members")
-    .update({ role: input.role })
-    .eq("id", input.member_id)
-    .eq("trip_id", input.trip_id)
-    .select("id")
-    .single();
+    .safeParse(Object.fromEntries(form));
+  if (!input.success)
+    fail("Choose an editor membership and reload its current revision.");
+  const { error } = await db.rpc("manage_trip_member", {
+    target: input.data.trip_id,
+    member: input.data.member_id,
+    expected_revision: input.data.revision,
+    remove: false,
+  });
   if (error)
-    redirect("/error?message=Only%20the%20owner%20can%20change%20roles.");
-  revalidatePath("/trips/" + input.trip_id);
+    fail(
+      "Only the owner can update a current membership. Reload before retrying.",
+    );
+  refresh(input.data.trip_id);
+}
+export async function manageSharing(
+  form: FormData,
+): Promise<CollaborationReply> {
+  const { db } = await access();
+  const input = z
+    .object({
+      trip_id: z.uuid(),
+      id: z.uuid(),
+      operation: z.enum(["remove", "revoke", "scope"]),
+      revision: z.coerce.number().int().nonnegative().default(0),
+    })
+    .safeParse(Object.fromEntries(form));
+  if (!input.success) return { error: "Reload this trip before trying again." };
+  const { trip_id: trip, id, operation, revision } = input.data;
+  let result;
+  if (operation === "scope") {
+    const scope = z.enum(["private", "shared"]).safeParse(form.get("scope"));
+    if (!scope.success) return { error: "Choose Private or Shared with trip." };
+    result = await db.rpc("set_trip_file_scope", {
+      target: trip,
+      document: id,
+      expected_revision: revision,
+      scope: scope.data,
+    });
+  } else if (operation === "remove")
+    result = await db.rpc("manage_trip_member", {
+      target: trip,
+      member: id,
+      expected_revision: revision,
+      remove: true,
+    });
+  else
+    result = await db.rpc("revoke_trip_invitation", {
+      target: trip,
+      invitation_id: id,
+    });
+  if (result.error)
+    return {
+      error:
+        result.error.code === "PGRST202"
+          ? unavailable
+          : /changed/i.test(result.error.message)
+            ? "This changed in another tab. Refresh before trying again."
+            : operation === "scope"
+              ? "Couldn’t change sharing. Only the active uploader can share eligible files. Identity documents stay private."
+              : "Couldn’t update access. Check owner permissions and refresh before retrying.",
+    };
+  refresh(trip);
+  return {
+    message:
+      operation === "scope"
+        ? "Document privacy updated."
+        : operation === "remove"
+          ? "Collaborator removed."
+          : "Invitation revoked.",
+  };
 }
 export async function removeCollaborator(form: FormData) {
-  const { db } = await access();
-  const trip = z.uuid().parse(form.get("trip_id"));
-  const id = z.uuid().parse(form.get("id"));
-  const table = z
-    .enum(["trip_members", "trip_invitations"])
-    .parse(form.get("table"));
-  const { error } = await db
-    .from(table)
-    .delete()
-    .eq("trip_id", trip)
-    .eq("id", id)
-    .select("id")
-    .single();
-  if (error)
-    redirect(
-      "/error?message=Only%20the%20owner%20can%20remove%20collaborators%20or%20invitations.",
-    );
-  revalidatePath("/trips/" + trip);
+  form.set(
+    "operation",
+    form.get("table") === "trip_members" ? "remove" : "revoke",
+  );
+  const result = await manageSharing(form);
+  if (result.error) fail(result.error);
+}
+export async function setDocumentSharing(form: FormData) {
+  form.set("operation", "scope");
+  const result = await manageSharing(form);
+  if (result.error) fail(result.error);
 }

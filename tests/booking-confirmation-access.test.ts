@@ -10,7 +10,7 @@ vi.mock("../lib/supabase", () => ({
   configured: () => true,
   supabase: mocks.db,
 }));
-vi.mock("../lib/auth-user", () => ({ isGoogleUser: mocks.google }));
+vi.mock("../lib/auth-user", () => ({ isPfewUser: mocks.google }));
 import { GET } from "../app/api/attachments/[id]/route";
 const id = "88888888-8888-4888-8888-888888888888";
 beforeEach(() => {
