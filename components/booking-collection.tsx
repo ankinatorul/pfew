@@ -1,4 +1,5 @@
 "use client";
+import { bookingSearchCenters } from "../lib/booking-place-search";
 import { useRef, useState, useEffect } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { BookingEditor, BookingOptions, BookingCard } from "./shared-booking";
@@ -53,6 +54,7 @@ export async function requestCollection(
 }
 export function BookingCollection({
   trip,
+  segments = [],
   initialEntries,
   initialAttachments,
   ready = true,
@@ -587,6 +589,7 @@ export function BookingCollection({
                 <BookingEditor
                   entry={entry}
                   trip={trip}
+                  searchCenters={bookingSearchCenters(trip, segments)}
                   paymentDueReady={paymentDueReady}
                   title={
                     editor.isNew

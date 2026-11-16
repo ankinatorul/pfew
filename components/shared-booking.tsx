@@ -16,6 +16,11 @@ import {
   bookingSummary,
 } from "../lib/simple-booking";
 import type { CollectionEntry } from "../lib/booking-collection";
+import {
+  bookingSearchCenters,
+  bookingDateError,
+  type SearchCenter,
+} from "../lib/booking-place-search";
 import type { Trip } from "../lib/domain";
 
 export function BookingOptions({
@@ -182,6 +187,7 @@ export function BookingEditor({
   onChange,
   onSave,
   children,
+  searchCenters,
 }: {
   entry: CollectionEntry;
   trip: Trip;
@@ -190,6 +196,7 @@ export function BookingEditor({
   disabled?: boolean;
   error: string;
   paymentDueReady?: boolean;
+  searchCenters?: SearchCenter[];
   confirmationHref?: string;
   onClose: () => void;
   returnFocus: HTMLElement | null;
@@ -236,7 +243,20 @@ export function BookingEditor({
             values.end_date &&
             String(values.end_date) < String(values.start_date)
           ) {
-            setValidation("End date must be on or after the start date.");
+            const endField = form.current?.querySelector<HTMLInputElement>(
+              'input[name="end_date"]',
+            );
+            if (endField) {
+              setValidation("");
+              endField.focus();
+            } else
+              setValidation(
+                bookingDateError(
+                  values.start_date,
+                  values.end_date,
+                  String(values.category),
+                ),
+              );
             return;
           }
           if (
@@ -261,11 +281,13 @@ export function BookingEditor({
             entry={entry}
             trip={trip}
             paymentDueReady={paymentDueReady}
+            searchCenters={searchCenters || bookingSearchCenters(trip)}
             confirmationHref={confirmationHref}
-            onLocationChange={(place, end) => {
+            onLocationChange={(place, end, name) => {
               const prefix = end ? "end_" : "";
               fields.current = {
                 ...snapshot(),
+                ...(name !== undefined ? { title: name } : {}),
                 [prefix + "location_id"]: place?.id || null,
                 [prefix + "location_label"]: place?.label || null,
                 [prefix + "latitude"]: place?.latitude ?? null,

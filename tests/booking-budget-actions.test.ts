@@ -206,3 +206,38 @@ it("rejects deadline editing on an older booking RPC instead of reporting false 
     expect.anything(),
   );
 });
+it("honors an explicit removal of a label-only legacy association after a custom rename", async () => {
+  const b = {
+    ...overviewBooking(),
+    finance_revision: 0,
+    location_id: null,
+    location_label: "Old hotel",
+    latitude: 0,
+    longitude: 1,
+  };
+  mocks.current = b;
+  mocks.normalize.mockResolvedValue({
+    ...b,
+    title: "New custom name",
+    location_id: null,
+    location_label: null,
+    latitude: null,
+    longitude: null,
+  });
+  const form = new FormData();
+  for (const [key, value] of Object.entries(b))
+    form.set(key, value == null ? "" : String(value));
+  form.set("simplified", "1");
+  form.set("revision", "0");
+  form.set("title", "New custom name");
+  for (const key of ["location_id", "location_label", "latitude", "longitude"])
+    form.set(key, "");
+  expect((await saveManagedBooking(trip, form)).error).toBeUndefined();
+  expect(mocks.rpc.mock.calls[0][1].fields).toMatchObject({
+    title: "New custom name",
+    location_id: null,
+    location_label: null,
+    latitude: null,
+    longitude: null,
+  });
+});

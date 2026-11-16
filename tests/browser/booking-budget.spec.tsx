@@ -1,6 +1,7 @@
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
 import { build } from "vite";
 import { resolve } from "node:path";
+import { geographicLocation } from "../../lib/geographic-location";
 let bundle: string;
 test.beforeAll(async () => {
   const result = await build({
@@ -344,4 +345,106 @@ test("failed saves preserve inputs and viewer/missing-migration states prohibit 
   await expect(
     page.getByRole("button", { name: "Add expense", exact: true }),
   ).toBeDisabled();
+});
+
+test("smart booking name selects a POI, clears stale associations, supports custom names and validates Stay dates", async ({
+  page,
+}, info) => {
+  const hotel = geographicLocation(
+    "Ritz Paris",
+    "Paris, France",
+    48.8682,
+    2.3284,
+    "FR",
+    "osm:N:90001",
+  );
+  const museum = geographicLocation(
+    "Musée du Louvre",
+    "Paris, France",
+    48.8606,
+    2.3376,
+    "FR",
+    "osm:N:90002",
+  );
+  let queries = 0;
+  await page.route("**/api/locations?**", async (route) => {
+    queries++;
+    const url = new URL(route.request().url());
+    const place = url.searchParams.get("booking") === "Stay" ? hotel : museum;
+    await route.fulfill({
+      json: {
+        results: [place],
+        presentations: {
+          [place.id]: {
+            context: "Paris, France",
+            type: place === hotel ? "Hotel" : "Museum",
+          },
+        },
+        worldwideAvailable: true,
+        status: "ok",
+      },
+    });
+  });
+  await mount(page, "empty");
+  await page.getByRole("button", { name: "Add manually", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("radio", { name: "Stay", exact: true }).check();
+  const name = drawer.getByLabel("Name", { exact: true });
+  await name.fill("Ritz");
+  await expect(
+    drawer.getByRole("option", { name: /Ritz Paris/ }),
+  ).toBeVisible();
+  await name.press("ArrowDown");
+  await name.press("Enter");
+  await expect(name).toHaveValue("Ritz Paris");
+  await expect(drawer.getByLabel("Find a place", { exact: true })).toHaveCount(
+    0,
+  );
+  await drawer.getByLabel("Check-in date", { exact: true }).fill("2026-12-27");
+  await drawer.getByLabel("Check-out date", { exact: true }).fill("2026-11-29");
+  await expect(drawer.getByRole("alert")).toHaveText(
+    "Check-out must be on or after check-in.",
+  );
+  await expect(
+    drawer.getByLabel("Check-out date", { exact: true }),
+  ).toHaveAttribute("min", "2026-12-27");
+  await drawer
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(drawer).toBeVisible();
+  await expect(
+    drawer.getByLabel("Check-out date", { exact: true }),
+  ).toHaveValue("2026-11-29");
+  await drawer.getByLabel("Check-out date", { exact: true }).fill("2026-12-29");
+  await drawer
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(drawer).toHaveCount(0);
+  const card = page.getByRole("article", { name: "Ritz Paris", exact: true });
+  await card.getByRole("button", { name: "Ritz Paris", exact: true }).click();
+  await name.fill("My custom stay");
+  await name.press("Escape");
+  await drawer
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await expect(drawer).toHaveCount(0);
+  const saved = await page.evaluate(
+    () =>
+      JSON.parse(sessionStorage.getItem("fixture:money:empty")!).bookings[0],
+  );
+  expect(saved.location_id).toBeFalsy();
+  expect(saved.location_label).toBeFalsy();
+  expect(saved.latitude).toBeFalsy();
+  await page.getByRole("button", { name: "Add manually", exact: true }).click();
+  await drawer.getByRole("radio", { name: "Experience", exact: true }).check();
+  await name.fill("Louvre");
+  await drawer
+    .getByRole("option", { name: /Musée du Louvre/ })
+    .getByRole("button")
+    .click();
+  await expect(name).toHaveValue("Musée du Louvre");
+  expect(queries).toBeGreaterThan(0);
+  await page.screenshot({
+    path: `tests/screenshots/smart-booking-name/${info.project.name}/attraction-selected.png`,
+  });
 });

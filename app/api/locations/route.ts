@@ -24,14 +24,53 @@ export async function GET(request: Request) {
       { results: [] },
       { status: q.length > LOCATION_QUERY_LIMIT ? 400 : 200 },
     );
-  const result = await searchWorldwideLocations(q, fetch, scope);
+  const mode = params.get("booking");
+  const options = z
+    .object({
+      kind: z.enum(["Stay", "Experience"]),
+      centers: z
+        .array(
+          z.object({
+            latitude: z.number().finite().min(-90).max(90),
+            longitude: z.number().finite().min(-180).max(180),
+          }),
+        )
+        .max(3),
+    })
+    .safeParse(
+      mode
+        ? {
+            kind: mode,
+            centers: (() => {
+              try {
+                return JSON.parse(params.get("near") || "[]");
+              } catch {
+                return null;
+              }
+            })(),
+          }
+        : null,
+    );
+  if (mode && (!options.success || scope !== "place"))
+    return NextResponse.json(
+      { error: "Invalid place search context." },
+      { status: 400 },
+    );
+  const result = await searchWorldwideLocations(
+    q,
+    fetch,
+    scope,
+    options.success ? options.data : undefined,
+  );
   return NextResponse.json(result, {
     headers: {
-      "Cache-Control": result.worldwideAvailable
-        ? result.results.length
-          ? "public, max-age=300"
-          : "public, max-age=30"
-        : "no-store",
+      "Cache-Control": mode
+        ? "private, no-store"
+        : result.worldwideAvailable
+          ? result.results.length
+            ? "public, max-age=300"
+            : "public, max-age=30"
+          : "no-store",
     },
   });
 }

@@ -1,4 +1,5 @@
 "use client";
+import { bookingSearchCenters } from "../lib/booking-place-search";
 import {
   useState,
   useRef,
@@ -381,6 +382,7 @@ export function BookingManager({
                 }
           }
           trip={trip}
+          searchCenters={bookingSearchCenters(trip, segments)}
           title={
             editor.item
               ? editor.item.verification === "user confirmed"

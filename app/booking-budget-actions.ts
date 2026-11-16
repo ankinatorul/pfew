@@ -58,24 +58,26 @@ export async function saveManagedBooking(
       if (previous && previous.finance_revision !== meta.data.revision)
         return { error: "Booking changed. Reload before saving." };
     }
+    const sameSavedPlace = (prefix: string) =>
+      previous &&
+      String(previous[prefix + "location_id"] || "") ===
+        String(form.get(prefix + "location_id") || "") &&
+      (!!previous[prefix + "location_id"] ||
+        ["location_label", "latitude", "longitude"].every(
+          (key) =>
+            String(previous![prefix + key] ?? "") ===
+            String(form.get(prefix + key) ?? ""),
+        ));
     const normalized = new FormData();
     for (const [key, value] of form) normalized.set(key, value);
     // Unchanged legacy locations must not be re-resolved or silently cleared.
     for (const prefix of ["", "end_"]) {
-      if (
-        previous &&
-        String(previous[prefix + "location_id"] || "") ===
-          String(form.get(prefix + "location_id") || "")
-      )
-        normalized.delete(prefix + "location_id");
+      if (sameSavedPlace(prefix)) normalized.delete(prefix + "location_id");
     }
     const values = await bookingLocationValues(db, normalized);
     if (previous) {
       for (const prefix of ["", "end_"]) {
-        if (
-          String(previous[prefix + "location_id"] || "") ===
-          String(form.get(prefix + "location_id") || "")
-        ) {
+        if (sameSavedPlace(prefix)) {
           for (const key of [
             "location_id",
             "location_label",

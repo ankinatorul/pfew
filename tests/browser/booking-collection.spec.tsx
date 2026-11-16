@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { build } from "vite";
 import { resolve } from "node:path";
+import { geographicLocation } from "../../lib/geographic-location";
 let bundle: string;
 test.beforeAll(async () => {
   const result = await build({
@@ -224,4 +225,71 @@ test("Continue preserves unsaved fields from several cards while saving them seq
     }),
   ).toBeVisible();
   await expect(page.getByText("Needs review", { exact: true })).toHaveCount(2);
+});
+
+test("Create Trip smart name accepts a hotel or manual entry during a provider outage", async ({
+  page,
+}, info) => {
+  const hotel = geographicLocation(
+    "Ritz Paris",
+    "Paris, France",
+    48.8682,
+    2.3284,
+    "FR",
+    "osm:N:91001",
+  );
+  let unavailable = false;
+  await page.route("**/api/locations?**", async (route) => {
+    await route.fulfill({
+      json: unavailable
+        ? { results: [], worldwideAvailable: false, status: "unavailable" }
+        : {
+            results: [hotel],
+            presentations: {
+              [hotel.id]: { context: "Paris, France", type: "Hotel" },
+            },
+            worldwideAvailable: true,
+            status: "ok",
+          },
+    });
+  });
+  await mount(page);
+  await page.getByRole("button", { name: "Add manually", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("radio", { name: "Stay", exact: true }).check();
+  const name = drawer.getByLabel("Name", { exact: true });
+  await name.fill("Ritz Paris hotel");
+  await expect(
+    drawer.getByRole("option").getByText("Ritz Paris", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `tests/screenshots/smart-booking-name/${info.project.name}/hotel-suggestions.png`,
+  });
+  await name.press("ArrowDown");
+  await name.press("Enter");
+  await expect(name).toHaveValue("Ritz Paris");
+  unavailable = true;
+  await name.fill("Custom family accommodation");
+  await expect(
+    drawer.getByText("Suggestions unavailable. You can still use this name."),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `tests/screenshots/smart-booking-name/${info.project.name}/custom-name-provider-unavailable.png`,
+  });
+  await drawer
+    .getByRole("button", {
+      name: "Use “Custom family accommodation”",
+      exact: true,
+    })
+    .click();
+  await drawer
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(drawer).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "Custom family accommodation",
+      exact: true,
+    }),
+  ).toBeVisible();
 });

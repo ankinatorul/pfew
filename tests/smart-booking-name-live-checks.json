@@ -1,0 +1,64 @@
+[
+  {
+    "query": "Ritz Paris",
+    "http_status": 200,
+    "results": [
+      {
+        "name": "Ritz Paris Le Comptoir",
+        "key": "shop",
+        "type": "pastry"
+      },
+      {
+        "name": "Ritz Paris Le Comptoir",
+        "key": "shop",
+        "type": "pastry"
+      },
+      {
+        "name": "Le Ritz",
+        "key": "tourism",
+        "type": "hotel"
+      },
+      {
+        "name": "Ritz",
+        "key": "amenity",
+        "type": "restaurant"
+      },
+      {
+        "name": "The Ritz-Carlton New Orleans",
+        "key": "tourism",
+        "type": "hotel"
+      }
+    ]
+  },
+  {
+    "query": "Louvre",
+    "http_status": 200,
+    "results": [
+      {
+        "name": "Louvres",
+        "key": "place",
+        "type": "town"
+      },
+      {
+        "name": "Musée du Louvre",
+        "key": "tourism",
+        "type": "museum"
+      },
+      {
+        "name": "Louvre",
+        "key": "shop",
+        "type": "books"
+      },
+      {
+        "name": "Louvre",
+        "key": "amenity",
+        "type": "ferry_terminal"
+      },
+      {
+        "name": "Louvre",
+        "key": "amenity",
+        "type": "taxi"
+      }
+    ]
+  }
+]

@@ -1279,3 +1279,78 @@
   z-index: 1;
   cursor: pointer;
 }
+/* Optional POI suggestions never replace the booking's free-text name. */
+.smart-booking-name {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.smart-booking-name > label {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.smart-booking-name > input {
+  width: 100%;
+}
+.booking-name-popup {
+  position: absolute;
+  inset: 100% 0 auto;
+  z-index: 25;
+  background: #fff;
+  border: 1px solid #ded9e7;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px #22252b18;
+  max-height: min(300px, 42dvh);
+  overflow-y: auto;
+  padding: 5px;
+}
+.booking-name-popup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.booking-name-popup button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 9px 10px;
+  color: #22252b;
+  font: inherit;
+  cursor: pointer;
+}
+.booking-name-popup strong {
+  font-size: 0.86rem;
+}
+.booking-name-popup small {
+  display: block;
+  padding-inline: 8px;
+  color: #666b76;
+  font-size: 0.75rem;
+}
+.booking-name-popup button small {
+  padding: 0;
+}
+.booking-name-popup [aria-selected="true"] button,
+.booking-name-popup button:hover {
+  background: #f2e9fa;
+}
+.booking-name-popup .booking-name-custom {
+  color: #435bc9;
+  font-size: 0.82rem;
+}
+.booking-name-attribution {
+  padding-block: 5px;
+}
+.simple-booking-fields .booking-date-error {
+  font-size: 0.82rem;
+  color: #962d1b;
+  margin: 0;
+}

@@ -645,18 +645,16 @@ test("Phase 11A.1 compact journey, four booking types, contextual payment, drop 
         .fill("2027-06-04");
       await card.getByRole("radio", { name: "Paid", exact: true }).check();
       await card.getByLabel("Cost (optional)", { exact: true }).fill("480");
-      await card.getByText("Location (optional)", { exact: true }).click();
-      const hotel = card.getByRole("combobox", {
-        name: "Find a place",
-        exact: true,
-      });
+      const hotel = card.getByRole("combobox", { name: "Name", exact: true });
       await expect(hotel).toHaveValue("Stay fixture");
       await hotel.focus();
+      await expect(
+        card.getByRole("option").getByText("Stay fixture", { exact: true }),
+      ).toBeVisible();
+      await hotel.press("ArrowDown");
+      await hotel.press("Enter");
       await card
-        .getByRole("option", {
-          name: "Stay fixture, Krabi, Thailand",
-          exact: true,
-        })
+        .getByText("Location details (optional)", { exact: true })
         .click();
       await card
         .getByLabel("Location name", { exact: true })

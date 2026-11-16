@@ -1,6 +1,6 @@
 "use client";
 import { BedDouble, Plane, Ticket, MoreHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   simpleBookingType,
   simpleBookingTypes,
@@ -9,6 +9,11 @@ import {
 import type { CollectionEntry } from "../lib/booking-collection";
 import type { Trip } from "../lib/domain";
 import type { ResolvedLocation } from "../lib/location-types";
+import { SmartBookingName } from "./smart-booking-name";
+import {
+  bookingDateError,
+  type SearchCenter,
+} from "../lib/booking-place-search";
 import { LocationPicker } from "./location-picker";
 
 export function SimpleBookingFields({
@@ -17,12 +22,18 @@ export function SimpleBookingFields({
   paymentDueReady = false,
   onLocationChange,
   confirmationHref,
+  searchCenters = [],
 }: {
   entry: CollectionEntry;
   trip: Trip;
   paymentDueReady?: boolean;
   confirmationHref?: string;
-  onLocationChange?: (location: ResolvedLocation | null, end: boolean) => void;
+  searchCenters?: SearchCenter[];
+  onLocationChange?: (
+    location: ResolvedLocation | null,
+    end: boolean,
+    name?: string,
+  ) => void;
 }) {
   const [type, setType] = useState<SimpleBookingType>(
     simpleBookingType(entry.fields.category),
@@ -32,6 +43,21 @@ export function SimpleBookingFields({
     String(entry.fields.payment_status || "unknown"),
   );
   const value = (key: string) => String(entry.fields[key] ?? "");
+  const [name, setName] = useState(value("title") || value("provider"));
+  const [start, setStart] = useState(value("start_date")),
+    [end, setEnd] = useState(value("end_date"));
+  const [linked, setLinked] = useState(
+    !!value("location_id") || !!value("location_label") || !!value("latitude"),
+  );
+  const dateErrorId = useId();
+  const dateError = bookingDateError(start, end, type);
+  function changeName(next: string) {
+    setName(next);
+    if (linked && next !== name) {
+      setLinked(false);
+      onLocationChange?.(null, false, next);
+    }
+  }
   return (
     <div className="simple-booking-fields">
       {confirmationHref && (
@@ -70,15 +96,30 @@ export function SimpleBookingFields({
           );
         })}
       </fieldset>
-      <label>
-        Name
-        <input
-          name="title"
-          required
-          maxLength={200}
-          defaultValue={value("title") || value("provider")}
+      {type === "Stay" || type === "Experience" ? (
+        <SmartBookingName
+          value={name}
+          kind={type}
+          centers={searchCenters}
+          onChange={changeName}
+          onSelect={(place) => {
+            setName(place.city);
+            setLinked(true);
+            onLocationChange?.(place, false, place.city);
+          }}
         />
-      </label>
+      ) : (
+        <label>
+          Name
+          <input
+            name="title"
+            required
+            maxLength={200}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </label>
+      )}
       <div className="simple-booking-pair">
         <label>
           {type === "Stay"
@@ -89,7 +130,8 @@ export function SimpleBookingFields({
           <input
             type="date"
             name="start_date"
-            defaultValue={value("start_date")}
+            value={start}
+            onChange={(event) => setStart(event.target.value)}
           />
         </label>
         {(type === "Stay" || type === "Transport") && (
@@ -98,11 +140,20 @@ export function SimpleBookingFields({
             <input
               type="date"
               name="end_date"
-              defaultValue={value("end_date")}
+              value={end}
+              min={start || undefined}
+              aria-invalid={!!dateError}
+              aria-describedby={dateError ? dateErrorId : undefined}
+              onChange={(event) => setEnd(event.target.value)}
             />
           </label>
         )}
       </div>
+      {dateError && (
+        <p id={dateErrorId} className="booking-date-error" role="alert">
+          {dateError}
+        </p>
+      )}
       {type === "Stay" && (
         <details className="simple-booking-times">
           <summary>Times (optional)</summary>
@@ -133,18 +184,16 @@ export function SimpleBookingFields({
         <summary>
           {type === "Transport"
             ? "Pickup & drop-off (optional)"
-            : "Location (optional)"}
+            : "Location details (optional)"}
         </summary>
-        {placeOpen && (
+        {placeOpen && type === "Transport" && (
           <LocationPicker
             key={type + "-start"}
             compact
             onResolved={(place) => onLocationChange?.(place, false)}
             label={type === "Transport" ? "Find pickup" : "Find a place"}
             initialId={value("location_id")}
-            initialLabel={
-              value("location_label") || (type === "Stay" ? value("title") : "")
-            }
+            initialLabel={value("location_label")}
           />
         )}
         <label>

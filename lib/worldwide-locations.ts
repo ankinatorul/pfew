@@ -1,3 +1,8 @@
+import {
+  bookingPoiType,
+  proximity,
+  type BookingPlaceOptions,
+} from "./booking-place-search";
 import { z } from "zod";
 import { geographicLocation } from "./geographic-location";
 import { searchLocations } from "./locations";
@@ -44,6 +49,7 @@ type Candidate = {
   order: number;
   object?: string;
   kind?: string;
+  poi?: { Stay?: string; Experience?: string };
   destinationRank: number;
   context: string;
   countryCode: string;
@@ -217,6 +223,10 @@ function candidate(
     object:
       p.osm_type && p.osm_id != null ? p.osm_type + ":" + p.osm_id : undefined,
     kind: kindOf(p),
+    poi: {
+      Stay: bookingPoiType(p.osm_key, p.osm_value, "Stay"),
+      Experience: bookingPoiType(p.osm_key, p.osm_value, "Experience"),
+    },
   };
 }
 
@@ -245,8 +255,9 @@ const states = new WeakMap<typeof fetch, ProviderState>();
 function localResult(
   query: string,
   failure?: ProviderFailure,
+  booking?: BookingPlaceOptions,
 ): LocationSearchResult {
-  const results = searchLocations(query);
+  const results = booking ? [] : searchLocations(query);
   return {
     results,
     presentations: Object.fromEntries(
@@ -269,6 +280,7 @@ export async function searchWorldwideLocations(
   query: string,
   fetcher: typeof fetch = fetch,
   scope: LocationSearchScope = "place",
+  booking?: BookingPlaceOptions,
 ): Promise<LocationSearchResult> {
   query = locationQuery(query);
   if (!canSearchLocation(query))
@@ -283,7 +295,11 @@ export async function searchWorldwideLocations(
     state = { until: 0, cache: new Map(), pending: new Map() };
     states.set(fetcher, state);
   }
-  const key = scope + ":" + query.toLocaleLowerCase();
+  const key =
+    scope +
+    ":" +
+    query.toLocaleLowerCase() +
+    (booking ? JSON.stringify(booking) : "");
   const saved = state.cache.get(key);
   if (saved && saved.until > Date.now()) return saved.result;
   if (state.until > Date.now())
@@ -293,12 +309,13 @@ export async function searchWorldwideLocations(
         state.failure?.status || "unavailable",
         Math.max(1, Math.ceil((state.until - Date.now()) / 1000)),
       ),
+      booking,
     );
   const pending = state.pending.get(key);
   if (pending) return pending;
   if (state.pending.size >= 4)
-    return localResult(query, new ProviderFailure("rate_limited", 2));
-  const operation = performSearch(query, fetcher, scope, state)
+    return localResult(query, new ProviderFailure("rate_limited", 2), booking);
+  const operation = performSearch(query, fetcher, scope, state, booking)
     .then((result) => {
       if (result.worldwideAvailable) {
         if (state.cache.size >= 60)
@@ -319,6 +336,7 @@ async function performSearch(
   fetcher: typeof fetch,
   scope: LocationSearchScope,
   state: ProviderState,
+  booking?: BookingPlaceOptions,
 ): Promise<LocationSearchResult> {
   const deadline = Date.now() + 8000;
   async function request(term: string) {
@@ -326,6 +344,11 @@ async function performSearch(
     url.searchParams.set("q", term);
     url.searchParams.set("limit", "30");
     url.searchParams.set("lang", "en");
+    if (booking?.centers[0]) {
+      url.searchParams.set("lat", String(booking.centers[0].latitude));
+      url.searchParams.set("lon", String(booking.centers[0].longitude));
+      url.searchParams.set("zoom", "11");
+    }
     // Broad discovery: no layers, country restrictions or type filters upstream.
     const response = await fetcher(url, {
       headers: { Accept: "application/json" },
@@ -368,7 +391,9 @@ async function performSearch(
   try {
     const remote = await request(query);
     const usable = (item: Candidate) =>
-      scope !== "destination" || item.destinationRank < 9;
+      booking
+        ? !!item.poi?.[booking.kind]
+        : scope !== "destination" || item.destinationRank < 9;
     const close = (item: Candidate) =>
       usable(item) && nameRank(item.location.city, query) <= 1;
     let partial: ProviderFailure | undefined;
@@ -396,7 +421,7 @@ async function performSearch(
     // destinations Photon already resolved. It has no islands to substitute.
     const candidates: Candidate[] = [
       ...remote.filter(usable),
-      ...(!remote.some(close)
+      ...(!booking && !remote.some(close)
         ? searchLocations(query).map((location, order) => ({
             location,
             geographic: true,
@@ -408,11 +433,17 @@ async function performSearch(
           }))
         : []),
     ];
+    if (booking)
+      for (const item of candidates) item.kind = item.poi?.[booking.kind];
     const queryContext = folded(query.split(",").slice(1).join(" "));
     candidates.sort(
       (a, b) =>
         nameRank(a.location.city, query) - nameRank(b.location.city, query) ||
         (scope === "destination" ? a.destinationRank - b.destinationRank : 0) ||
+        (booking
+          ? proximity(a.location, booking.centers) -
+            proximity(b.location, booking.centers)
+          : 0) ||
         Number(!!queryContext && !folded(a.context).includes(queryContext)) -
           Number(!!queryContext && !folded(b.context).includes(queryContext)) ||
         Number(!a.context) - Number(!b.context) ||
@@ -508,6 +539,6 @@ async function performSearch(
       e instanceof ProviderFailure ? e : new ProviderFailure("unavailable");
     state.until = Math.max(state.until, Date.now() + failure.seconds * 1000);
     state.failure = failure;
-    return localResult(query, failure);
+    return localResult(query, failure, booking);
   }
 }
