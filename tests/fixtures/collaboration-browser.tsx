@@ -36,7 +36,52 @@ function Fixture() {
     tripId: trip.id,
     tripName: trip.name,
     owner: mode !== "editor",
-    userId: "owner",
+    userId: mode === "editor" ? "editor" : "owner",
+    peopleReady: mode !== "unavailable",
+    people:
+      mode === "solo"
+        ? [
+            {
+              userId: "owner",
+              membershipId: null,
+              role: "owner",
+              name: "Anna",
+              email: "anna@example.com",
+              avatarUrl: null,
+              initials: "A",
+            },
+          ]
+        : [
+            {
+              userId: "owner",
+              membershipId: null,
+              role: "owner",
+              name: "Anna",
+              email: "anna@example.com",
+              avatarUrl: null,
+              initials: "A",
+            },
+            {
+              userId: "editor",
+              membershipId: "member",
+              role: "editor",
+              name: "Mark",
+              email: "friend@example.com",
+              avatarUrl: null,
+              initials: "M",
+            },
+            ...(mode === "many"
+              ? Array.from({ length: 4 }, (_, i) => ({
+                  userId: `guest${i}`,
+                  membershipId: `membership${i}`,
+                  role: "editor" as const,
+                  name: `Guest ${i}`,
+                  email: `guest${i}@example.com`,
+                  avatarUrl: null,
+                  initials: "G",
+                }))
+              : []),
+          ],
     members: [
       {
         id: "member",
@@ -116,6 +161,10 @@ function Fixture() {
                 const d = saved.current;
                 commit({
                   ...d,
+                  people:
+                    f.get("operation") === "remove"
+                      ? d.people?.filter((p) => p.membershipId !== f.get("id"))
+                      : d.people,
                   members:
                     f.get("operation") === "remove"
                       ? d.members.filter((m) => m.id !== f.get("id"))

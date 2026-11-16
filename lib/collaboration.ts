@@ -1,3 +1,4 @@
+import type { AccountProfile } from "./account-profile";
 export type InvitationStatus =
   | "valid"
   | "accepted"
@@ -22,7 +23,14 @@ export type SharedMember = {
   self?: boolean;
 };
 export type PendingInvite = { id: string; email: string; expires_at: string };
+export type TripPerson = AccountProfile & {
+  userId: string;
+  membershipId: string | null;
+  role: "owner" | "editor" | "viewer";
+};
 export type SharingData = {
+  people?: TripPerson[];
+  peopleReady?: boolean;
   ready: boolean;
   error?: string;
   tripId: string;

@@ -4,7 +4,31 @@ import { loadSharingData } from "../lib/sharing-data";
 import { overviewTrip as trip } from "./fixtures/trip-overview";
 function client(owner = true) {
   const reads: string[] = [];
-  const rpc = vi.fn().mockResolvedValue({ data: 1, error: null });
+  const rpc = vi.fn().mockImplementation(async (name: string) =>
+    name === "trip_people"
+      ? {
+          data: [
+            {
+              user_id: "owner",
+              membership_id: null,
+              role: "owner",
+              name: "Anna",
+              email: "anna@example.com",
+              avatar_url: null,
+            },
+            {
+              user_id: "editor",
+              membership_id: "member",
+              role: "editor",
+              name: null,
+              email: "current@example.com",
+              avatar_url: null,
+            },
+          ],
+          error: null,
+        }
+      : { data: 1, error: null },
+  );
   const from = vi.fn((table: string) => {
     reads.push(table);
     const response = {
@@ -54,7 +78,9 @@ it("owner receives friendly member labels and pending records without selecting 
   const c = client();
   const result = await loadSharingData(c.db, trip, "owner");
   expect(result.ready).toBe(true);
-  expect(result.members[0].label).toBe("editor@example.com");
+  expect(result.members[0].label).toBe("current");
+  expect(result.people?.[1].email).toBe("current@example.com");
+  expect(result.peopleReady).toBe(true);
   expect(result.pending).toEqual([
     { id: "pending", email: "friend@example.com", expires_at: "2099-01-01" },
   ]);
@@ -76,4 +102,18 @@ it("absent migration returns unavailable without querying new columns", async ()
   const result = await loadSharingData(c.db, trip, "owner");
   expect(result.ready).toBe(false);
   expect(c.from).not.toHaveBeenCalled();
+});
+
+it("missing member-details RPC preserves sharing without substituting an invited email", async () => {
+  const c = client();
+  c.rpc.mockImplementation(async (name: string) =>
+    name === "trip_people"
+      ? { data: null, error: { code: "PGRST202" } }
+      : { data: 1, error: null },
+  );
+  const result = await loadSharingData(c.db, trip, "owner");
+  expect(result.ready).toBe(true);
+  expect(result.peopleReady).toBe(false);
+  expect(result.people).toEqual([]);
+  expect(result.members[0].label).toBe("Collaborator");
 });

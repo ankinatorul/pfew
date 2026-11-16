@@ -1,3 +1,4 @@
+import { parseTripPeople } from "./trip-people";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SharingData } from "./collaboration";
 import type { Trip } from "./domain";
@@ -18,7 +19,7 @@ export async function loadSharingData(
   if (trip.creation_state === "draft") return base;
   const capability = await db.rpc("collaboration_version");
   if (capability.error || capability.data !== 1) return base;
-  const [members, invitations] = await Promise.all([
+  const [members, invitations, identities] = await Promise.all([
     db
       .from("trip_members")
       .select("id,user_id,role,member_revision")
@@ -27,24 +28,26 @@ export async function loadSharingData(
     base.owner
       ? db
           .from("trip_invitations")
-          .select(
-            "id,email,accepted_by,accepted_at,expires_at,revoked_at,declined_at",
-          )
+          .select("id,email,accepted_at,expires_at,revoked_at,declined_at")
           .eq("trip_id", trip.id)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
+    db.rpc("trip_people", { target: trip.id }),
   ]);
   if (members.error || invitations.error)
     return {
       ...base,
       error: "We couldn’t load sharing. Refresh to try again.",
     };
+  const people = identities.error ? null : parseTripPeople(identities.data);
   return {
     ...base,
     ready: true,
+    peopleReady: !!people,
+    people: people || [],
     members: (members.data || [])
       .filter((m) => m.user_id !== trip.owner_id)
-      .map((m, index) => ({
+      .map((m) => ({
         id: m.id,
         member_revision: m.member_revision,
         role: m.role === "viewer" ? "viewer" : "editor",
@@ -52,8 +55,8 @@ export async function loadSharingData(
         label:
           m.user_id === userId
             ? "You"
-            : invitations.data?.find((i) => i.accepted_by === m.user_id)
-                ?.email || `Collaborator ${index + 1}`,
+            : people?.find((p) => p.membershipId === m.id)?.name ||
+              "Collaborator",
       })),
     pending: (invitations.data || [])
       .filter(

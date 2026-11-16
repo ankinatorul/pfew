@@ -78,26 +78,24 @@ it("owner creates and copies an invitation without claiming email delivery or ex
     />,
   );
   await user.click(screen.getByRole("button", { name: "Share" }));
-  expect(document.activeElement).toBe(screen.getByLabelText("Invite by email"));
-  await user.type(
-    screen.getByLabelText("Invite by email"),
-    "friend@example.com",
-  );
-  await user.click(
-    screen.getByRole("button", { name: "Create invitation link" }),
-  );
+  expect(document.activeElement).toBe(screen.getByLabelText("Email address"));
+  await user.type(screen.getByLabelText("Email address"), "friend@example.com");
+  await user.click(screen.getByRole("button", { name: "Create invite link" }));
   expect(invite).toHaveBeenCalledOnce();
   expect(invite.mock.calls[0][0].get("email")).toBe("friend@example.com");
-  await user.click(
-    screen.getByRole("button", { name: "Copy invitation link" }),
-  );
+  await user.click(screen.getByRole("button", { name: "Copy link" }));
   expect(clipboard).toHaveBeenCalledWith(
     expect.stringContaining("/invites/" + "a".repeat(64)),
   );
   expect(
-    screen.getByText("No invitation email has been sent by Pfew."),
+    screen.getByText(
+      "We won’t send an email. You can share the link yourself.",
+    ),
   ).toBeTruthy();
-  expect(screen.queryByDisplayValue(/invites/)).toBeNull();
+  expect(
+    (screen.getByLabelText("Invitation URL") as HTMLInputElement).value,
+  ).toContain("/invites/");
+  expect(screen.getByRole("button", { name: "Copied!" })).toBeTruthy();
   expect(refresh).toHaveBeenCalled();
   await user.click(screen.getByLabelText("Close sharing"));
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -138,13 +136,13 @@ it("editors cannot manage membership and unavailable capability offers no mutati
   const view = render(
     <ShareTripPanel {...props} data={{ ...data, owner: false }} />,
   );
-  expect(screen.queryByLabelText("Invite by email")).toBeNull();
+  expect(screen.queryByLabelText("Email address")).toBeNull();
   expect(
     screen.queryByRole("button", { name: "Remove collaborator" }),
   ).toBeNull();
   view.rerender(<ShareTripPanel {...props} data={{ ...data, ready: false }} />);
   expect(screen.getByText("Sharing isn’t available yet")).toBeTruthy();
-  expect(screen.queryByLabelText("Invite by email")).toBeNull();
+  expect(screen.queryByLabelText("Email address")).toBeNull();
 });
 it("acceptance has an explicit success and Open action, with duplicate-click protection and active-trip selection", async () => {
   let finish!: (r: CollaborationReply) => void;

@@ -9,6 +9,7 @@ export function BookingDrawer({
   children,
   returnFocus,
   closeLabel = "Close booking editor",
+  presentation = "drawer",
   initialFocus = 'input[name="title"]',
 }: {
   title: string;
@@ -18,6 +19,7 @@ export function BookingDrawer({
   returnFocus: HTMLElement | null;
   closeLabel?: string;
   initialFocus?: string;
+  presentation?: "drawer" | "people";
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -26,9 +28,26 @@ export function BookingDrawer({
     const previous = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     node.showModal();
-    node.querySelector<HTMLElement>(initialFocus)?.focus();
+    node.querySelector<HTMLElement>(initialFocus)?.focus({ preventScroll: true });
     const viewport = window.visualViewport;
     const resize = () => {
+      if (presentation === "people") {
+        const height = viewport?.height || window.innerHeight;
+        node.style.height = "auto";
+        node.style.maxHeight = `${Math.min(540, height * 0.85)}px`;
+        if (window.innerWidth <= 600) {
+          node.style.top = "auto";
+          node.style.bottom = `${Math.max(0, window.innerHeight - height - (viewport?.offsetTop || 0))}px`;
+          node.style.left = "0";
+        } else {
+          const r = node.getBoundingClientRect(),
+            anchor = returnFocus?.getBoundingClientRect();
+          node.style.left = `${Math.max(12, Math.min(anchor?.left || 12, window.innerWidth - r.width - 12))}px`;
+          node.style.top = `${Math.max(12, Math.min((anchor?.bottom || 12) + 8, window.innerHeight - r.height - 12))}px`;
+          node.style.bottom = "auto";
+        }
+        return;
+      }
       if (viewport) {
         node.style.height = `${Math.min(viewport.height, window.innerHeight)}px`;
         node.style.top = `${viewport.offsetTop}px`;
@@ -36,21 +55,28 @@ export function BookingDrawer({
     };
     resize();
     window.addEventListener("resize", resize);
+    if (presentation === "people")
+      window.addEventListener("scroll", resize, true);
     viewport?.addEventListener("resize", resize);
     viewport?.addEventListener("scroll", resize);
     return () => {
       window.removeEventListener("resize", resize);
       viewport?.removeEventListener("resize", resize);
       viewport?.removeEventListener("scroll", resize);
+      if (presentation === "people")
+        window.removeEventListener("scroll", resize, true);
       node.close();
       document.documentElement.style.overflow = previous;
       if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     };
-  }, [returnFocus, initialFocus]);
+  }, [returnFocus, initialFocus, presentation]);
   return (
     <dialog
       ref={dialog}
-      className="booking-drawer"
+      className={
+        "booking-drawer" +
+        (presentation === "people" ? " trip-people-panel" : "")
+      }
       aria-labelledby={titleId}
       onKeyDown={(event) => {
         if (event.key !== "Tab") return;

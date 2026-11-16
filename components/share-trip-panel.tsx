@@ -1,6 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
-import { Share2, Copy, Users } from "lucide-react";
+import { InvitationLink } from "./invitation-link";
+import { TripPeople, PersonDetails } from "./trip-people";
+import { Share2, Users } from "lucide-react";
 import { BookingDrawer } from "./booking-drawer";
 import type { SharingData, CollaborationReply } from "../lib/collaboration";
 import type { InviteState } from "../app/collaboration-actions";
@@ -66,7 +68,10 @@ export function ShareTripPanel({
       );
       return false;
     }
-    setLink({ email: recipient, url: reply.url });
+    setLink({
+      email: recipient,
+      url: new URL(reply.url, window.location.origin).href,
+    });
     setEmail("");
     setMessage("Your link is ready. Send it to your collaborator.");
     onRefresh();
@@ -74,6 +79,16 @@ export function ShareTripPanel({
   }
   return (
     <>
+      {data.peopleReady && data.people && (
+        <TripPeople
+          people={data.people}
+          owner={data.owner}
+          onManage={(trigger) => {
+            setOpener(trigger);
+            setOpen(true);
+          }}
+        />
+      )}
       <button
         type="button"
         className="button share-trip-trigger"
@@ -124,7 +139,8 @@ export function ShareTripPanel({
                       });
                     }}
                   >
-                    <label htmlFor="collaborator-email">Invite by email</label>
+                    <h3>Invite someone</h3>
+                    <label htmlFor="collaborator-email">Email address</label>
                     <input
                       id="collaborator-email"
                       name="email"
@@ -132,16 +148,16 @@ export function ShareTripPanel({
                       required
                       maxLength={254}
                       autoComplete="email"
+                      placeholder="Enter collaborator’s email"
                       value={email}
                       disabled={busy}
                       onChange={(event) => setEmail(event.target.value)}
                     />
                     <button className="button primary" disabled={busy}>
-                      {busy ? "Working…" : "Create invitation link"}
+                      {busy ? "Working…" : "Create invite link"}
                     </button>
                     <small>
-                      They can edit the trip after accepting. You’ll send the
-                      link yourself.
+                      We won’t send an email. You can share the link yourself.
                     </small>
                   </form>
                 ) : (
@@ -149,34 +165,7 @@ export function ShareTripPanel({
                     Only the trip owner can invite or remove collaborators.
                   </p>
                 )}
-                {link && (
-                  <section className="sharing-link">
-                    <strong>Link ready for {link.email}</strong>
-                    <button
-                      type="button"
-                      className="button primary"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(
-                            new URL(link.url, location.origin).href,
-                          );
-                          setMessage("Invitation link copied.");
-                        } catch {
-                          setError(
-                            "Clipboard unavailable. Use Copy Link on Open invitation.",
-                          );
-                        }
-                      }}
-                    >
-                      <Copy size={16} />
-                      Copy invitation link
-                    </button>
-                    <a href={link.url} target="_blank" rel="noreferrer">
-                      Open invitation
-                    </a>
-                    <small>No invitation email has been sent by Pfew.</small>
-                  </section>
-                )}
+                {link && <InvitationLink key={link.url} url={link.url} />}
                 {data.owner && (
                   <section className="sharing-section">
                     <h3 ref={pendingTitle} tabIndex={-1}>
@@ -189,6 +178,7 @@ export function ShareTripPanel({
                       data.pending.map((p) => (
                         <article className="sharing-person" key={p.id}>
                           <strong>{p.email}</strong>
+                          <span className="sharing-tag">Pending</span>
                           <small>
                             Expires{" "}
                             {new Intl.DateTimeFormat("en", {
@@ -262,16 +252,41 @@ export function ShareTripPanel({
                 )}
                 <section className="sharing-section">
                   <h3>People on this trip</h3>
+                  {!data.peopleReady && (
+                    <p className="sharing-muted">
+                      Profile details aren’t available yet.
+                    </p>
+                  )}
                   <article className="sharing-person">
-                    <strong>{data.owner ? "You" : "Trip owner"}</strong>
-                    <span className="sharing-tag">Owner</span>
+                    {data.peopleReady &&
+                    data.people?.find((p) => p.role === "owner") ? (
+                      <PersonDetails
+                        person={data.people.find((p) => p.role === "owner")!}
+                      />
+                    ) : (
+                      <>
+                        <strong>{data.owner ? "You" : "Trip owner"}</strong>
+                        <span className="sharing-tag">Owner</span>
+                      </>
+                    )}
                   </article>
                   {data.members.map((m) => (
                     <article className="sharing-person" key={m.id}>
-                      <strong>{m.label}</strong>
-                      <span className="sharing-tag">
-                        {m.role === "viewer" ? "Viewer" : "Editor"}
-                      </span>
+                      {data.peopleReady &&
+                      data.people?.find((p) => p.membershipId === m.id) ? (
+                        <PersonDetails
+                          person={data.people.find(
+                            (p) => p.membershipId === m.id,
+                          )!}
+                        />
+                      ) : (
+                        <>
+                          <strong>{m.label}</strong>
+                          <span className="sharing-tag">
+                            {m.role === "viewer" ? "Viewer" : "Editor"}
+                          </span>
+                        </>
+                      )}
                       {data.owner && (
                         <button
                           type="button"
