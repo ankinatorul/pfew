@@ -121,7 +121,10 @@ it("preserves owner trip settings and editor itinerary editing after the trip en
   vi.setSystemTime(new Date("2027-06-01"));
   expect((await route({ view: "settings" })).type).toBe(TripEdit);
   mocks.role.mockResolvedValue("editor");
-  const page = await route({ view: "add", edit: overviewSegment().id });
+  await expect(
+    route({ view: "add", edit: overviewSegment().id }),
+  ).rejects.toThrow("NEXT_REDIRECT");
+  const page = await route({ view: "add", kind: "activity" });
   function findForm(node: ReactNode): boolean {
     if (!isValidElement<{ children?: ReactNode }>(node)) return false;
     return (
@@ -130,4 +133,40 @@ it("preserves owner trip settings and editor itinerary editing after the trip en
     );
   }
   expect(findForm(page)).toBe(true);
+});
+
+it("consolidates destinations and Stays through their shared interfaces for authorized roles", async () => {
+  const { Destinations } = await import("../components/destinations");
+  const { BookingBudget } = await import("../components/booking-budget");
+  for (const role of ["owner", "editor", "viewer"]) {
+    mocks.role.mockResolvedValue(role);
+    const page = await route({ view: "destinations" });
+    expect(page.type).toBe(Destinations);
+    expect(page.props.canEdit).toBe(role !== "viewer");
+  }
+  const stays = await route({ view: "stays" });
+  const children = Children.toArray(stays.props.children);
+  expect(isValidElement(children[0]) && children[0].type).toBe(BookingBudget);
+  if (isValidElement<{ initialCategory: string; view: string }>(children[0]))
+    expect(children[0].props).toMatchObject({
+      view: "bookings",
+      initialCategory: "accommodation",
+    });
+});
+
+it("routes normal bookings, direct creation and saved-booking links to the same server component for owners and Editors", async () => {
+  const { BookingBudget } = await import("../components/booking-budget");
+  for (const role of ["owner", "editor"]) {
+    mocks.role.mockResolvedValue(role);
+    for (const edit of ["new", "33333333-3333-4333-8333-333333333333"]) {
+      const page = await route({ view: "bookings", edit });
+      const child = page.props.children;
+      expect(child.type).toBe(BookingBudget);
+      expect(child.props).toMatchObject({
+        view: "bookings",
+        canEdit: true,
+        edit,
+      });
+    }
+  }
 });

@@ -1,3 +1,5 @@
+import { TripMapCard } from "./trip-map";
+import { loadTripMapData } from "../lib/trip-map-data";
 import { ShareTrip } from "./share-trip";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -61,6 +63,7 @@ export async function TripDashboard({
     findings: rows(8),
     decisions: rows(9),
   };
+  const mapData = await loadTripMapData(db, trip, segments, data.bookings);
   const model = tripOverview(trip, segments, data, now, day);
   const taskActions: Record<string, ReactNode> = {};
   const findingActions: Record<string, ReactNode> = {};
@@ -87,6 +90,7 @@ export async function TripDashboard({
   return (
     <TripOverviewView
       model={model}
+      mapCard={<TripMapCard data={mapData} />}
       shareAction={<ShareTrip trip={trip} role={role} />}
       role={role}
       LinkComponent={Link}

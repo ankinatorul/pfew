@@ -1,8 +1,11 @@
+import { Destinations } from "../../../components/destinations";
+import { destinationOrder } from "../../../lib/destination-management";
+import { TripExplorer } from "../../../components/trip-map";
+import { loadTripMapData } from "../../../lib/trip-map-data";
 import { PackingDocuments } from "../../../components/packing-documents";
 import { BookingBudget } from "../../../components/booking-budget";
 import { Suspense } from "react";
 import { Itinerary } from "../../../components/itinerary";
-import { savedTripDestinations } from "../../../lib/trip-destinations";
 import { travelStyleLabel } from "../../../lib/trip-style";
 import { TripNavigation } from "../../../components/trip-navigation";
 import { TripDocuments } from "../../../components/trip-documents";
@@ -86,6 +89,73 @@ export default async function Hub({
         now={overviewNow}
       />
     );
+  if (view === "destinations") {
+    const [editing, ordering] = await Promise.all([
+      db.rpc("destination_management_version"),
+      db.rpc("destination_order_version"),
+    ]);
+    return (
+      <Destinations
+        trip={trip}
+        segments={segments}
+        canEdit={canEdit}
+        ready={!editing.error && editing.data === 1}
+        orderReady={!ordering.error && ordering.data === 1}
+        mixedReady={!editing.error && editing.data === 1}
+        initialEdit={q.edit}
+      />
+    );
+  }
+  if (
+    view === "add" &&
+    (q.kind === "destination" ||
+      segments.some((s) => s.id === q.edit && s.kind === "destination" && s.status!=="idea"))
+  )
+    redirect(`/trips/${id}?view=destinations&edit=${q.edit || "new"}`);
+  if (view === "stays")
+    return (
+      <>
+        <BookingBudget
+          trip={trip}
+          segments={segments}
+          view="bookings"
+          canEdit={canEdit}
+          edit={q.edit}
+          initialCategory="accommodation"
+        />
+        {segments.some((s) => s.kind === "stay") && (
+          <section className="card">
+            <h2>Saved stay plans</h2>
+            {segments
+              .filter((s) => s.kind === "stay")
+              .map((s) => (
+                <p key={s.id}>
+                  <Link href={`/trips/${id}?view=add&edit=${s.id}`}>
+                    {s.title}
+                  </Link>{" "}
+                  · {s.start_date} – {s.end_date}
+                </p>
+              ))}
+          </section>
+        )}
+      </>
+    );
+  if (view === "map") {
+    const [mapData, capability, management] = await Promise.all([
+      loadTripMapData(db, trip, segments),
+      db.rpc("destination_order_version"),
+      db.rpc("destination_management_version"),
+    ]);
+    const order =
+      !capability.error && capability.data === 1
+        ? destinationOrder(
+            trip,
+            segments,
+            !management.error && management.data === 1,
+          )
+        : undefined;
+    return <TripExplorer data={mapData} canEdit={canEdit} order={order} />;
+  }
   if (view === "itinerary" || view === "ideas")
     return (
       <Suspense
@@ -267,7 +337,7 @@ export default async function Hub({
           group={q.group}
         />
       )}
-      {["map", "ideas", "check"].includes(view) && (
+      {["places", "ideas", "check"].includes(view) && (
         <Intelligence
           trip={trip}
           segments={segments}
@@ -377,7 +447,7 @@ export default async function Hub({
           />
         </>
       )}
-      {["itinerary", "destinations", "stays", "transport"].includes(view) && (
+      {["itinerary", "transport"].includes(view) && (
         <>
           {view === "itinerary" && (
             <div className="tabs" aria-label="Trip days">
@@ -430,22 +500,6 @@ export default async function Hub({
               <DayBookings trip={trip.id} day={day} />
             </>
           )}
-          {view === "destinations" &&
-            !segments.some((s) => s.kind === "destination") &&
-            savedTripDestinations(trip).length > 0 && (
-              <section className="card">
-                <h3>Your saved destinations</h3>
-                <ol>
-                  {savedTripDestinations(trip).map((d, i) => (
-                    <li key={i}>{d.label}</li>
-                  ))}
-                </ol>
-                <p>
-                  Saved in your chosen order. Add a destination period when you
-                  know its dates; no stop dates have been assumed.
-                </p>
-              </section>
-            )}
           <div className="timeline">
             {segments
               .filter((s) =>
@@ -502,7 +556,11 @@ export default async function Hub({
                     >
                       Edit / move
                     </Link>
-                    <Delete id={s.id} tripId={id} revision={s.itinerary_revision ?? 0} />
+                    <Delete
+                      id={s.id}
+                      tripId={id}
+                      revision={s.itinerary_revision ?? 0}
+                    />
                   </div>
                 </article>
               ))}

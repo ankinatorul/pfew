@@ -109,11 +109,16 @@ test("shared manual creation, saved booking editing, deadline persistence and sa
   await shot(page, info, "bookings-empty");
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   const drawer = page.getByRole("dialog");
-  await drawer.getByLabel("Name", { exact: true }).fill("A new reservation");
+  await drawer
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("A new reservation");
   await drawer.getByRole("radio", { name: "Experience", exact: true }).check();
   await drawer.getByLabel("Date", { exact: true }).fill("2027-05-02");
   await drawer.getByRole("radio", { name: "Pay later", exact: true }).check();
-  await drawer.getByLabel("Payment due").fill("2027-04-01");
+  await drawer
+    .getByRole("radio", { name: "Payment due on a specific date", exact: true })
+    .check();
+  await drawer.getByLabel("Payment due", { exact: true }).fill("2027-04-01");
   await drawer
     .getByRole("button", { name: "Save booking", exact: true })
     .click();
@@ -127,8 +132,12 @@ test("shared manual creation, saved booking editing, deadline persistence and sa
   await card
     .getByRole("button", { name: "A new reservation", exact: true })
     .click();
-  await expect(drawer.getByLabel("Payment due")).toHaveValue("2027-04-01");
-  await drawer.getByLabel("Name", { exact: true }).fill("Updated reservation");
+  await expect(drawer.getByLabel("Payment due", { exact: true })).toHaveValue(
+    "2027-04-01",
+  );
+  await drawer
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("Updated reservation");
   await drawer
     .getByRole("button", { name: "Save changes", exact: true })
     .click();
@@ -161,9 +170,11 @@ test("existing booking drawers share Stay/Transport fields, preserve status and 
     .getByRole("button", { name: "Museum reservation", exact: true })
     .click();
   const drawer = page.getByRole("dialog");
-  await expect(drawer.getByLabel("Name", { exact: true })).toHaveValue(
-    "Museum reservation",
-  );
+  await expect(
+    drawer.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  ).toHaveValue("Museum reservation");
   await expect(drawer.locator(".booking-review-check")).toHaveCSS(
     "flex-direction",
     "row",
@@ -284,7 +295,9 @@ test("multiple uploads retain originals on extraction failure and keep grouped r
     .getByRole("button", { name: "Review / edit", exact: true })
     .click();
   await expect(
-    page.getByRole("dialog").getByLabel("Name", { exact: true }),
+    page
+      .getByRole("dialog")
+      .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true }),
   ).toBeVisible();
   await shot(page, info, "booking-review");
 });
@@ -389,7 +402,16 @@ test("smart booking name selects a POI, clears stale associations, supports cust
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   const drawer = page.getByRole("dialog");
   await drawer.getByRole("radio", { name: "Stay", exact: true }).check();
-  const name = drawer.getByLabel("Name", { exact: true });
+  await expect(
+    drawer.getByLabel(/^(?:Place|Where are you staying\?)$/, { exact: true }),
+  ).toHaveCount(1);
+  await expect(drawer.getByLabel("Name", { exact: true })).toHaveCount(0);
+  await expect(drawer.getByLabel("Location name", { exact: true })).toHaveCount(
+    0,
+  );
+  const name = drawer.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+    exact: true,
+  });
   await name.fill("Ritz");
   await expect(
     drawer.getByRole("option", { name: /Ritz Paris/ }),
@@ -433,7 +455,7 @@ test("smart booking name selects a POI, clears stale associations, supports cust
       JSON.parse(sessionStorage.getItem("fixture:money:empty")!).bookings[0],
   );
   expect(saved.location_id).toBeFalsy();
-  expect(saved.location_label).toBeFalsy();
+  expect(saved.location_label).toBe("My custom stay");
   expect(saved.latitude).toBeFalsy();
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   await drawer.getByRole("radio", { name: "Experience", exact: true }).check();
@@ -445,6 +467,70 @@ test("smart booking name selects a POI, clears stale associations, supports cust
   await expect(name).toHaveValue("Musée du Louvre");
   expect(queries).toBeGreaterThan(0);
   await page.screenshot({
-    path: `tests/screenshots/smart-booking-name/${info.project.name}/attraction-selected.png`,
+    path: `tests/screenshots/smart-booking-place/${info.project.name}/attraction-selected.png`,
   });
+});
+
+test("payment choices keep amounts, validate deadlines and persist property payment", async ({
+  page,
+}, info) => {
+  await mount(page, "empty");
+  await page.getByRole("button", { name: "Add manually", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("radio", { name: "Stay", exact: true }).check();
+  await drawer
+    .getByLabel("Where are you staying?", { exact: true })
+    .fill("A custom cottage");
+  await drawer.getByLabel("Check-in date", { exact: true }).fill("2027-05-02");
+  await drawer.getByLabel("Check-out date", { exact: true }).fill("2027-05-04");
+  await drawer.getByLabel("Cost (optional)").fill("120");
+  for (const code of ["EUR", "USD", "RON"]) {
+    await drawer.getByLabel("Currency", { exact: true }).selectOption(code);
+    await expect(drawer.getByLabel("Cost (optional)")).toHaveValue("120");
+  }
+  await drawer.getByRole("radio", { name: "Pay later", exact: true }).check();
+  await drawer
+    .getByRole("radio", { name: "Payment due on a specific date", exact: true })
+    .check();
+  await drawer
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(
+    drawer.getByText("Choose a valid payment due date.", { exact: true }),
+  ).toBeVisible();
+  await expect(drawer.getByLabel("Payment due", { exact: true })).toBeVisible();
+  expect(
+    (await drawer.getByLabel("Payment due", { exact: true }).boundingBox())!
+      .height,
+  ).toBeGreaterThan(30);
+  await drawer.getByLabel("Payment due", { exact: true }).fill("2027-04-01");
+  await page.screenshot({
+    path: `tests/screenshots/booking-payment/${info.project.name}/payment-deadline.png`,
+  });
+  await drawer
+    .getByRole("radio", { name: "Pay at the property", exact: true })
+    .check();
+  await expect(drawer.getByLabel("Payment due", { exact: true })).toHaveCount(
+    0,
+  );
+  await drawer
+    .getByRole("button", { name: "Save booking", exact: true })
+    .click();
+  await expect(drawer).toHaveCount(0);
+  await expect(
+    page.getByText("Pay at the property", { exact: true }).first(),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "A custom cottage", exact: true })
+    .click();
+  await expect(
+    drawer.getByRole("radio", { name: "Pay at the property", exact: true }),
+  ).toBeChecked();
+  await expect(drawer.getByLabel("Currency", { exact: true })).toHaveValue(
+    "RON",
+  );
+  await expect(page.locator("body")).toHaveJSProperty(
+    "scrollWidth",
+    await page.evaluate(() => document.documentElement.clientWidth),
+  );
 });

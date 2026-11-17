@@ -1,4 +1,4 @@
-import { savedTripDestinations } from "./trip-destinations";
+import { orderedDestinationSegments, mapSavedDestinations } from "./trip-map";
 import { z } from "zod";
 import {
   lifecycle,
@@ -99,14 +99,7 @@ export function tripOverview(
   const dates = datesFor(trip, now);
   if (selectedDay && days(trip.start_date, trip.end_date).includes(selectedDay))
     dates.day = selectedDay;
-  const destinations = segments
-    .filter((item) => item.kind === "destination" && item.status !== "idea")
-    .sort(
-      (a, b) =>
-        a.start_date.localeCompare(b.start_date) ||
-        a.position - b.position ||
-        a.id.localeCompare(b.id),
-    );
+  const destinations = orderedDestinationSegments(segments);
   const during =
     phase === "traveling"
       ? duringTripPlan(trip, segments, data.bookings, now)
@@ -277,14 +270,14 @@ export function tripOverview(
     destination:
       during?.destination ||
       destinations[0]?.title ||
-      savedTripDestinations(trip)[0]?.label ||
+      mapSavedDestinations(trip)[0]?.label ||
       null,
     destinations: destinations.length
       ? destinations.map((item) => ({
           id: item.id,
           title: item.title,
         }))
-      : savedTripDestinations(trip).map((item, index) => ({
+      : mapSavedDestinations(trip).map((item, index) => ({
           id: `saved-${index}`,
           title: item.label,
         })),

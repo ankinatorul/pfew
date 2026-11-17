@@ -106,3 +106,22 @@ it("saves an island destination with its own point and server-derived local time
   expect(values.location_label).toBe("Koh Phangan, Thailand");
   expect(values.latitude).toBe(9.73);
 });
+
+it("keeps manual booking place labels without trusting posted coordinates or inventing a map point", async () => {
+  const v = await bookingLocationValues(
+    db(),
+    form({
+      category: "accommodation",
+      location_label: "Private cottage",
+      location_id: "",
+      latitude: "48.8",
+      longitude: "2.3",
+      destination: "Custom directions",
+    }),
+  );
+  expect(v.location_label).toBe("Private cottage");
+  expect(v.location_id).toBeNull();
+  expect(v.latitude).toBeNull();
+  expect(v.longitude).toBeNull();
+  expect(v.destination).toBe("Custom directions");
+});

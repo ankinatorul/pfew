@@ -16,8 +16,11 @@ export default defineConfig({
     "**/trip-review.spec.tsx",
     "**/itinerary.spec.tsx",
     "**/booking-budget.spec.tsx",
+    "**/booking-entry-points.spec.tsx",
     "**/packing-documents.spec.tsx",
     "**/collaboration.spec.tsx",
+    "**/trip-map.spec.tsx",
+    "**/destinations.spec.tsx",
   ],
   use: {
     baseURL: "http://127.0.0.1:3000",
@@ -25,7 +28,7 @@ export default defineConfig({
       executablePath:
         process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
         (existsSync("/usr/bin/chromium") ? "/usr/bin/chromium" : undefined),
-      args: ["--no-sandbox"],
+      args: ["--no-sandbox", "--enable-unsafe-swiftshader"],
     },
   },
   webServer: {

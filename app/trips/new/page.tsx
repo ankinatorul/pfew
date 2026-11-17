@@ -126,8 +126,7 @@ export default async function New({
             initialAttachments={collection.attachments}
             ready={collection.ready}
             paymentDueReady={
-              !(await db.from("bookings").select("payment_due_date").limit(0))
-                .error
+              (await db.rpc("booking_payment_options_version")).data === 1
             }
             setupError={collection.error}
             live={

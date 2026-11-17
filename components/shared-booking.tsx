@@ -1,5 +1,12 @@
 "use client";
-import { useRef, useEffect, useState, type ReactNode } from "react";
+import { paymentError } from "../lib/booking-payment";
+import {
+  createContext,
+  useRef,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   BedDouble,
   Plane,
@@ -22,6 +29,13 @@ import {
   type SearchCenter,
 } from "../lib/booking-place-search";
 import type { Trip } from "../lib/domain";
+
+// Existing-trip owners and Editors create normal bookings through one adapter.
+// Create Trip keeps its private intake; uploads keep the reviewed-source workflow.
+export const ExistingTripBookingCreation = createContext<{
+  open: () => void;
+  disabled: boolean;
+} | null>(null);
 
 export function BookingOptions({
   disabled,
@@ -222,6 +236,7 @@ export function BookingEditor({
   return (
     <BookingDrawer
       title={title}
+      initialFocus="[data-booking-primary-field]"
       busy={busy}
       onClose={onClose}
       returnFocus={returnFocus}
@@ -230,10 +245,24 @@ export function BookingEditor({
         ref={form}
         aria-label="Booking editor"
         noValidate
-        onChange={() => onChange(snapshot())}
+        onChange={() => {
+          setValidation("");
+          onChange(snapshot());
+        }}
         onSubmit={(event) => {
           event.preventDefault();
           const values = snapshot();
+          const place = form.current?.elements.namedItem("booking_place");
+          if (place instanceof HTMLInputElement && !place.value.trim()) {
+            setValidation("Add a place name. A search match isn’t required.");
+            place.focus();
+            return;
+          }
+          const paymentIssue = paymentError(values);
+          if (paymentIssue) {
+            setValidation(paymentIssue);
+            return;
+          }
           if (!String(values.title || "").trim()) {
             setValidation("Give this booking a name.");
             return;
@@ -283,11 +312,12 @@ export function BookingEditor({
             paymentDueReady={paymentDueReady}
             searchCenters={searchCenters || bookingSearchCenters(trip)}
             confirmationHref={confirmationHref}
-            onLocationChange={(place, end, name) => {
+            onLocationChange={(place, end, name, address) => {
               const prefix = end ? "end_" : "";
               fields.current = {
                 ...snapshot(),
                 ...(name !== undefined ? { title: name } : {}),
+                ...(address !== undefined ? { destination: address } : {}),
                 [prefix + "location_id"]: place?.id || null,
                 [prefix + "location_label"]: place?.label || null,
                 [prefix + "latitude"]: place?.latitude ?? null,

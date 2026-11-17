@@ -34,6 +34,9 @@ const featureSchema = z.object({
     county: optionalText,
     city: optionalText,
     district: optionalText,
+    street: optionalText,
+    housenumber: optionalText,
+    postcode: optionalText,
     type: optionalText,
     osm_key: optionalText,
     osm_value: optionalText,
@@ -49,9 +52,10 @@ type Candidate = {
   order: number;
   object?: string;
   kind?: string;
-  poi?: { Stay?: string; Experience?: string };
+  poi?: { Stay?: string; Experience?: string; Other?: string };
   destinationRank: number;
   context: string;
+  address?: string;
   countryCode: string;
   equivalent?: string;
   extraContext?: string;
@@ -206,6 +210,16 @@ function candidate(
     geographic: isGeographic(p),
     destinationRank: destinationRank(p),
     context: description,
+    address: p.street
+      ? [
+          [p.housenumber, p.street].filter(Boolean).join(" "),
+          [p.postcode, p.city].filter(Boolean).join(" "),
+          p.country,
+        ]
+          .filter(Boolean)
+          .join(", ")
+          .slice(0, 500)
+      : undefined,
     countryName: p.country || "",
     extraContext:
       [p.county, p.city, p.district].find(
@@ -224,6 +238,7 @@ function candidate(
       p.osm_type && p.osm_id != null ? p.osm_type + ":" + p.osm_id : undefined,
     kind: kindOf(p),
     poi: {
+      Other: bookingPoiType(p.osm_key, p.osm_value, "Other"),
       Stay: bookingPoiType(p.osm_key, p.osm_value, "Stay"),
       Experience: bookingPoiType(p.osm_key, p.osm_value, "Experience"),
     },
@@ -232,7 +247,10 @@ function candidate(
 
 export type LocationSearchResult = {
   results: ResolvedLocation[];
-  presentations: Record<string, { context: string; type?: string }>;
+  presentations: Record<
+    string,
+    { context: string; type?: string; address?: string }
+  >;
   worldwideAvailable: boolean;
   status: "ok" | "unavailable" | "rate_limited";
   retryAfterSeconds?: number;
@@ -527,7 +545,11 @@ async function performSearch(
       presentations: Object.fromEntries(
         identified.map((item) => [
           item.location.id,
-          { context: item.context, ...(item.kind ? { type: item.kind } : {}) },
+          {
+            context: item.context,
+            ...(item.kind ? { type: item.kind } : {}),
+            ...(booking && item.address ? { address: item.address } : {}),
+          },
         ]),
       ),
       worldwideAvailable: !partial,

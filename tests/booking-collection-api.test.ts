@@ -24,10 +24,11 @@ vi.mock("../lib/booking-collection-server", () => ({
 }));
 vi.mock("../lib/storage-cleanup", () => ({ removeBookingFiles: mocks.remove }));
 vi.mock("../lib/automatic-zones", () => ({
-  bookingLocationValues: async (_db: unknown, form: FormData) => ({
-    ...Object.fromEntries(form),
-    timezone: "UTC",
-  }),
+  bookingLocationValues: async (_db: unknown, form: FormData) => {
+    if (form.get("location_id") === "opaque-legacy-place")
+      throw new Error("Legacy location is no longer resolvable");
+    return { ...Object.fromEntries(form), timezone: "UTC" };
+  },
 }));
 vi.mock("../lib/booking-extraction", async (original) => ({
   ...(await original<typeof import("../lib/booking-extraction")>()),
@@ -333,7 +334,7 @@ it("validates and gates payment deadlines without losing or saving unsupported f
     review_status: "needs_review",
     reservation_status: "unknown",
   };
-  mocks.capability.mockResolvedValueOnce({ error: { code: "42703" } });
+  mocks.rpc.mockResolvedValueOnce({ error: { code: "PGRST202" } }).mockResolvedValue({data:1,error:null});
   expect((await POST(json(body))).status).toBe(409);
   expect(mocks.persist).not.toHaveBeenCalled();
   expect(
@@ -408,6 +409,55 @@ it("preserves unedited legacy zones and geographic context during a compact revi
         notes: "Keep notes",
         paid_amount: 10,
         payment_status: "partial",
+      }),
+    }),
+  );
+});
+
+it("reviewing an unchanged opaque legacy Place preserves its label, coordinates, title and custom address", async () => {
+  entry = {
+    ...entry,
+    revision: 1,
+    fields: {
+      ...entry.fields,
+      title: "Custom hotel title",
+      category: "accommodation",
+      currency: "EUR",
+      start_date: "2027-05-01",
+      end_date: "2027-05-03",
+      timezone: "Europe/Paris",
+      end_timezone: "Europe/Paris",
+      location_id: "opaque-legacy-place",
+      location_label: "Original Hotel",
+      latitude: 48.8,
+      longitude: 2.3,
+      destination: "Custom entrance address",
+      segment_id: null,
+      travelers: "",
+      notes: "",
+    },
+  };
+  const response = await POST(
+    json({
+      action: "save",
+      revision: 1,
+      fields: entry.fields,
+      review_status: "reviewed",
+      reservation_status: "pending",
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.persist).toHaveBeenCalledWith(
+    expect.anything(),
+    trip,
+    expect.objectContaining({
+      fields: expect.objectContaining({
+        title: "Custom hotel title",
+        destination: "Custom entrance address",
+        location_id: "opaque-legacy-place",
+        location_label: "Original Hotel",
+        latitude: 48.8,
+        longitude: 2.3,
       }),
     }),
   );

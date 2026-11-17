@@ -1,5 +1,5 @@
 import type { Trip, Segment } from "./domain";
-export type BookingPlaceKind = "Stay" | "Experience";
+export type BookingPlaceKind = "Stay" | "Experience" | "Other";
 export type SearchCenter = { latitude: number; longitude: number };
 export type BookingPlaceOptions = {
   kind: BookingPlaceKind;
@@ -45,8 +45,13 @@ export function bookingPoiType(
   key: string | null | undefined,
   value: string | null | undefined,
   kind: BookingPlaceKind,
-) {
+): string | undefined {
   if (!key || !value) return undefined;
+  if (kind === "Other")
+    return (
+      bookingPoiType(key, value, "Stay") ||
+      bookingPoiType(key, value, "Experience")
+    );
   if (kind === "Stay")
     return key === "tourism" || key === "leisure" ? lodging[value] : undefined;
   if (["tourism", "amenity", "leisure"].includes(key))

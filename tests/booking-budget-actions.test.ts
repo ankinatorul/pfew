@@ -200,7 +200,7 @@ it("rejects deadline editing on an older booking RPC instead of reporting false 
   form.set("simplified", "1");
   form.set("payment_due_date", "2027-04-01");
   mocks.rpc.mockResolvedValue({ data: null, error: { code: "PGRST202" } });
-  expect((await saveManagedBooking(trip, form)).error).toContain("018");
+  expect((await saveManagedBooking(trip, form)).error).toContain("aren’t available yet");
   expect(mocks.rpc).not.toHaveBeenCalledWith(
     "save_managed_booking",
     expect.anything(),

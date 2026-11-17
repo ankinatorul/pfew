@@ -133,7 +133,7 @@ export type Booking = z.infer<typeof bookingSchema> & {
   id: string;
   import_method?: "manual" | "text" | "ai";
 };
-export type Task = z.infer<typeof taskSchema> & { id: string; done: boolean };
+export type Task = z.infer<typeof taskSchema> & { id: string; done: boolean; booking_id?: string | null };
 export type PackingList = z.infer<typeof packingListSchema> & { id: string };
 export type PackingItem = z.infer<typeof packingItemSchema> & {
   id: string;

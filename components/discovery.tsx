@@ -3,7 +3,14 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Trip, Segment } from "../lib/domain";
 import { placeSchema, type PlaceResult } from "../lib/discovery-types";
-import { GoogleMap, type MapPin } from "./google-map";
+import dynamic from "next/dynamic";
+type MapPin = {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+};
+const PlaceMap = dynamic(() => import("./trip-map-canvas"), { ssr: false });
 import { LocationPicker } from "./location-picker";
 import {
   savePlace,
@@ -174,7 +181,20 @@ export function Discovery({
         Place points mark approximate locations. Venue points appear only from
         fresh Google place data. No offline maps are provided.
       </p>
-      <GoogleMap pins={pins} selected={selected} onSelect={setSelected} />
+      <div className="pfew-map-surface">
+        <PlaceMap
+          destinations={pins.map((p, i) => ({
+            id: p.id,
+            title: p.label,
+            category: "destination",
+            order: i + 1,
+            coordinates: [p.longitude, p.latitude],
+            href: "",
+          }))}
+          selected={selected}
+          onSelect={setSelected}
+        />
+      </div>
       <div className="grid">
         {segments
           .filter(

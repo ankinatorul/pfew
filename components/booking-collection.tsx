@@ -1,8 +1,13 @@
 "use client";
 import { bookingSearchCenters } from "../lib/booking-place-search";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useContext } from "react";
 import { MoreHorizontal } from "lucide-react";
-import { BookingEditor, BookingOptions, BookingCard } from "./shared-booking";
+import {
+  BookingEditor,
+  BookingOptions,
+  BookingCard,
+  ExistingTripBookingCreation,
+} from "./shared-booking";
 import { useCreationFocus } from "../lib/use-creation-focus";
 import { CreationProgress, CreationBack } from "./trip-basics";
 import {
@@ -79,6 +84,8 @@ export function BookingCollection({
   onNavigate?: (step: 1 | 3) => void;
   onRefresh?: () => void;
 }) {
+  const existingTripCreation = useContext(ExistingTripBookingCreation);
+  const manualCreation = !stepMode ? existingTripCreation : null;
   const [entries, setEntries] = useState(initialEntries),
     [attachments, setAttachments] = useState(initialAttachments);
   const [dirty, setDirty] = useState<string[]>([]),
@@ -358,10 +365,19 @@ export function BookingCollection({
         </p>
       )}
       <BookingOptions
-        disabled={!ready || !!busy}
-        manualDisabled={entries.length >= COLLECTION_LIMIT}
+        disabled={!!busy || (!ready && !manualCreation)}
+        uploadDisabled={!ready}
+        manualDisabled={
+          manualCreation
+            ? manualCreation.disabled
+            : entries.length >= COLLECTION_LIMIT
+        }
         onFiles={addFiles}
         onManual={() => {
+          if (manualCreation) {
+            if (!manualCreation.disabled) manualCreation.open();
+            return;
+          }
           if (editorRef.current || running.current) return;
           const entry = emptyCollectionEntry(crypto.randomUUID());
           put(entry);

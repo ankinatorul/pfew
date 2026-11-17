@@ -128,6 +128,13 @@ export async function bookingLocationValues(
       (!previous?.end_location_id ? previous?.end_timezone : "") ||
       (form.get("category") === "accommodation" ? timezone : ""),
     ...locationFields(start),
+    ...(!start &&
+    ["accommodation", "activity", "other"].includes(
+      String(form.get("category")),
+    ) &&
+    form.get("location_label")
+      ? { location_label: String(form.get("location_label")).slice(0, 500) }
+      : {}),
     ...locationFields(arrival, "end_"),
   };
 }

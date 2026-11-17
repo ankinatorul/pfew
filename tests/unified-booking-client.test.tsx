@@ -8,6 +8,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { MoneyResult } from "../lib/booking-budget";
+import { BookingCollection } from "../components/booking-collection";
 import { BookingManager } from "../components/booking-manager";
 import { overviewTrip, overviewBooking } from "./fixtures/trip-overview";
 beforeAll(() => {
@@ -62,9 +63,14 @@ it("opens the same compact drawer and preserves hidden fields and independent st
   fireEvent.click(screen.getByRole("button", { name: "Legacy flight" }));
   expect(screen.getByRole("dialog")).toBeTruthy();
   expect(screen.queryByRole("combobox", { name: "Category" })).toBeNull();
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "Updated flight" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "Updated flight" },
+    },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   const data = save.mock.calls[0][0] as FormData;
@@ -92,9 +98,14 @@ it("failed saves keep the editor recoverable and duplicate submits do not create
   );
   mount(save);
   fireEvent.click(screen.getByRole("button", { name: "Legacy flight" }));
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "Keep this input" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "Keep this input" },
+    },
+  );
   const button = screen.getByRole("button", { name: "Save changes" });
   fireEvent.click(button);
   fireEvent.click(button);
@@ -104,18 +115,75 @@ it("failed saves keep the editor recoverable and duplicate submits do not create
     selector: ".booking-drawer-error",
   });
   expect(
-    (screen.getByLabelText("Name", { exact: true }) as HTMLInputElement).value,
+    (
+      screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+        exact: true,
+      }) as HTMLInputElement
+    ).value,
   ).toBe("Keep this input");
 });
 it("older deployments disable only deadline editing and preserve it while saving other details", async () => {
   const save = mount(undefined, false);
   fireEvent.click(screen.getByRole("button", { name: "Legacy flight" }));
   expect(
-    (screen.getByLabelText(/Payment due/) as HTMLInputElement).disabled,
+    screen.getByLabelText("Payment due", { exact: true }).matches(":disabled"),
   ).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
   expect((save.mock.calls[0][0] as FormData).has("payment_due_date")).toBe(
     false,
   );
+});
+
+it("existing-trip owner manual creation uses the canonical manager and preserves unfinished entries in the existing private intake", async () => {
+  const save = vi.fn(),
+    onRefresh = vi.fn();
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(Response.json({ entry: { id: "saved" } }));
+  vi.stubGlobal("fetch", fetcher);
+  try {
+    render(
+      <BookingManager
+        trip={overviewTrip}
+        segments={[]}
+        bookings={[]}
+        attachments={[]}
+        canEdit
+        ready
+        owner
+        collectionReady
+        onRefresh={onRefresh}
+        save={save}
+        remove={vi.fn()}
+        collection={
+          <BookingCollection
+            trip={overviewTrip}
+            initialEntries={[]}
+            initialAttachments={[]}
+            stepMode={false}
+          />
+        }
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add manually" }));
+    fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
+      target: { value: "Keep this unfinished booking" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save booking" }));
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    expect(fetcher.mock.calls[0][0]).toBe("/api/booking-collection");
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({
+      review_status: "needs_review",
+      fields: {
+        title: "Keep this unfinished booking",
+        start_date: "",
+        end_date: "",
+      },
+    });
+    expect(save).not.toHaveBeenCalled();
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

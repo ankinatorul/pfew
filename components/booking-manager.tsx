@@ -1,4 +1,5 @@
 "use client";
+import { paymentLabel } from "../lib/booking-payment";
 import { bookingSearchCenters } from "../lib/booking-place-search";
 import {
   useState,
@@ -19,11 +20,17 @@ import {
   type PrivateConfirmation,
   type MoneyResult,
 } from "../lib/booking-budget";
-import { BookingEditor, BookingOptions, BookingCard } from "./shared-booking";
+import {
+  BookingEditor,
+  BookingOptions,
+  BookingCard,
+  ExistingTripBookingCreation,
+} from "./shared-booking";
 import {
   emptyCollectionEntry,
   type CollectionEntry,
 } from "../lib/booking-collection";
+import { requestCollection } from "./booking-collection";
 import { managedBookingEntry } from "../lib/simple-booking";
 import { tripSectionUrl } from "../lib/trip-navigation";
 export function MoneyHeader({
@@ -97,6 +104,9 @@ export type BookingsProps = {
   collectionReady: boolean;
   owner: boolean;
   initialEdit?: string;
+  initialCreate?: boolean;
+  onRefresh?: () => void;
+  initialCategory?: string;
   loadError?: string;
   collection: ReactNode;
   fileTools?: Record<string, ReactNode>;
@@ -112,6 +122,9 @@ export function BookingManager({
   owner,
   collectionReady,
   initialEdit,
+  initialCreate = false,
+  onRefresh,
+  initialCategory = "all",
   loadError,
   collection,
   fileTools = {},
@@ -123,7 +136,7 @@ export function BookingManager({
   remove: (booking: ManagedBooking) => Promise<MoneyResult>;
   LinkComponent?: ElementType;
 }) {
-  const [category, setCategory] = useState("all"),
+  const [category, setCategory] = useState(initialCategory),
     [review, setReview] = useState("all"),
     [reservation, setReservation] = useState("all"),
     [query, setQuery] = useState(""),
@@ -134,7 +147,9 @@ export function BookingManager({
     } | null>(() =>
       initialEdit
         ? { id: initialEdit, item: bookings.find((b) => b.id === initialEdit) }
-        : null,
+        : initialCreate
+          ? { id: crypto.randomUUID() }
+          : null,
     ),
     [dirty, setDirty] = useState(false),
     [pending, setPending] = useState(false),
@@ -241,7 +256,10 @@ export function BookingManager({
     form.set("id", editor.id);
     form.set("revision", String(editor.item?.finance_revision || 0));
     form.set("simplified", "1");
-    if (!paymentDueReady) form.delete("payment_due_date");
+    if (!paymentDueReady) {
+      form.delete("payment_due_date");
+      form.delete("payment_arrangement");
+    }
     form.set(
       "verification",
       reviewed ? "user confirmed" : editor.item?.verification || "unverified",
@@ -252,6 +270,29 @@ export function BookingManager({
       verification: form.get("verification"),
     });
     if (!parsed.success) {
+      // Preserve the existing owner's ability to keep an unfinished manual
+      // booking. Use the existing private intake, never fabricate required dates.
+      if (owner && !editor.item && (!fields.start_date || !fields.end_date)) {
+        await execute(async () => {
+          const result = await requestCollection({
+            action: "save",
+            trip_id: trip.id,
+            id: editor.id,
+            revision: 0,
+            fields,
+            review_status: "needs_review",
+            reservation_status: "unknown",
+          });
+          if (!result.error) onRefresh?.();
+          return result.error
+            ? { error: result.error }
+            : {
+                message:
+                  "Saved for review. Add the remaining details when you’re ready.",
+              };
+        }, true);
+        return;
+      }
       setError(
         !fields.start_date || !fields.end_date
           ? "Add the booking dates before saving this scheduled reservation. Your changes are still here."
@@ -335,7 +376,11 @@ export function BookingManager({
       </div>
       {owner ? (
         <div ref={collectionRef} className="money-collection">
-          {collection}
+          <ExistingTripBookingCreation.Provider
+            value={{ open: () => edit(), disabled: !allowed || pending }}
+          >
+            {collection}
+          </ExistingTripBookingCreation.Provider>
         </div>
       ) : (
         canEdit && (
@@ -376,7 +421,9 @@ export function BookingManager({
                   ...emptyCollectionEntry(editor.id),
                   fields: {
                     ...emptyCollectionEntry(editor.id).fields,
-                    currency: trip.currency,
+                    category:
+                      initialCategory !== "all" ? initialCategory : "other",
+                    currency: "",
                     timezone: trip.timezone,
                   },
                 }
@@ -486,7 +533,7 @@ export function BookingManager({
                 {selected.paid_amount === null
                   ? "Unknown"
                   : displayMoney(selected.currency, selected.paid_amount)}{" "}
-                · {selected.payment_status}
+                · {paymentLabel(selected)}
               </dd>
             </div>
             <div>

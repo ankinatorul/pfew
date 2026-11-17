@@ -48,7 +48,7 @@ it("routes retired booking forms to the shared editor without a competing inline
     screen
       .getByRole("link", { name: "Open booking editor" })
       .getAttribute("href"),
-  ).toBe(`/trips/${trip.id}?view=bookings`);
+  ).toBe(`/trips/${trip.id}?view=bookings&edit=new`);
   expect(document.querySelector("form")).toBeNull();
 });
 it("records a cash expense in its entered currency", async () => {

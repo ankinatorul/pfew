@@ -186,10 +186,10 @@ export function ItineraryView({
   function bookingDetails(b: Booking, linked = false) {
     return (
       <div className="itinerary-booking-detail" key={b.id}>
-        <span>
+        <LinkComponent href={href("bookings") + "&edit=" + b.id}>
           {linked ? "Linked booking · " : ""}
           {b.title}
-        </span>
+        </LinkComponent>
         <small>
           {b.verification === "user confirmed"
             ? "Details reviewed"

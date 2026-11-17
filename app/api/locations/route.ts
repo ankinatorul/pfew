@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const mode = params.get("booking");
   const options = z
     .object({
-      kind: z.enum(["Stay", "Experience"]),
+      kind: z.enum(["Stay", "Experience", "Other"]),
       centers: z
         .array(
           z.object({

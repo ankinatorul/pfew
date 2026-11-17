@@ -70,9 +70,14 @@ it("edits a legacy reviewed flight without clearing hidden fields, subtype, paym
     />,
   );
   fireEvent.click(screen.getByRole("button", { name: "Legacy flight" }));
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "Corrected flight" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "Corrected flight" },
+    },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(request).toHaveBeenCalled());
   expect(request.mock.calls[0][0]).toMatchObject({
@@ -92,11 +97,12 @@ it("gates a dedicated payment deadline when its migration is absent, without dis
       .checked,
   ).toBe(true);
   expect(
-    (document.querySelector('[name="payment_due_date"]') as HTMLInputElement)
-      .disabled,
+    screen
+      .getByRole("radio", { name: "Pay at the property" })
+      .matches(":disabled"),
   ).toBe(true);
   expect(
-    screen.getByText("Payment deadlines aren’t available yet."),
+    screen.getByText("Payment arrangements aren’t available yet."),
   ).toBeTruthy();
 });
 it("saves name-only bookings as recoverable unfinished entries without inventing a date or cost", async () => {
@@ -143,11 +149,16 @@ it("opens a new drawer without saving an empty booking, protects edits and resto
   add.focus();
   fireEvent.click(add);
   expect(screen.getByRole("dialog", { name: "Add a booking" })).toBeTruthy();
-  expect(document.activeElement).toBe(screen.getByLabelText("Name"));
+  expect(document.activeElement).toBe(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/),
+  );
   expect(request).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Name"), {
-    target: { value: "Keep these inputs" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/),
+    {
+      target: { value: "Keep these inputs" },
+    },
+  );
   const confirm = vi
     .spyOn(window, "confirm")
     .mockReturnValueOnce(false)
@@ -158,9 +169,13 @@ it("opens a new drawer without saving an empty booking, protects edits and resto
   expect(screen.queryByRole("dialog")).toBeNull();
   expect(document.activeElement).toBe(add);
   fireEvent.click(screen.getByRole("button", { name: "Keep these inputs" }));
-  expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
-    "Keep these inputs",
-  );
+  expect(
+    (
+      screen.getByLabelText(
+        /^(?:Name|Place|Where are you staying\?)$/,
+      ) as HTMLInputElement
+    ).value,
+  ).toBe("Keep these inputs");
   expect(confirm).toHaveBeenCalledTimes(2);
   confirm.mockRestore();
 });
@@ -187,9 +202,12 @@ it("keeps failed saves in the drawer, prevents duplicate submissions and closes 
     />,
   );
   fireEvent.click(screen.getByRole("button", { name: "Add manually" }));
-  fireEvent.change(screen.getByLabelText("Name"), {
-    target: { value: "Retry booking" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/),
+    {
+      target: { value: "Retry booking" },
+    },
+  );
   const save = screen.getByRole("button", { name: "Save booking" });
   fireEvent.click(save);
   fireEvent.click(save);
@@ -198,9 +216,13 @@ it("keeps failed saves in the drawer, prevents duplicate submissions and closes 
   );
   expect(request).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("dialog")).toBeTruthy();
-  expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
-    "Retry booking",
-  );
+  expect(
+    (
+      screen.getByLabelText(
+        /^(?:Name|Place|Where are you staying\?)$/,
+      ) as HTMLInputElement
+    ).value,
+  ).toBe("Retry booking");
   const first = (request.mock.calls[0][0] as Record<string, unknown>).id;
   fireEvent.click(save);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

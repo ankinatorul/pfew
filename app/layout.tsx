@@ -10,6 +10,8 @@ import "./itinerary.css";
 import "./booking-budget.css";
 import "./packing-documents.css";
 import "./sharing.css";
+import "./trip-map.css";
+import "./destinations.css";
 import { PWARegister } from "../components/pwa-register";
 import { Suspense } from "react";
 import { AppShell } from "../components/app-shell";

@@ -415,7 +415,7 @@ export function SegmentForm({
           value={currentKind}
           onChange={(e) => setCurrentKind(e.target.value)}
         >
-          {["destination", "stay", "transport", "activity", "note"].map((k) => (
+          {["destination", "stay", "transport", "activity", "note"].filter(k=>k!=="destination" || item?.kind==="destination").map((k) => (
             <option key={k}>{k}</option>
           ))}
         </select>

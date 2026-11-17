@@ -17,12 +17,14 @@ export async function BookingBudget({
   view,
   canEdit,
   edit,
+  initialCategory,
 }: {
   trip: Trip;
   segments: Segment[];
   view: "bookings" | "budget";
   canEdit: boolean;
   edit?: string;
+  initialCategory?: string;
 }) {
   const { db, user } = await access(),
     owner = trip.owner_id === user.id;
@@ -47,7 +49,7 @@ export async function BookingBudget({
         .select("payment_due_date")
         .eq("trip_id", trip.id)
         .limit(0),
-      db.rpc("managed_booking_editor_version"),
+      db.rpc("booking_payment_options_version"),
     ]);
     const attachments = (files.data || []) as PrivateConfirmation[];
     const fileTools = Object.fromEntries(
@@ -66,6 +68,7 @@ export async function BookingBudget({
     return (
       <BookingsClient
         trip={trip}
+        initialCategory={initialCategory}
         segments={segments}
         bookings={rows}
         attachments={attachments}
@@ -74,6 +77,7 @@ export async function BookingBudget({
         paymentDueReady={!deadline.error && managedDeadline.data === 1}
         collectionReady={!!collection?.ready}
         owner={owner}
+        initialCreate={edit === "new" && canEdit}
         initialEdit={rows.some((b) => b.id === edit) ? edit : undefined}
         loadError={
           bookings.error || files.error
@@ -91,7 +95,7 @@ export async function BookingBudget({
               ready={collection.ready}
               setupError={collection.error}
               stepMode={false}
-              paymentDueReady={!deadline.error}
+              paymentDueReady={!deadline.error && managedDeadline.data === 1}
               live={
                 process.env.AI_MODE === "live" &&
                 Boolean(process.env.AI_API_KEY)

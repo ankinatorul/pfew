@@ -1,3 +1,4 @@
+import { orderedDestinationSegments, mapSavedDestinations } from "./trip-map";
 import { Temporal } from "@js-temporal/polyfill";
 import { z } from "zod";
 import type { Trip, Segment } from "./domain";
@@ -112,22 +113,21 @@ export function dateRange(
   }
 }
 export function itineraryDestinations(trip: Trip, segments: Segment[]) {
+  const metadata = mapSavedDestinations(trip);
   const saved = savedTripDestinations(trip).map((d) => ({
     id: d.id,
-    label: d.label,
+    label: metadata.find((m) => m.id === d.id)?.label || d.label,
     timezone: d.timezone,
-    start: "",
-    end: "",
+    start: metadata.find((m) => m.id === d.id)?.start || "",
+    end: metadata.find((m) => m.id === d.id)?.end || "",
   }));
-  const dated = segments
-    .filter((s) => s.kind === "destination" && s.status !== "idea")
-    .map((s) => ({
-      id: s.id,
-      label: s.title,
-      timezone: s.timezone,
-      start: s.start_date,
-      end: s.end_date,
-    }));
+  const dated = orderedDestinationSegments(segments).map((s) => ({
+    id: s.id,
+    label: s.title,
+    timezone: s.timezone,
+    start: s.start_date,
+    end: s.end_date,
+  }));
   return [
     ...saved,
     ...dated.filter(

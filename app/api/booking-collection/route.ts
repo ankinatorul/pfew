@@ -1,3 +1,4 @@
+import { paymentError } from "../../../lib/booking-payment";
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -234,18 +235,15 @@ export async function POST(request: Request) {
     if (body.action !== "save")
       return reply({ error: "Choose a supported booking action." }, 400);
     const fields = collectionFieldsSchema.parse(body.fields);
-    if (fields.payment_due_date) {
-      if (!z.iso.date().safeParse(fields.payment_due_date).success)
-        return reply({ error: "Choose a valid payment due date." }, 400);
-      const capability = await db
-        .from("bookings")
-        .select("payment_due_date")
-        .limit(0);
-      if (capability.error)
+    const paymentIssue = paymentError(fields);
+    if (paymentIssue) return reply({ error: paymentIssue }, 400);
+    if (fields.payment_due_date || fields.payment_arrangement) {
+      const capability = await db.rpc("booking_payment_options_version");
+      if (capability.error || capability.data !== 1)
         return reply(
           {
             error:
-              "Payment deadlines aren’t available yet. Your other details are still here.",
+              "Payment arrangements aren’t available yet. Your input is preserved.",
           },
           409,
         );
@@ -264,6 +262,15 @@ export async function POST(request: Request) {
       values.set("trip_id", input.trip_id);
       // Staging IDs are not normal booking IDs; resolve current geographic context.
       values.delete("id");
+      for (const prefix of ["", "end_"]) {
+        const id = fields[prefix + "location_id"];
+        if (
+          id &&
+          id === entry.fields[prefix + "location_id"] &&
+          fields.segment_id === entry.fields.segment_id
+        )
+          values.delete(prefix + "location_id");
+      }
       const canonical = await bookingLocationValues(db, values);
       // A compact edit must not replace a saved zone/legacy geographic label
       // merely because its controls are no longer visible. Resolve changed
@@ -276,6 +283,17 @@ export async function POST(request: Request) {
           const zone = prefix === "end_" ? "end_timezone" : "timezone";
           if (entry.fields[zone] && fields[zone] === entry.fields[zone])
             canonical[zone] = entry.fields[zone];
+          if (fields[prefix + "location_id"]) {
+            for (const part of [
+              "location_id",
+              "location_label",
+              "latitude",
+              "longitude",
+            ]) {
+              const key = prefix + part;
+              canonical[key] = entry.fields[key] ?? null;
+            }
+          }
           if (!fields[prefix + "location_id"])
             for (const part of ["location_label", "latitude", "longitude"]) {
               const key = prefix + part;

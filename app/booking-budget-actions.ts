@@ -1,4 +1,5 @@
 "use server";
+import { paymentError } from "../lib/booking-payment";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { access } from "../lib/access";
@@ -117,16 +118,23 @@ export async function saveManagedBooking(
       const deadline = String(form.get("payment_due_date") || "");
       if (deadline && !z.iso.date().safeParse(deadline).success)
         return { error: "Choose a valid payment due date." };
-      const capability = await db.rpc("managed_booking_editor_version");
+      const capability = await db.rpc("booking_payment_options_version");
       if (capability.error || capability.data !== 1)
         return {
           error:
-            "Payment deadline editing needs reviewed database update 018. Your other details are still here.",
+            "Payment arrangements aren’t available yet. Your input is preserved.",
         };
-      fields = {
+      const arrangement = form.get("payment_arrangement");
+      const payment = {
         ...fields,
         payment_due_date: deadline || null,
-      } as typeof fields;
+        ...(arrangement !== null
+          ? { payment_arrangement: String(arrangement) }
+          : {}),
+      };
+      const issue = paymentError(payment);
+      if (issue) return { error: issue };
+      fields = payment;
     }
   } catch {
     return {

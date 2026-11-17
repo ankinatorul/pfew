@@ -51,7 +51,7 @@ beforeEach(() => {
   mocks.eq.mockReturnValue(query);
   mocks.order.mockResolvedValue({ data: [draft], error: null });
   mocks.access.mockResolvedValue({
-    db: { from: () => query },
+    db: { from: () => query, rpc: async () => ({ data: 1, error: null }) },
     user: { id: "owner" },
   });
 });

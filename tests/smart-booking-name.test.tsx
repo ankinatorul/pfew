@@ -76,18 +76,37 @@ it("selects a hotel in Name, stores compatible metadata and clears the associati
     vi.fn().mockImplementation(async () => response()),
   );
   const request = mountEntry({ title: "My stay", category: "accommodation" });
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "Hotel Lumi" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "Hotel Lumi" },
+    },
+  );
   await screen.findByRole("option", { name: /Hotel Lumière/ });
-  fireEvent.keyDown(screen.getByLabelText("Name", { exact: true }), {
-    key: "ArrowDown",
-  });
-  fireEvent.keyDown(screen.getByLabelText("Name", { exact: true }), {
-    key: "Enter",
-  });
+  fireEvent.keyDown(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      key: "ArrowDown",
+    },
+  );
+  fireEvent.keyDown(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      key: "Enter",
+    },
+  );
   expect(
-    (screen.getByLabelText("Name", { exact: true }) as HTMLInputElement).value,
+    (
+      screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+        exact: true,
+      }) as HTMLInputElement
+    ).value,
   ).toBe(hotel.city);
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(request).toHaveBeenCalled());
@@ -105,9 +124,14 @@ it("saving custom names succeeds without a match or provider and never invents g
   const fetcher = vi.fn().mockRejectedValue(new Error("Offline"));
   vi.stubGlobal("fetch", fetcher);
   const request = mountEntry({ title: "Stay", category: "accommodation" });
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "My friend's spare room" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "My friend's spare room" },
+    },
+  );
   await screen.findByText(
     "Suggestions unavailable. You can still use this name.",
   );
@@ -132,18 +156,27 @@ it("keeps legacy places on focus but clears them when the linked name is actuall
     latitude: hotel.latitude,
     longitude: hotel.longitude,
   });
-  fireEvent.focus(screen.getByLabelText("Name", { exact: true }));
+  fireEvent.focus(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  );
   expect(fetcher).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "Different custom stay" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "Different custom stay" },
+    },
+  );
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(request).toHaveBeenCalled());
   expect(request.mock.calls[0][0]).toMatchObject({
     fields: {
-      title: "Different custom stay",
+      title: "Existing hotel",
       location_id: null,
-      location_label: null,
+      location_label: "Different custom stay",
       latitude: null,
       longitude: null,
     },
@@ -189,21 +222,24 @@ it("exposes invalid saved Stay dates immediately, preserves them and blocks all 
   expect(save).toHaveBeenCalledTimes(1);
 });
 it("no matches is a valid custom-name path and does not show a provider error", async () => {
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({
-        results: [],
-        presentations: {},
-        worldwideAvailable: true,
-        status: "ok",
-      }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      results: [],
+      presentations: {},
+      worldwideAvailable: true,
+      status: "ok",
+    }),
+  );
   vi.stubGlobal("fetch", fetcher);
   const request = mountEntry({ title: "Initial", category: "accommodation" });
-  fireEvent.change(screen.getByLabelText("Name", { exact: true }), {
-    target: { value: "A private family cottage" },
-  });
+  fireEvent.change(
+    screen.getByLabelText(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+    {
+      target: { value: "A private family cottage" },
+    },
+  );
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   expect(screen.queryByText(/Suggestions unavailable/)).toBeNull();
   fireEvent.click(
@@ -228,7 +264,10 @@ it("cancels superseded queries and ignores a late response without changing the 
     .mockImplementationOnce(async () => response());
   vi.stubGlobal("fetch", fetcher);
   mountEntry({ title: "Initial", category: "accommodation" });
-  const name = screen.getByLabelText("Name", { exact: true });
+  const name = screen.getByLabelText(
+    /^(?:Name|Place|Where are you staying\?)$/,
+    { exact: true },
+  );
   fireEvent.change(name, { target: { value: "First stale hotel" } });
   await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
   fireEvent.change(name, { target: { value: "Second current hotel" } });
@@ -246,4 +285,211 @@ it("cancels superseded queries and ignores a late response without changing the 
     expect(screen.getByRole("option", { name: /Hotel Lumière/ })).toBeTruthy(),
   );
   expect((name as HTMLInputElement).value).toBe("Second current hotel");
+});
+
+it("has one Place input, uses provider address metadata and defaults the title without another name/location field", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(async () =>
+      Response.json({
+        results: [hotel],
+        presentations: {
+          [hotel.id]: {
+            context: "Paris, France",
+            type: "Hotel",
+            address: "12 Rue des Fleurs, Paris, France",
+          },
+        },
+        worldwideAvailable: true,
+      }),
+    ),
+  );
+  const request = mountEntry({
+    title: "Draft stay",
+    category: "accommodation",
+    destination: "",
+  });
+  expect(
+    screen.getAllByLabelText("Where are you staying?", { exact: true }),
+  ).toHaveLength(1);
+  expect(screen.queryByLabelText("Name", { exact: true })).toBeNull();
+  expect(screen.queryByLabelText("Location name", { exact: true })).toBeNull();
+  const input = screen.getByLabelText("Where are you staying?", {
+    exact: true,
+  });
+  expect(input.getAttribute("placeholder")).toBe(
+    "Search hotel or accommodation",
+  );
+  fireEvent.change(input, { target: { value: "Address hotel" } });
+  await screen.findByRole("option", { name: /Hotel Lumière/ });
+  fireEvent.click(
+    screen.getByRole("button", { name: /Hotel Lumière.*12 Rue/ }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(request).toHaveBeenCalled());
+  expect(request.mock.calls[0][0]).toMatchObject({
+    fields: {
+      title: hotel.city,
+      destination: "12 Rue des Fleurs, Paris, France",
+      location_id: hotel.id,
+      latitude: hotel.latitude,
+      longitude: hotel.longitude,
+    },
+  });
+  expect(
+    (request.mock.calls[0][0] as { fields: Record<string, unknown> }).fields,
+  ).not.toHaveProperty("booking_place");
+});
+it("prepopulates the real saved place while retaining a custom booking title and custom address", async () => {
+  const fetcher = vi.fn();
+  vi.stubGlobal("fetch", fetcher);
+  const request = mountEntry({
+    title: "Honeymoon stay",
+    category: "accommodation",
+    location_id: hotel.id,
+    location_label: hotel.label,
+    latitude: hotel.latitude,
+    longitude: hotel.longitude,
+    destination: "Use courtyard entrance, 8 Custom Road",
+  });
+  expect(
+    (
+      screen.getByLabelText("Where are you staying?", {
+        exact: true,
+      }) as HTMLInputElement
+    ).value,
+  ).toBe(hotel.city);
+  fireEvent.focus(
+    screen.getByLabelText("Where are you staying?", { exact: true }),
+  );
+  expect(fetcher).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(request).toHaveBeenCalled());
+  expect(request.mock.calls[0][0]).toMatchObject({
+    fields: {
+      title: "Honeymoon stay",
+      destination: "Use courtyard entrance, 8 Custom Road",
+      location_id: hotel.id,
+      latitude: hotel.latitude,
+      longitude: hotel.longitude,
+    },
+  });
+});
+it("a manual place can change without losing the separate custom booking title or inventing map coordinates", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+  const request = mountEntry({
+    title: "Family stay",
+    category: "accommodation",
+    location_id: hotel.id,
+    location_label: hotel.label,
+    latitude: hotel.latitude,
+    longitude: hotel.longitude,
+    destination: "Personal address note",
+  });
+  fireEvent.change(
+    screen.getByLabelText("Where are you staying?", { exact: true }),
+    {
+      target: { value: "Our private cottage" },
+    },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(request).toHaveBeenCalled());
+  expect(request.mock.calls[0][0]).toMatchObject({
+    fields: {
+      title: "Family stay",
+      location_label: "Our private cottage",
+      location_id: null,
+      latitude: null,
+      longitude: null,
+      destination: "Personal address note",
+    },
+  });
+});
+
+it("editing the optional booking title preserves its selected Place and coordinates", async () => {
+  const request = mountEntry({
+    title: "Honeymoon stay",
+    category: "accommodation",
+    location_id: hotel.id,
+    location_label: hotel.label,
+    latitude: hotel.latitude,
+    longitude: hotel.longitude,
+  });
+  fireEvent.change(screen.getByLabelText("Booking title (optional)"), {
+    target: { value: "Anniversary stay" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(request).toHaveBeenCalled());
+  expect(request.mock.calls[0][0]).toMatchObject({
+    fields: {
+      title: "Anniversary stay",
+      location_id: hotel.id,
+      location_label: hotel.label,
+      latitude: hotel.latitude,
+      longitude: hotel.longitude,
+    },
+  });
+});
+it("a preserved custom title does not allow an empty required Place to save", async () => {
+  const request = mountEntry({
+    title: "Honeymoon stay",
+    category: "accommodation",
+    location_id: hotel.id,
+    location_label: hotel.label,
+    latitude: hotel.latitude,
+    longitude: hotel.longitude,
+  });
+  fireEvent.change(
+    screen.getByLabelText("Where are you staying?", { exact: true }),
+    {
+      target: { value: "" },
+    },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await screen.findByRole("alert");
+  expect(
+    screen.getByText("Add a place name. A search match isn’t required."),
+  ).toBeTruthy();
+  expect(request).not.toHaveBeenCalled();
+});
+
+it("the generic Name searches hotels, saves their address and has no separate Location details", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json({
+        results: [hotel],
+        presentations: {
+          [hotel.id]: {
+            context: "Paris, France",
+            type: "Hotel",
+            address: "12 Rue des Fleurs, Paris, France",
+          },
+        },
+        status: "ok",
+        worldwideAvailable: true,
+      }),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  const request = mountEntry({ category: "other", title: "Casa Vimaya" });
+  const name = screen.getByRole("combobox", { name: "Name" });
+  expect(screen.queryByText("Location details (optional)")).toBeNull();
+  expect(screen.queryByLabelText("Address (optional)")).toBeNull();
+  fireEvent.change(name, { target: { value: "Hotel Lumi" } });
+  await screen.findByRole("option", { name: /Hotel Lumière/ });
+  expect(String(fetcher.mock.calls[0][0])).toContain("booking=Other");
+  fireEvent.click(
+    screen.getByRole("button", { name: /Hotel Lumière.*12 Rue/ }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(request).toHaveBeenCalled());
+  expect(request.mock.calls[0][0]).toMatchObject({
+    fields: {
+      title: hotel.city,
+      location_id: hotel.id,
+      latitude: hotel.latitude,
+      longitude: hotel.longitude,
+      destination: "12 Rue des Fleurs, Paris, France",
+    },
+  });
 });

@@ -57,7 +57,7 @@ export async function Intelligence({
   const rows = Object.fromEntries(
     tables.map((t, i) => [t, result[i].data || []]),
   );
-  if (view === "map")
+  if (view === "map" || view === "places")
     return (
       <Discovery
         trip={trip}

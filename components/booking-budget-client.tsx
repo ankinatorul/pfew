@@ -15,6 +15,7 @@ export function BookingsClient(props: BookingsProps) {
   return (
     <BookingManager
       {...props}
+      onRefresh={() => router.refresh()}
       LinkComponent={Link}
       save={async (form) => {
         const r = await saveManagedBooking(props.trip.id, form);

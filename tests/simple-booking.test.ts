@@ -78,7 +78,7 @@ it("does not infer unknown dates or costs, and only expands an explicit single-d
 });
 it("summarizes reliable information without missing-field or reservation claims", () => {
   const e = emptyCollectionEntry(id);
-  expect(bookingSummary(e)).toEqual({ detail: "", payment: "" });
+  expect(bookingSummary(e)).toEqual({ detail: "", payment: "Not set" });
   e.fields = {
     price: 0,
     currency: "EUR",

@@ -1354,3 +1354,14 @@
   color: #962d1b;
   margin: 0;
 }
+
+/* Shared booking Place field; destination search styling is unchanged. */
+.smart-booking-name .booking-name-popup :is(strong, small) {
+  overflow-wrap: anywhere;
+}
+.simple-booking-fields > .booking-place-address {
+  margin-top: -6px;
+  color: #666b76;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}

@@ -1,3 +1,4 @@
+import { paymentLabel } from "./booking-payment";
 import type { CollectionEntry } from "./booking-collection";
 
 export const simpleBookingTypes = [
@@ -33,12 +34,19 @@ export function simplifiedBookingFields(
   for (const [key, value] of Object.entries(values)) {
     if (
       key !== "booking_type" &&
+      key !== "booking_place" &&
       typeof value === "string" &&
       (fields[key] === undefined || String(fields[key] ?? "") !== value)
     )
       fields[key] = value;
   }
   const type = String(values.booking_type);
+  // Generic Name is the editable title itself. Read the live input so a close
+  // immediately after typing preserves it even before hidden fields rerender.
+  if (type === "Other" && typeof values.booking_place === "string") {
+    fields.title = values.booking_place;
+    if (!fields.location_id) fields.location_label = values.booking_place;
+  }
   if (
     type !== simpleBookingType(entry.fields.category) ||
     !entry.fields.category
@@ -77,14 +85,7 @@ export function bookingSummary(entry: CollectionEntry) {
     f.price !== "" && f.price != null && Number.isFinite(Number(f.price))
       ? `${f.currency || ""} ${f.price}`.trim()
       : "";
-  const payment =
-    f.payment_status === "paid"
-      ? "Paid"
-      : f.payment_status === "unpaid"
-        ? "Pay later"
-        : f.payment_status === "partial"
-          ? "Partially paid"
-          : "";
+  const payment = paymentLabel(f);
   return { detail: [date, cost].filter(Boolean).join(" · "), payment };
 }
 

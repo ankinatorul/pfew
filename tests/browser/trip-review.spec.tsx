@@ -141,7 +141,7 @@ test("edit actions preserve style and basics through the three steps; unfinished
   ).toBeVisible();
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   await page
-    .getByLabel("Name", { exact: true })
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
     .fill("Saved unfinished transfer");
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Close booking editor" }).click();
@@ -346,14 +346,20 @@ test("Phase 7E complete mixed-booking journey preserves originals, recovers draf
   ).toBeVisible();
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   const manual = page.locator("article.collection-entry").last();
-  await expect(manual.getByLabel("Name", { exact: true })).toBeFocused();
-  await manual.getByLabel("Name", { exact: true }).fill("My reviewed transfer");
+  await expect(
+    manual.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  ).toBeFocused();
+  await manual
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("My reviewed transfer");
   await manual.getByRole("radio", { name: "Transport", exact: true }).check();
   await manual.getByLabel("Travel date", { exact: true }).fill("2027-06-01");
   await manual
     .getByLabel("End date (optional)", { exact: true })
     .fill("2027-06-01");
-  await manual.getByLabel("Currency", { exact: true }).fill("EUR");
+  await manual.getByLabel("Currency", { exact: true }).selectOption("EUR");
   await manual
     .getByRole("button", { name: "Save booking", exact: true })
     .click();
@@ -519,12 +525,18 @@ test("Phase 7E keyboard validation, debounced destination search, tap targets an
       button.click();
     });
   await expect(page.locator("article.collection-entry")).toHaveCount(1);
-  await expect(page.getByLabel("Name", { exact: true })).toBeFocused();
+  await expect(
+    page.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  ).toBeFocused();
   await page.getByRole("button", { name: "Close booking editor" }).click();
   // An untouched new entry is cancelled without creating an empty saved booking.
   await expect(page.locator("article.collection-entry")).toHaveCount(0);
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
-  await page.getByLabel("Name", { exact: true }).fill("Removal fixture");
+  await page
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("Removal fixture");
   await page.getByRole("button", { name: "Save booking", exact: true }).click();
   await page.getByLabel(/More actions for Removal fixture/).click();
   const remove = page.getByRole("button", { name: "Remove", exact: true });
@@ -635,7 +647,9 @@ test("Phase 11A.1 compact journey, four booking types, contextual payment, drop 
       .click();
     const card = page.locator("article.collection-entry").last();
     await card.getByRole("radio", { name: type, exact: true }).check();
-    await card.getByLabel("Name", { exact: true }).fill(type + " fixture");
+    await card
+      .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+      .fill(type + " fixture");
     if (type === "Stay") {
       await card
         .getByLabel("Check-in date", { exact: true })
@@ -645,7 +659,10 @@ test("Phase 11A.1 compact journey, four booking types, contextual payment, drop 
         .fill("2027-06-04");
       await card.getByRole("radio", { name: "Paid", exact: true }).check();
       await card.getByLabel("Cost (optional)", { exact: true }).fill("480");
-      const hotel = card.getByRole("combobox", { name: "Name", exact: true });
+      const hotel = card.getByRole("combobox", {
+        name: /^(?:Place|Where are you staying\?)$/,
+        exact: true,
+      });
       await expect(hotel).toHaveValue("Stay fixture");
       await hotel.focus();
       await expect(
@@ -654,11 +671,11 @@ test("Phase 11A.1 compact journey, four booking types, contextual payment, drop 
       await hotel.press("ArrowDown");
       await hotel.press("Enter");
       await card
-        .getByText("Location details (optional)", { exact: true })
+        .getByText("Address & booking details (optional)", { exact: true })
         .click();
-      await card
-        .getByLabel("Location name", { exact: true })
-        .fill("Hotel reception");
+      await expect(
+        card.getByLabel("Address (optional)", { exact: true }),
+      ).toHaveCount(0);
       await phase11Capture(page, info, "manual-stay");
     } else if (type === "Transport") {
       await card.getByLabel("Travel date", { exact: true }).fill("2027-06-04");
@@ -672,6 +689,12 @@ test("Phase 11A.1 compact journey, four booking types, contextual payment, drop 
         .getByLabel("Drop-off location", { exact: true })
         .fill("Airport");
       await card.getByRole("radio", { name: "Pay later", exact: true }).check();
+      await card
+        .getByRole("radio", {
+          name: "Payment due on a specific date",
+          exact: true,
+        })
+        .check();
       await card.getByLabel("Payment due", { exact: true }).fill("2027-05-25");
       await phase11Capture(page, info, "manual-transport");
     } else if (type === "Experience")
@@ -709,7 +732,7 @@ test("Phase 11A.1 compact journey, four booking types, contextual payment, drop 
     ).fields,
   ).toMatchObject({
     location_label: "Stay fixture, Krabi, Thailand",
-    destination: "Hotel reception",
+    destination: "Stay fixture, Krabi, Thailand",
   });
   expect(
     saved.entries.find(
@@ -787,7 +810,11 @@ test("Phase 11A.1B drawer contains focus, protects closing, keeps a fixed Save f
     exact: true,
   });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel("Name", { exact: true })).toBeFocused();
+  await expect(
+    dialog.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  ).toBeFocused();
   await dialog.evaluate(async (node) => {
     await Promise.all(
       node.getAnimations().map((animation) => animation.finished),
@@ -812,7 +839,9 @@ test("Phase 11A.1B drawer contains focus, protects closing, keeps a fixed Save f
     ).toBe(true);
   }
   await dialog.getByRole("radio", { name: "Stay", exact: true }).check();
-  await dialog.getByLabel("Name", { exact: true }).fill("Garden stay");
+  await dialog
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("Garden stay");
   await dialog.getByLabel("Check-in date", { exact: true }).fill("2027-06-01");
   await dialog.getByLabel("Check-out date", { exact: true }).fill("2027-06-04");
   await dialog.getByLabel("Cost (optional)", { exact: true }).fill("480");
@@ -840,9 +869,11 @@ test("Phase 11A.1B drawer contains focus, protects closing, keeps a fixed Save f
       button.click();
     });
   await expect(dialog.getByRole("alert")).toContainText("Try again");
-  await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(
-    "Garden stay",
-  );
+  await expect(
+    dialog.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  ).toHaveValue("Garden stay");
   await dialog
     .getByRole("button", { name: "Save booking", exact: true })
     .click();
@@ -865,8 +896,13 @@ test("Phase 11A.1B drawer contains focus, protects closing, keeps a fixed Save f
   await card.getByRole("button", { name: "Edit", exact: true }).click();
   const edit = page.getByRole("dialog", { name: "Edit booking", exact: true });
   await edit.getByRole("radio", { name: "Transport", exact: true }).check();
-  await edit.getByLabel("Name", { exact: true }).fill("Airport transfer");
+  await edit
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("Airport transfer");
   await edit.getByRole("radio", { name: "Pay later", exact: true }).check();
+  await edit
+    .getByRole("radio", { name: "Payment due on a specific date", exact: true })
+    .check();
   await edit.getByLabel("Payment due", { exact: true }).fill("2027-05-25");
   await drawerCapture(page, info, "transport-drawer");
   await edit.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -897,9 +933,11 @@ test("Phase 11A.1B uploaded reviews share the drawer and preserve originals and 
     name: "Review booking",
     exact: true,
   });
-  await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(
-    "Fixture airline",
-  );
+  await expect(
+    dialog.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+      exact: true,
+    }),
+  ).toHaveValue("Fixture airline");
   await drawerCapture(page, info, "uploaded-review");
   await dialog
     .getByRole("button", { name: "Save changes", exact: true })

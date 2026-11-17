@@ -153,7 +153,17 @@ export async function EssentialsView({
                     <span className="pill">
                       {t.priority} priority · {t.done ? "Complete" : "Open"}
                     </span>
-                    <h3>{t.title}</h3>
+                    <h3>
+                      {t.booking_id ? (
+                        <Link
+                          href={`/trips/${trip.id}?view=bookings&edit=${t.booking_id}`}
+                        >
+                          {t.title}
+                        </Link>
+                      ) : (
+                        t.title
+                      )}
+                    </h3>
                     <p>
                       {t.due_date ? "Due " + t.due_date : "No due date"}
                       {!t.done && t.due_date && t.due_date < today

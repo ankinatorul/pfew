@@ -184,6 +184,8 @@ function Fixture() {
             ...state.bookings,
             {
               ...parsed.data,
+              payment_arrangement: (v.fields as CollectionEntry["fields"])
+                .payment_arrangement as string | null,
               payment_due_date: (v.fields as CollectionEntry["fields"])
                 .payment_due_date as string | null,
               id,
@@ -325,7 +327,7 @@ function Fixture() {
               price: data.price === "" ? null : Number(data.price),
               paid_amount:
                 data.paid_amount === "" ? null : Number(data.paid_amount),
-              segment_id: String(data.segment_id) || null,
+              segment_id: data.segment_id ? String(data.segment_id) : null,
               finance_revision: old ? (old.finance_revision || 0) + 1 : 0,
             } as ManagedBooking;
             commit({

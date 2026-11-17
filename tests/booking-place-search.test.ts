@@ -26,13 +26,11 @@ const poi = (
 it("returns lodging POIs with real metadata, biases by saved destination and retains distinct same-name properties", async () => {
   const near = poi("Grand Hotel", 1, "hotel"),
     far = poi("Grand Hotel", 2, "hotel", "tourism", 35, 139);
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({
-        features: [far, poi("Grand Hotel", 3, "street", "highway"), near, near],
-      }),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      features: [far, poi("Grand Hotel", 3, "street", "highway"), near, near],
+    }),
+  );
   const result = await searchWorldwideLocations(
     "Grand Hotel",
     fetcher,
@@ -51,18 +49,16 @@ it("returns lodging POIs with real metadata, biases by saved destination and ret
   expect(url.searchParams.has("bbox")).toBe(false);
 });
 it("separates attraction and restaurant POIs from lodging and administrative matches", async () => {
-  const fetcher = vi
-    .fn()
-    .mockImplementation(async () =>
-      Response.json({
-        features: [
-          poi("Louvre", 1, "museum"),
-          poi("Louvre Café", 2, "cafe", "amenity"),
-          poi("Louvre district", 3, "administrative", "boundary"),
-          poi("Louvre hotel", 4, "hotel"),
-        ],
-      }),
-    );
+  const fetcher = vi.fn().mockImplementation(async () =>
+    Response.json({
+      features: [
+        poi("Louvre", 1, "museum"),
+        poi("Louvre Café", 2, "cafe", "amenity"),
+        poi("Louvre district", 3, "administrative", "boundary"),
+        poi("Louvre hotel", 4, "hotel"),
+      ],
+    }),
+  );
   const result = await searchWorldwideLocations("Louvre", fetcher, "place", {
     kind: "Experience",
     centers: [],
@@ -112,4 +108,60 @@ it("uses only finite saved destination coordinates and caps bias centers", () =>
       },
     }),
   ).toEqual([{ latitude: 0, longitude: 0 }]);
+});
+
+it("returns provider-supplied street context for booking suggestions without changing destination presentations", async () => {
+  const feature = poi("Address Hotel", 917, "hotel");
+  const provider = {
+    ...feature,
+    properties: {
+      ...feature.properties,
+      street: "Rue des Fleurs",
+      housenumber: "12",
+      postcode: "75001",
+    },
+  };
+  const fetcher = vi
+    .fn()
+    .mockImplementation(async () => Response.json({ features: [provider] }));
+  const found = await searchWorldwideLocations(
+    "Address Hotel",
+    fetcher,
+    "place",
+    { kind: "Stay", centers: [] },
+  );
+  expect(found.presentations[found.results[0].id].address).toBe(
+    "12 Rue des Fleurs, 75001 Paris, France",
+  );
+  const destination = await searchWorldwideLocations(
+    "Address Hotel",
+    vi
+      .fn()
+      .mockImplementation(async () => Response.json({ features: [provider] })),
+    "destination",
+  );
+  for (const value of Object.values(destination.presentations))
+    expect(value).not.toHaveProperty("address");
+});
+
+it("generic booking Name search includes hotels and attractions without including streets", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(
+      Response.json({
+        features: [
+          poi("Casa hotel", 8001, "hotel"),
+          poi("Casa museum", 8002, "museum"),
+          poi("Casa street", 8003, "residential", "highway"),
+        ],
+      }),
+    );
+  const result = await searchWorldwideLocations("Casa", fetcher, "place", {
+    kind: "Other",
+    centers: [],
+  });
+  expect(result.results.map((p) => p.city)).toEqual(
+    expect.arrayContaining(["Casa hotel", "Casa museum"]),
+  );
+  expect(result.results.map((p) => p.city)).not.toContain("Casa street");
 });

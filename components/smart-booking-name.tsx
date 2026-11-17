@@ -10,7 +10,12 @@ import type {
   SearchCenter,
 } from "../lib/booking-place-search";
 
-type Match = { place: ResolvedLocation; context: string; type?: string };
+type Match = {
+  place: ResolvedLocation;
+  context: string;
+  type?: string;
+  address?: string;
+};
 const cache = new Map<string, { until: number; matches: Match[] }>();
 export function SmartBookingName({
   value,
@@ -23,7 +28,7 @@ export function SmartBookingName({
   kind: BookingPlaceKind;
   centers: SearchCenter[];
   onChange: (name: string) => void;
-  onSelect: (place: ResolvedLocation) => void;
+  onSelect: (place: ResolvedLocation, address?: string) => void;
 }) {
   const id = useId(),
     root = useRef<HTMLDivElement>(null),
@@ -103,6 +108,10 @@ export function SmartBookingName({
                   typeof detail?.context === "string"
                     ? detail.context
                     : parsed.data.country,
+                address:
+                  typeof detail?.address === "string"
+                    ? detail.address.slice(0, 500)
+                    : undefined,
                 type:
                   typeof detail?.type === "string" ? detail.type : undefined,
               },
@@ -132,7 +141,7 @@ export function SmartBookingName({
   const visible = open && typed && !!query;
   const choose = (index: number) => {
     const match = matches[index];
-    if (match) onSelect(match.place);
+    if (match) onSelect(match.place, match.address);
     setOpen(false);
     setMatches([]);
     setActive(-1);
@@ -146,10 +155,24 @@ export function SmartBookingName({
           setOpen(false);
       }}
     >
-      <label htmlFor={id}>Name</label>
+      <label htmlFor={id}>
+        {kind === "Stay"
+          ? "Where are you staying?"
+          : kind === "Other"
+            ? "Name"
+            : "Place"}
+      </label>
       <input
         id={id}
-        name="title"
+        name="booking_place"
+        data-booking-primary-field
+        placeholder={
+          kind === "Stay"
+            ? "Search hotel or accommodation"
+            : kind === "Other"
+              ? "Search a place or enter a name"
+              : "Search attraction or activity"
+        }
         required
         maxLength={200}
         value={value}
@@ -217,7 +240,9 @@ export function SmartBookingName({
                 >
                   <strong>{match.place.city}</strong>
                   <small>
-                    {[match.context, match.type].filter(Boolean).join(" · ")}
+                    {[match.address || match.context, match.type]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </small>
                 </button>
               </li>

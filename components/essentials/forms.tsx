@@ -150,7 +150,7 @@ export function BookingForm(props: {
   return (
     <a
       className="button primary"
-      href={`/trips/${props.trip.id}?view=bookings${props.item ? "&edit=" + props.item.id : ""}`}
+      href={`/trips/${props.trip.id}?view=bookings${props.item ? "&edit=" + props.item.id : "&edit=new"}`}
     >
       Open booking editor
     </a>

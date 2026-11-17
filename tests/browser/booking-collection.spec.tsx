@@ -64,13 +64,15 @@ test("collects multiple sources and manual details in one review, distinguishes 
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   await expect(page.locator("article.collection-entry")).toHaveCount(3);
   const manual = page.locator("article.collection-entry").last();
-  await manual.getByLabel("Name", { exact: true }).fill("My manual flight");
+  await manual
+    .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+    .fill("My manual flight");
   await manual.getByRole("radio", { name: "Transport", exact: true }).check();
   await manual.getByLabel("Travel date", { exact: true }).fill("2027-05-01");
   await manual
     .getByLabel("End date (optional)", { exact: true })
     .fill("2027-05-01");
-  await manual.getByLabel("Currency", { exact: true }).fill("EUR");
+  await manual.getByLabel("Currency", { exact: true }).selectOption("EUR");
   await manual
     .getByRole("button", { name: "Save booking", exact: true })
     .click();
@@ -201,7 +203,9 @@ test("Continue preserves unsaved fields from several cards while saving them seq
       .getByRole("button", { name: "Add manually", exact: true })
       .click();
     const card = page.locator("article.collection-entry").last();
-    await card.getByLabel("Name", { exact: true }).fill(title);
+    await card
+      .getByLabel(/^(?:Name|Place|Where are you staying\?)$/, { exact: true })
+      .fill(title);
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Close booking editor" }).click();
   }
@@ -257,7 +261,9 @@ test("Create Trip smart name accepts a hotel or manual entry during a provider o
   await page.getByRole("button", { name: "Add manually", exact: true }).click();
   const drawer = page.getByRole("dialog");
   await drawer.getByRole("radio", { name: "Stay", exact: true }).check();
-  const name = drawer.getByLabel("Name", { exact: true });
+  const name = drawer.getByLabel(/^(?:Name|Place|Where are you staying\?)$/, {
+    exact: true,
+  });
   await name.fill("Ritz Paris hotel");
   await expect(
     drawer.getByRole("option").getByText("Ritz Paris", { exact: true }),
